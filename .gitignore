@@ -1,0 +1,40 @@
+# Dependencies
+**/node_modules/
+**/vendor/
+
+# Environment files
+**/.env
+**/.env.backup
+**/.env.production
+**/.env.local
+
+# Build artifacts
+**/dist/
+**/dist-ssr/
+*.local
+
+# Database & Storage
+*.sqlite
+*.sqlite-journal
+bansos-backend/storage/*.key
+bansos-backend/storage/debugbar/
+bansos-backend/storage/logs/
+bansos-backend/storage/framework/cache/
+bansos-backend/storage/framework/sessions/
+bansos-backend/storage/framework/testing/
+bansos-backend/storage/framework/views/
+
+# Cache & Testing
+.phpunit.result.cache
+**/.phpunit.cache/
+
+# IDE & OS
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+Thumbs.db

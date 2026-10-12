@@ -1,0 +1,89 @@
+:root {
+  --text: #111827;
+  --text-h: #111827;
+  --bg: #f0f6ff;
+  --border: #c6dcff;
+  --code-bg: #f4f3ec;
+  --accent: #aa3bff;
+  --accent-bg: rgba(170, 59, 255, 0.1);
+  --accent-border: rgba(170, 59, 255, 0.5);
+  --social-bg: rgba(244, 243, 236, 0.5);
+  --shadow: rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+
+  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, Consolas, monospace;
+
+  font: 14px/145% var(--sans);
+  letter-spacing: 0.18px;
+
+  /* PERBAIKAN UTAMA: Mengunci skema warna hanya ke Light Mode */
+  color-scheme: light !important;
+
+  color: var(--text);
+  background: var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Menghapus @media (prefers-color-scheme: dark) agar tidak bentrok */
+
+body {
+  margin: 0;
+  background-color: #f0f6ff !important;
+  color: #111827 !important;
+}
+
+/* Memaksa input/textarea/select berwarna gelap agar terbaca di form.
+   JANGAN masukkan `button` di sini — sidebar nav button punya warna sendiri
+   dan akan jadi hitam-di-hitam kalau dipaksa #0b1c30. */
+input,
+textarea,
+select {
+  color: #111827 !important;
+}
+
+/* Memastikan teks placeholder (bantuan) tetap abu-abu dan terbaca */
+input::placeholder,
+textarea::placeholder {
+  color: #76777d !important;
+  opacity: 1 !important;
+}
+
+#root {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+h1,
+h2 {
+  font-family: var(--heading);
+  font-weight: 500;
+  color: var(--text-h);
+}
+
+p {
+  margin: 0;
+}
+
+code,
+.counter {
+  font-family: var(--mono);
+  display: inline-flex;
+  border-radius: 4px;
+  color: var(--text-h);
+}
+
+code {
+  font-size: 15px;
+  line-height: 135%;
+  padding: 4px 8px;
+  background: var(--code-bg);
+}
