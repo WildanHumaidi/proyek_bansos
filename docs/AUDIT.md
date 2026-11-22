@@ -5,15 +5,15 @@
 
 ## Ringkasan Eksekutif & Matriks Temuan
 
-Berdasarkan analisis statis dan penelusuran alur eksekusi (tracing) terhadap seluruh berkas kode backend (Laravel 12) dan frontend (React 19), ditemukan **26 temuan audit** yang dikelompokkan ke dalam 4 pilar utama:
+Berdasarkan analisis statis dan penelusuran alur eksekusi (tracing) terhadap seluruh berkas kode backend (Laravel 12) dan frontend (React 19), ditemukan **35 temuan audit** yang dikelompokkan ke dalam 4 pilar utama:
 
 | Pilar Audit | Critical | High | Medium | Low | Total |
 |---|:---:|:---:|:---:|:---:|:---:|
-| **1. Bugs & Edge Cases (BUG)** | 1 | 3 | 2 | 1 | **7** |
-| **2. Loophole Keamanan (SEC)** | 2 | 3 | 2 | 0 | **7** |
+| **1. Bugs & Edge Cases (BUG)** | 3 | 6 | 2 | 1 | **12** |
+| **2. Loophole Keamanan (SEC)** | 3 | 4 | 4 | 0 | **11** |
 | **3. Loophole Logika Bisnis (LOG)** | 1 | 2 | 2 | 0 | **5** |
 | **4. Code Smells & Arsitektur (SML)** | 0 | 2 | 3 | 2 | **7** |
-| **TOTAL** | **4** | **10** | **9** | **3** | **26** |
+| **TOTAL** | **7** | **14** | **11** | **3** | **35** |
 
 ---
 
@@ -79,7 +79,7 @@ Berdasarkan analisis statis dan penelusuran alur eksekusi (tracing) terhadap sel
 
 ---
 
-### BUG-05: Simulasi Matriks di Frontend Menyamarkan Data Database yang Kosong
+### BUG-05: [SELESAI] Simulasi Matriks di Frontend Menyamarkan Data Database yang Kosong
 - **Lokasi:** `bansos-frontend/src/pages/AdminDashboard.jsx` (Baris 242–252)
 - **Tingkat Keparahan:** **MEDIUM**
 - **Penjelasan:**
@@ -88,9 +88,11 @@ Berdasarkan analisis statis dan penelusuran alur eksekusi (tracing) terhadap sel
 - **Saran Perbaikan:**
   Pastikan pembentukan relasi `penilaian` selalu terjadi di backend saat import atau pengajuan, bukan disimulasikan secara parsial di frontend. Jika `p.penilaian` kosong, frontend harus menampilkan indikator peringatan bahwa data matriks belum di-generate.
 
+- **Resolusi:** `getSkor()` di `AdminDashboard.jsx` kini hanya membaca relasi `penilaian` dan mengembalikan `null` bila belum terbentuk (UI menampilkan `—` + banner peringatan). Jalur konversi ganda dari frontend (`konversiSubkriteria`) dihapus dari AdminDashboard dan RtDashboard; backend kini membangun matriks sendiri di `updateKuesioner`.
+
 ---
 
-### BUG-06: State Chat Optimistik Tanpa Rollback Saat Request Gagal
+### BUG-06: [SELESAI] State Chat Optimistik Tanpa Rollback Saat Request Gagal
 - **Lokasi:** `bansos-frontend/src/pages/WargaDashboard.jsx` (Baris 131–138)
 - **Tingkat Keparahan:** **MEDIUM**
 - **Penjelasan:**
@@ -100,9 +102,11 @@ Berdasarkan analisis statis dan penelusuran alur eksekusi (tracing) terhadap sel
 - **Saran Perbaikan:**
   Tampilkan status pengiriman (pending/failed), dan hapus pesan dari UI atau beri tanda seru merah jika request HTTP gagal.
 
+- **Resolusi:** Pesan optimistik diberi `temp_id` + `status_kirim` (`pending`/`sent`/`failed`). Saat request gagal, pesan ditandai `⚠ gagal` dan bisa dihapus dari layar, sehingga UI tidak lagi mengklaim terkirim. Diterapkan di `WargaDashboard.jsx` dan `RtDashboard.jsx`.
+
 ---
 
-### BUG-07: Perankingan SAW Non-Deterministik pada Nilai Skor Imbang (Tie Break)
+### BUG-07: [SELESAI] Perankingan SAW Non-Deterministik pada Nilai Skor Imbang (Tie Break)
 - **Lokasi:** `bansos-backend/app/Http/Controllers/Api/SawController.php` (Baris 135–140)
 - **Tingkat Keparahan:** **LOW**
 - **Penjelasan:**
@@ -119,6 +123,78 @@ Berdasarkan analisis statis dan penelusuran alur eksekusi (tracing) terhadap sel
       return $b['skor_saw'] <=> $a['skor_saw'];
   });
   ```
+
+- **Resolusi:** `usort` diberi tie-breaker deterministik `id_pengajuan` sehingga urutan skor identik stabil antar pemanggilan. Dikunci oleh `SawRankingTest::test_skor_imbang_diurutkan_stabil_berdasarkan_id_pengajuan`.
+
+### BUG-08: [SELESAI] Skala Nilai Sub-Kriteria Cost Terbalik — Penerima Bantuan Salah Sasaran
+- **Lokasi:**
+  - `bansos-backend/database/seeders/KriteriaSeeder.php`
+  - Data live `sub_kriteria` id 9-40 (hasil import manual)
+  - `bansos-backend/app/Http/Controllers/Api/SawController.php` (Baris 128-137)
+- **Tingkat Keparahan:** **CRITICAL**
+- **Penjelasan:**
+  Normalisasi SAW memakai `benefit: x/max` dan `cost: min/x` (sesuai jurnal acuan,
+  §2.4). Pada database live, tujuh kriteria cost (C3, C5-C10) justru memiliki skala
+  TERBALIK: kondisi paling membutuhkan diberi nilai 10 dan paling sejahtera 2.5.
+  Akibatnya `min/x` membalik lagi arah prioritas — warga paling sejahtera mendapat
+  skor tertinggi. Diukur pada data nyata: rumah dengan seluruh indikator terbaik
+  memperoleh V = 0.775, sedangkan yang paling membutuhkan hanya 0.475, sehingga
+  peringkat 1 jatuh ke warga paling mampu. Ini membatalkan seluruh tujuan sistem.
+- **Resolusi:**
+  Skala diselaraskan dengan jurnal Tabel 2 & 3 (cost: sejahtera = 10, butuh = 2.5)
+  melalui migrasi idempoten `2026_11_22_180000_fix_skala_nilai_sub_kriteria_cost`
+  dan `KriteriaSeeder` diperbaiki. Rumus `SawController` tidak diubah karena sudah
+  cocok dengan jurnal. Dikunci oleh `SubKriteriaArahNilaiTest`, yang mereproduksi
+  worked example jurnal: A1 = 0.892 (rank 1), A3 = 0.725 (rank 2), A2 = 0.683 (rank 3).
+- **Catatan penting:** jangan membalik urutan nilai sub-kriteria tanpa ikut mengubah
+  rumus normalisasi, dan sebaliknya.
+
+  **Invarian skor maksimum:** `V = 1.0` hanya tercapai bila SELURUH kriteria berada di
+  kondisi paling membutuhkan, yaitu benefit = 10 dan cost = 2.5:
+
+  ```
+  nilai = [10, 10, 2.5, 10, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5]  →  V = 1.0
+  ```
+
+  Kebalikannya (benefit 2.5, cost 10) menghasilkan `V = 0.25` — skor terendah. Satu
+  kriteria saja meleset (mis. C10 = 5) menurunkan V menjadi 0.95, jadi tidak ada
+  kombinasi lain yang bisa mencapai 1.0. Dikunci oleh
+  `SubKriteriaArahNilaiTest::test_skor_sempurna_hanya_untuk_kondisi_paling_membutuhkan`.
+
+---
+
+### BUG-09: [SELESAI] Label Opsi Kuesioner Frontend Tidak Cocok dengan `sub_kriteria.keterangan`
+- **Lokasi:**
+  - `bansos-frontend/src/services/constants.js`, `src/pages/{Admin,Rt,Warga}Dashboard.jsx`
+  - `bansos-backend/app/Http/Controllers/Api/AdminRtController.php::sinkronkanPenilaianDariJawaban`
+- **Tingkat Keparahan:** **HIGH**
+- **Penjelasan:**
+  Backend mencocokkan jawaban warga ke baris `sub_kriteria` berdasarkan teks, tetapi
+  label di frontend berbeda dari teks database (mis. `SEKOLAH DASAR (SD)` vs `SD`,
+  `5 ORANG` vs `5 Orang`, `SEWA / KONTRAK` vs `Sewa < 1 Juta`). Setiap jawaban yang
+  tidak cocok diam-diam jatuh ke `indexOpsi = 2` (nilai tengah), sehingga skor warga
+  salah tanpa ada error apa pun. Selain itu daftar opsi di-hardcode terpisah di empat
+  tempat dan sudah menyimpang satu sama lain.
+- **Resolusi:**
+  Semua label diselaraskan dengan `sub_kriteria.keterangan`. Pencocokan di backend
+  ditulis ulang menjadi data-driven: membaca baris sub-kriteria milik kriteria itu
+  sendiri, mencoba exact match lalu partial match, dan mengembalikan daftar kriteria
+  yang tidak dikenali alih-alih memakai nilai default diam-diam.
+
+---
+
+### BUG-10: [SELESAI] Baris Tanpa Identitas Warga Masuk Perankingan dan Menempati Rank 1
+- **Lokasi:** `bansos-backend/app/Http/Controllers/Api/SawController.php` (Baris 65-96)
+- **Tingkat Keparahan:** **HIGH**
+- **Penjelasan:**
+  Terdapat 4 baris `warga` dengan `nama_lengkap` kosong dan `rt = '000'` (hasil import
+  yang tidak bersih). Keempatnya berstatus `disetujui` dengan matriks penilaian lengkap
+  dan seluruh nilai terbaik, sehingga memperoleh `skor_saw = 1.0` dan menduduki
+  peringkat 1-4. Laporan rekomendasi menjadi tidak bisa ditindaklanjuti.
+- **Resolusi:**
+  `SawController` kini melewati pengajuan yang warganya tanpa nama atau yang matriks
+  penilaiannya tidak lengkap, dan mengembalikan daftar `dilewati` beserta alasannya
+  agar dapat ditindaklanjuti admin. Dikunci oleh dua test di `SawRankingTest`.
 
 ---
 
@@ -223,7 +299,7 @@ Berdasarkan analisis statis dan penelusuran alur eksekusi (tracing) terhadap sel
 
 ---
 
-### SEC-07: Validasi Input Kurang Ketat pada File Upload dan Mutasi Status
+### SEC-07: [SELESAI] Validasi Input Kurang Ketat pada File Upload dan Mutasi Status
 - **Lokasi:** 
   - `bansos-backend/app/Http/Controllers/Api/AdminRtController.php` (Baris 160–165, Baris 234)
   - `bansos-backend/app/Http/Controllers/Api/ChatController.php` (Baris 23–34)
@@ -234,6 +310,8 @@ Berdasarkan analisis statis dan penelusuran alur eksekusi (tracing) terhadap sel
   3. Pada `storePesan`: `$request->isi_pesan` tidak divalidasi `required|string|max:1000`. Payload kosong atau data non-string dapat diinjeksi.
 - **Saran Perbaikan:**
   Terapkan validasi FormRequest yang ketat pada seluruh endpoint mutasi data.
+
+- **Resolusi:** Upload CSV divalidasi `mimes:csv,txt|max:5120` (diuji: upload PDF → HTTP 422). `isi_pesan` sudah divalidasi `required|string|max:1000`. Status pengajuan divalidasi `in:menunggu,disetujui,ditolak`. Selain itu `ValidationException` tidak lagi tertelan `catch (\Exception)` yang mengubah 422 menjadi 500.
 
 ---
 
@@ -287,7 +365,7 @@ Berdasarkan analisis statis dan penelusuran alur eksekusi (tracing) terhadap sel
 
 ---
 
-### LOG-04: Kondisi Balapan (Race Condition) pada Pembatasan 1 Pengajuan Per Warga
+### LOG-04: [SELESAI] Kondisi Balapan (Race Condition) pada Pembatasan 1 Pengajuan Per Warga
 - **Lokasi:** `bansos-backend/app/Http/Controllers/Api/WargaController.php` (Baris 80–86, 128–134)
 - **Tingkat Keparahan:** **MEDIUM**
 - **Penjelasan:**
@@ -299,9 +377,11 @@ Berdasarkan analisis statis dan penelusuran alur eksekusi (tracing) terhadap sel
   Tambahkan constraint indeks unik pada tabel pengajuan:
   `$table->unique('id_warga');`
 
+- **Resolusi:** Unique index `pengajuan_id_warga_unique` ditambahkan (migrasi `2026_11_22_170000`), dan `WargaController` menangkap `UniqueConstraintViolationException` untuk mengembalikan 400 yang jelas saat submit balapan.
+
 ---
 
-### LOG-05: Modifikasi Bobot Kriteria Tanpa Validasi Total Persentase 100%
+### LOG-05: [SELESAI] Modifikasi Bobot Kriteria Tanpa Validasi Total Persentase 100%
 - **Lokasi:** `bansos-backend/app/Http/Controllers/Api/KriteriaController.php` (Baris 24–29)
 - **Tingkat Keparahan:** **MEDIUM**
 - **Penjelasan:**
@@ -309,6 +389,94 @@ Berdasarkan analisis statis dan penelusuran alur eksekusi (tracing) terhadap sel
   Meskipun algoritma SAW di backend melakukan normalisasi bobot dinamis ($W_j / \sum W$), antarmuka pengguna di frontend menampilkan bobot dalam format persentase visual. Ini memicu kebingungan bagi pemangku kepentingan RW jika total akumulasi bobot di layar berjumlah 180% atau 30%.
 - **Saran Perbaikan:**
   Sediakan endpoint bulk update bobot yang memverifikasi bahwa total pembobotan tepat 100, atau berikan kalkulasi recalibrate otomatis di backend.
+
+- **Resolusi:** Dua lapis pengaman.
+  1. `PUT /api/kriteria/{id}` menolak (422) perubahan yang membuat total bobot ≠ 100,
+     dengan pesan yang menyebut total hasilnya.
+  2. Endpoint baru `PUT /api/admin/kriteria/bobot` menyimpan bobot seluruh kriteria
+     sekaligus dalam satu transaksi. Endpoint ini mewajibkan semua kriteria disertakan
+     (kalau tidak, total 100 bisa dicapai dengan mengabaikan kriteria tertentu) dan
+     menolak total ≠ 100.
+
+  Di UI, input bobot dihapus dari modal "Edit Kriteria" dan diganti tombol **Atur Bobot**
+  yang membuka editor 10 kriteria sekaligus dengan penghitung total langsung — tombol
+  simpan nonaktif sampai total tepat 100. Setiap perubahan dicatat di activity log.
+  Dikunci oleh `BobotKriteriaTest` (5 test).
+
+---
+
+## Pilar 5: Temuan Audit Lanjutan (Audit Ulang)
+
+Audit ulang menyeluruh menemukan satu cacat desain yang menjadi akar beberapa
+kebocoran sekaligus: `users` dan `warga` tidak pernah dihubungkan lewat ID.
+
+### SEC-08: [SELESAI] Identitas Warga Dicocokkan Lewat Nama — IDOR Lintas Warga
+- **Lokasi:**
+  - `app/Http/Controllers/Api/ChatController.php` (Baris 27)
+  - `app/Http/Controllers/Api/WargaController.php` (Baris 51, 107, 140)
+  - `app/Models/User.php`
+- **Tingkat Keparahan:** **CRITICAL**
+- **Penjelasan:**
+  Seluruh pencocokan akun ke data warga memakai `warga.nama_lengkap = users.name`.
+  Nama bukan identitas unik: pada data nyata terdapat 6 nama duplikat (LISA, basuki,
+  ARIF HIDAYAT, MISLENA, NURYATI, MUANIH). Dampaknya terbukti lewat test:
+  1. **IDOR baca chat** — cukup mendaftar dengan nama orang lain, akun baru dapat
+     membaca dan mengirim pesan pada pengajuan orang tersebut (HTTP 200, seharusnya 403).
+  2. **Kebocoran status** — `GET /api/warga/status` mengembalikan status pengajuan
+     orang lain (HTTP 200, seharusnya 404).
+  3. **Data tertimpa** — `Warga::updateOrCreate(['nama_lengkap' => ...])` saat submit
+     mengubah alamat/RT baris warga orang lain yang kebetulan bernama sama.
+- **Resolusi:**
+  Kolom `users.id_warga` ditambahkan (unique, FK, `ON DELETE SET NULL`) lewat migrasi
+  `2026_11_22_190000`, dengan backfill hanya untuk nama yang unik — nama duplikat
+  sengaja dibiarkan `NULL` agar tidak salah pasang. Seluruh otorisasi kini memakai
+  `users.id_warga`:
+  - `ChatController` menolak bila `id_warga` akun ≠ `id_warga` pemilik pengajuan.
+  - `WargaController::getStatus` membaca relasi `$user->warga`.
+  - `WargaController::kirimPengajuan` hanya memperbarui baris miliknya sendiri, dan
+    menolak (409) bila akun belum tertaut.
+  - `AuthController::register` membuat baris warga baru + tautan dalam satu transaksi.
+  - Endpoint `PUT /api/admin/users/{id}/taut-warga` untuk menautkan akun yang namanya
+    duplikat, dengan validasi RT harus sama dan satu baris warga hanya boleh satu akun.
+  - UI "Kelola Akun" menampilkan kolom **Tautan Warga** (`✓ #id` atau `⚠ belum`).
+- **Bukti:** `IdentitasWargaTest` (11 test). Diuji juga lewat HTTP nyata: akun bernama
+  sama ditolak 403 saat membaca chat, 404 saat melihat status, dan 409 saat mengajukan.
+
+### SEC-09: [SELESAI] Peran Pengirim Chat Salah — Admin/RW Tercatat sebagai Warga
+- **Lokasi:** `app/Http/Controllers/Api/ChatController.php` (Baris 70)
+- **Tingkat Keparahan:** **MEDIUM**
+- **Penjelasan:**
+  `$role = $request->user()->role === 'rt' ? 'rt' : 'warga';` membuat pesan dari admin
+  dan RW tersimpan dengan `pengirim_role = 'warga'`. Jejak audit jadi menyesatkan dan
+  pesan pengawas tampak sebagai pesan warga.
+  Lebih lanjut, enum `pesan_chat.pengirim_role` hanya mengizinkan `('warga','rt')`,
+  sehingga perbaikan controller saja akan memicu 500.
+- **Resolusi:**
+  Peran disimpan apa adanya (divalidasi ke daftar peran yang dikenal), dan enum
+  diperluas lewat migrasi `2026_11_22_190500_perluas_enum_pengirim_role_pesan_chat`
+  (menangani MySQL dan SQLite).
+
+### SEC-10: [SELESAI] RT Dapat Menginput Kuesioner untuk Warga di Luar Wilayahnya
+- **Lokasi:** `app/Http/Controllers/Api/WargaController.php::store`
+- **Tingkat Keparahan:** **HIGH**
+- **Penjelasan:**
+  `POST /api/warga/pengajuan-rt` menerima `rt` dari request tanpa membandingkannya
+  dengan RT si ketua RT. RT 001 bisa menginput warga RT 002/003, melewati batas
+  wilayah yang justru menjadi inti pembagian tugas sistem ini.
+  Endpoint ini juga menerima `nama_lengkap` kosong sehingga bisa membuat baris warga
+  tanpa identitas (penyebab 4 baris hantu yang sebelumnya masuk perankingan).
+- **Resolusi:**
+  RT hanya boleh menginput warga dengan `rt` sama dengan `rt` akunnya (403), nama
+  kosong ditolak (422), dan pencarian warga memakai `firstOrCreate` berbasis
+  `nama_lengkap + rt` agar tidak menimpa warga bernama sama di RT lain.
+
+### SEC-11: [SELESAI] Admin Dapat Menghapus Akunnya Sendiri
+- **Lokasi:** `app/Http/Controllers/Api/AdminRtController.php::deleteUser`
+- **Tingkat Keparahan:** **MEDIUM**
+- **Penjelasan:**
+  Tidak ada penjagaan terhadap akun sendiri. Satu administrator yang menghapus akunnya
+  akan terkunci di luar sistem tanpa jalan pemulihan lewat UI.
+- **Resolusi:** Ditolak (422) bila `auth()->id()` sama dengan target.
 
 ---
 
@@ -432,6 +600,14 @@ Untuk memulihkan stabilitas dan keamanan aplikasi secara disiplin, urutan perbai
 8. **[LOG-02] [SELESAI]** Ubah rute utilitas "Sapu Ajaib" dari `GET` menjadi `POST`.
 9. **[LOG-03] [SELESAI]** Tambahkan transaksi database pada `updateKuesioner`.
 10. **[SEC-05] [SELESAI]** Pasang rate limiting pada rute `/login`.
+16. **[BUG-08] [SELESAI]** Selaraskan skala nilai sub-kriteria cost dengan acuan jurnal.
+17. **[BUG-09] [SELESAI]** Selaraskan label opsi kuesioner dengan `sub_kriteria.keterangan`.
+18. **[BUG-10] [SELESAI]** Keluarkan baris tanpa identitas warga dari perankingan.
+19. **[LOG-05] [SELESAI]** Validasi total bobot kriteria = 100% lewat endpoint bulk.
+20. **[SEC-08] [SELESAI]** Ganti pencocokan identitas warga dari nama ke `users.id_warga`.
+21. **[SEC-09] [SELESAI]** Perbaiki peran pengirim chat + perluas enum `pengirim_role`.
+22. **[SEC-10] [SELESAI]** Tegakkan batas wilayah RT saat input kuesioner.
+23. **[SEC-11] [SELESAI]** Cegah admin menghapus akunnya sendiri.
 
 ### Tahap 3: Pembersihan Kode & Performa Arsitektur (Medium/Low)
 11. **[SML-01] [SELESAI]** Hapus controller mati `RtController.php` dan `PengajuanController.php`.

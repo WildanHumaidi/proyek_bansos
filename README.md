@@ -135,6 +135,12 @@ Database seeder menyediakan akun bawaan untuk tiap hak akses:
 | **Ketua RT 002** | `rt002` | `rt123` | Verifikasi warga wilayah RT 002 |
 | **Warga** | `warga01` | `warga123` | Simulasi pengajuan dan status warga |
 
+> **Catatan:** akun `warga01` hanya dibuat oleh `UserSeeder` (lingkungan demo/uji).
+> Pada database produksi yang diisi lewat import CSV, akun warga dibuat dari data
+> warga nyata dan ditautkan lewat kolom `users.id_warga` — bukan dicocokkan
+> berdasarkan nama. Akun yang belum tertaut akan ditolak (409) saat mengajukan;
+> admin dapat menautkannya lewat `PUT /api/admin/users/{id}/taut-warga`.
+
 ---
 
 ## Pengujian dan Quality Gates
