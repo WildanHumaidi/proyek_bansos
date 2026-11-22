@@ -135,30 +135,65 @@ const Badge = ({ status }) => {
 
 /* ─── Kuesioner Data ─────────────────────────────────────────────────────── */
 const OPSI = {
-  q1: ['> 3 KK', '3 KK', '2 KK', '1 KK'],
-  q2: ['>= 6 ORANG', '5 ORANG', '4 ORANG', '<= 3 ORANG'],
-  q3: ['TIDAK SEKOLAH', 'SEKOLAH DASAR (SD)', 'SEKOLAH MENENGAH PERTAMA (SMP)', 'SMA / SARJANA'],
-  q4: ['>= 3 ORANG', '2 ORANG', '1 ORANG', 'TIDAK ADA'],
+  q1: [
+    '> 3 KK',
+    '3 KK',
+    '2 KK',
+    '1 KK',
+  ],
+  q2: [
+    '> 6 Orang',
+    '5 Orang',
+    '4 Orang',
+    '1 - 3 Orang',
+  ],
+  q3: [
+    'Tidak Sekolah / Tidak Tamat SD',
+    'SD',
+    'SMP',
+    'SMA / SMK / PT',
+  ],
+  q4: [
+    '> 3 Orang',
+    '2 Orang',
+    '1 Orang',
+    'Tidak Ada',
+  ],
   q5: [
-    '< Rp. 1.500.000',
-    'Rp. 1.500.000 - Rp. 3.000.000',
-    'RP. 3.000.000 - Rp. 5.000.000',
-    '> RP. 5.000.000',
+    '< 400 Ribu',
+    '400 - 700 Ribu',
+    '700 Ribu - 1 Juta',
+    '> 1 Juta',
   ],
   q6: [
-    '< Rp. 1.500.000',
-    'Rp. 1.500.000 - Rp. 3.000.000',
-    'RP. 3.000.000 - Rp. 5.000.000',
-    '> RP. 5.000.000',
+    '< 400 Ribu',
+    '400 - 700 Ribu',
+    '700 Ribu - 1 Juta',
+    '> 1 Juta',
   ],
-  q7: ['MENUMPANG', 'SEWA / KONTRAK', 'MILIK ORANG TUA/ SAUDARA /KELUARGA', 'MILIK SENDIRI'],
-  q8: ['SUNGAI / MATA AIR', 'SUMUR (BOR/GALI)', 'PDAM', 'KEMASAN / ISI ULANG'],
-  q9: ['TIDAK ADA / LAMPU TEMPEL', 'LISTRIK 450 WATT', 'LISTRIK 900 WATT', 'LISTRIK  > 900 WATT'],
+  q7: [
+    'Magersari / Pakai Gratis',
+    'Sewa < 1 Juta',
+    'Milik Orang Tua / Warisan',
+    'Milik Sendiri / Sewa',
+  ],
+  q8: [
+    'Sumur Milik Tetangga',
+    'Sumur Milik Sendiri',
+    'PDAM Terbatas',
+    'PDAM Bebas / Air Kemasan',
+  ],
+  q9: [
+    'Listrik Numpang',
+    'Listrik 450 watt',
+    'Listrik 900 watt',
+    'Listrik > 900 watt',
+  ],
   q10: [
-    'JALAN KAKI / SEPEDA / SEPEDA MOTOR SEADANYA / TRANSPORTASI UMUM',
-    'SEPEDA MOTOR 1 UNIT KONDISI BAIK',
-    'SEPEDA MOTOR LEBIH DARI 1 UNIT DALAM KONDISI BAIK',
-    'MOBIL',
+    'Jalan Kaki / Sepeda / Motor Seadanya',
+    'Sepeda Motor 1 Buah, dalam Kondisi Baik',
+    'Sepeda Motor > 1 Buah, dalam Kondisi Baik',
+    'Mobil',
   ],
 };
 
@@ -190,17 +225,6 @@ const parseJawaban = (raw) => {
     } else break;
   }
   return typeof p === 'object' && p !== null ? p : null;
-};
-
-const konversiSubkriteria = (jawaban) => {
-  if (!jawaban) return {};
-  const norm = (s) => String(s).replace(/\s+/g, '').toLowerCase();
-  const hasil = {};
-  for (let i = 1; i <= 10; i++) {
-    const idx = (OPSI[`q${i}`] || []).findIndex((o) => norm(o) === norm(jawaban[`q${i}`] || ''));
-    hasil[i] = idx !== -1 ? (i - 1) * 4 + idx + 1 : (i - 1) * 4 + 1;
-  }
-  return hasil;
 };
 
 /* ─── Shared UI ──────────────────────────────────────────────────────────── */
@@ -376,11 +400,11 @@ export default function RtDashboard() {
         (p) => (p.warga?.name || p.warga?.nama_lengkap) === targetWarga.name
       );
       if (existing) {
-        const payload = { jawaban_mentah: formJawaban };
-        if (existing.status === 'disetujui') payload.jawaban = konversiSubkriteria(formJawaban);
-        await axios.put(`${API}/admin/pengajuan/${existing.id_pengajuan}/kuesioner`, payload, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        await axios.put(
+          `${API}/admin/pengajuan/${existing.id_pengajuan}/kuesioner`,
+          { jawaban_mentah: formJawaban },
+          { headers: authH() }
+        );
         showToast('Data kuesioner berhasil diperbarui.');
       } else {
         await axios.post(
@@ -414,18 +438,13 @@ export default function RtDashboard() {
 
   const ubahStatus = async (status_baru) => {
     try {
+      // Backend sudah membentuk matriks penilaian di dalam transaksi yang sama
+      // saat status diubah menjadi 'disetujui'.
       await axios.put(
         `${API}/admin/pengajuan/${selectedP.id_pengajuan}/status`,
         { status: status_baru },
         { headers: authH() }
       );
-      if (status_baru === 'disetujui') {
-        await axios.put(
-          `${API}/admin/pengajuan/${selectedP.id_pengajuan}/kuesioner`,
-          { jawaban: konversiSubkriteria(parseJawaban(selectedP.jawaban_mentah)) },
-          { headers: authH() }
-        );
-      }
       setSelectedP((prev) => ({ ...prev, status: status_baru }));
       fetchData(localStorage.getItem('token'), userData.rt);
       showToast(`Status diubah ke ${status_baru === 'disetujui' ? 'Diterima' : 'Ditolak'}.`);
@@ -437,10 +456,17 @@ export default function RtDashboard() {
   const kirimPesan = async (e) => {
     e.preventDefault();
     if (!pesanBaru.trim() || !selectedP) return;
-    const teks = pesanBaru;
+    const teks = pesanBaru,
+      tempId = `pending-${Date.now()}`;
     setPesanList((p) => [
       ...p,
-      { pengirim_role: 'rt', isi_pesan: teks, created_at: new Date().toISOString() },
+      {
+        temp_id: tempId,
+        pengirim_role: 'rt',
+        isi_pesan: teks,
+        created_at: new Date().toISOString(),
+        status_kirim: 'pending',
+      },
     ]);
     setPesanBaru('');
     try {
@@ -449,10 +475,20 @@ export default function RtDashboard() {
         { isi_pesan: teks, pengirim_role: 'rt' },
         { headers: authH() }
       );
+      setPesanList((p) =>
+        p.map((m) => (m.temp_id === tempId ? { ...m, status_kirim: 'sent' } : m))
+      );
     } catch (err) {
       console.error('Gagal mengirim pesan chat:', err);
+      setPesanList((p) =>
+        p.map((m) => (m.temp_id === tempId ? { ...m, status_kirim: 'failed' } : m))
+      );
       showToast('Gagal mengirim pesan chat.', 'error');
     }
+  };
+
+  const hapusPesanGagal = (tempId) => {
+    setPesanList((p) => p.filter((m) => m.temp_id !== tempId));
   };
 
   /* ── Computed ── */
@@ -2710,7 +2746,27 @@ export default function RtDashboard() {
                         <div
                           style={{ fontSize: 10, opacity: 0.6, marginTop: 4, textAlign: 'right' }}
                         >
+                          {m.status_kirim === 'pending' && 'mengirim… '}
                           {fmtTime(m.created_at)}
+                          {m.status_kirim === 'failed' && (
+                            <button
+                              type="button"
+                              onClick={() => hapusPesanGagal(m.temp_id)}
+                              title="Pesan gagal terkirim — klik untuk menghapus dari layar"
+                              style={{
+                                marginLeft: 6,
+                                border: 'none',
+                                background: 'transparent',
+                                color: '#ffd0d0',
+                                fontSize: 10,
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                padding: 0,
+                              }}
+                            >
+                              ⚠ gagal
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>

@@ -218,30 +218,65 @@ const roleCfg = (role, rt) => {
 
 /* ─── Kuesioner constants ────────────────────────────────────────────────── */
 const OPSI = {
-  q1: ['> 3 KK', '3 KK', '2 KK', '1 KK'],
-  q2: ['>= 6 ORANG', '5 ORANG', '4 ORANG', '<= 3 ORANG'],
-  q3: ['TIDAK SEKOLAH', 'SEKOLAH DASAR (SD)', 'SEKOLAH MENENGAH PERTAMA (SMP)', 'SMA / SARJANA'],
-  q4: ['>= 3 ORANG', '2 ORANG', '1 ORANG', 'TIDAK ADA'],
+  q1: [
+    '> 3 KK',
+    '3 KK',
+    '2 KK',
+    '1 KK',
+  ],
+  q2: [
+    '> 6 Orang',
+    '5 Orang',
+    '4 Orang',
+    '1 - 3 Orang',
+  ],
+  q3: [
+    'Tidak Sekolah / Tidak Tamat SD',
+    'SD',
+    'SMP',
+    'SMA / SMK / PT',
+  ],
+  q4: [
+    '> 3 Orang',
+    '2 Orang',
+    '1 Orang',
+    'Tidak Ada',
+  ],
   q5: [
-    '< Rp. 1.500.000',
-    'Rp. 1.500.000 - Rp. 3.000.000',
-    'RP. 3.000.000 - Rp. 5.000.000',
-    '> RP. 5.000.000',
+    '< 400 Ribu',
+    '400 - 700 Ribu',
+    '700 Ribu - 1 Juta',
+    '> 1 Juta',
   ],
   q6: [
-    '< Rp. 1.500.000',
-    'Rp. 1.500.000 - Rp. 3.000.000',
-    'RP. 3.000.000 - Rp. 5.000.000',
-    '> RP. 5.000.000',
+    '< 400 Ribu',
+    '400 - 700 Ribu',
+    '700 Ribu - 1 Juta',
+    '> 1 Juta',
   ],
-  q7: ['MENUMPANG', 'SEWA / KONTRAK', 'MILIK ORANG TUA/ SAUDARA /KELUARGA', 'MILIK SENDIRI'],
-  q8: ['SUNGAI / MATA AIR', 'SUMUR (BOR/GALI)', 'PDAM', 'KEMASAN / ISI ULANG'],
-  q9: ['TIDAK ADA / LAMPU TEMPEL', 'LISTRIK 450 WATT', 'LISTRIK 900 WATT', 'LISTRIK  > 900 WATT'],
+  q7: [
+    'Magersari / Pakai Gratis',
+    'Sewa < 1 Juta',
+    'Milik Orang Tua / Warisan',
+    'Milik Sendiri / Sewa',
+  ],
+  q8: [
+    'Sumur Milik Tetangga',
+    'Sumur Milik Sendiri',
+    'PDAM Terbatas',
+    'PDAM Bebas / Air Kemasan',
+  ],
+  q9: [
+    'Listrik Numpang',
+    'Listrik 450 watt',
+    'Listrik 900 watt',
+    'Listrik > 900 watt',
+  ],
   q10: [
-    'JALAN KAKI / SEPEDA / SEPEDA MOTOR SEADANYA / TRANSPORTASI UMUM',
-    'SEPEDA MOTOR 1 UNIT KONDISI BAIK',
-    'SEPEDA MOTOR LEBIH DARI 1 UNIT DALAM KONDISI BAIK',
-    'MOBIL',
+    'Jalan Kaki / Sepeda / Motor Seadanya',
+    'Sepeda Motor 1 Buah, dalam Kondisi Baik',
+    'Sepeda Motor > 1 Buah, dalam Kondisi Baik',
+    'Mobil',
   ],
 };
 
@@ -285,29 +320,17 @@ const parseJawaban = (raw) => {
   return typeof p === 'object' && p !== null ? p : null;
 };
 
-const konversiSubkriteria = (raw) => {
-  const obj = parseJawaban(raw);
-  if (!obj) return {};
-  const norm = (s) => String(s).replace(/\s+/g, '').toLowerCase();
-  const hasil = {};
-  for (let i = 1; i <= 10; i++) {
-    const idx = (OPSI[`q${i}`] || []).findIndex((o) => norm(o) === norm(obj[`q${i}`] || ''));
-    hasil[i] = idx !== -1 ? (i - 1) * 4 + idx + 1 : (i - 1) * 4 + 1;
-  }
-  return hasil;
+// Nilai matriks HANYA dibaca dari relasi `penilaian` di database. Jika relasi belum
+// terbentuk, kembalikan null supaya UI menampilkan peringatan — jangan mensimulasikan
+// angka dari `jawaban_mentah`, karena itu menyamarkan data yang belum di-generate.
+const getSkor = (p, idK) => {
+  const pn = p.penilaian?.find((x) => x.id_kriteria === idK);
+  if (!pn) return null;
+  const nilai = pn.sub_kriteria?.nilai ?? pn.nilai;
+  return nilai === undefined || nilai === null ? null : nilai;
 };
 
-const getSkor = (p, idK) => {
-  if (p.penilaian?.length) {
-    const pn = p.penilaian.find((x) => x.id_kriteria === idK);
-    if (pn) return pn.sub_kriteria?.nilai ?? pn.nilai ?? '-';
-  }
-  const obj = parseJawaban(p.jawaban_mentah);
-  if (!obj) return '-';
-  const norm = (s) => String(s).replace(/\s+/g, '').toLowerCase();
-  const idx = (OPSI[`q${idK}`] || []).findIndex((o) => norm(o) === norm(obj[`q${idK}`] || ''));
-  return idx === -1 ? '-' : [10, 7.5, 5, 2.5][idx];
-};
+const punyaMatriks = (p) => (p.penilaian?.length || 0) === 10;
 
 /* ─── Shared UI ──────────────────────────────────────────────────────────── */
 const Overlay = ({ children, onClose }) => (
@@ -541,6 +564,10 @@ export default function AdminDashboard() {
   const [modalKrit, setModalKrit] = useState(null);
   const [formKrit, setFormKrit] = useState({ nama_kriteria: '', tipe: 'benefit', bobot: 10 });
 
+  /* modal — bobot seluruh kriteria (total wajib 100%) */
+  const [modalBobot, setModalBobot] = useState(false);
+  const [formBobot, setFormBobot] = useState({});
+
   /* modal — sub-kriteria */
   const [modalSubKrit, setModalSubKrit] = useState(null);
   const [formSubKrit, setFormSubKrit] = useState({ keterangan: '', nilai: 10 });
@@ -623,16 +650,6 @@ export default function AdminDashboard() {
         { status: status_baru },
         { headers: authH() }
       );
-      if (status_baru === 'disetujui') {
-        const p = pengajuanList.find((x) => x.id_pengajuan === id);
-        if (p?.jawaban_mentah) {
-          await axios.put(
-            `${API}/admin/pengajuan/${id}/kuesioner`,
-            { jawaban: konversiSubkriteria(p.jawaban_mentah) },
-            { headers: authH() }
-          );
-        }
-      }
       fetchData();
       showToast(`Status diperbarui ke ${status_baru}`);
     } catch (err) {
@@ -655,12 +672,11 @@ export default function AdminDashboard() {
     e.preventDefault();
     setLoading(true);
     try {
-      const p = pengajuanList.find((x) => x.id_pengajuan === modalEditId);
-      const payload = { jawaban_mentah: formMentah };
-      if (p?.status === 'disetujui') payload.jawaban = konversiSubkriteria(formMentah);
-      await axios.put(`${API}/admin/pengajuan/${modalEditId}/kuesioner`, payload, {
-        headers: authH(),
-      });
+      await axios.put(
+        `${API}/admin/pengajuan/${modalEditId}/kuesioner`,
+        { jawaban_mentah: formMentah },
+        { headers: authH() }
+      );
       setModalEditId(null);
       fetchData();
       showToast('Kuesioner berhasil diperbarui');
@@ -776,15 +792,53 @@ export default function AdminDashboard() {
   /* ── Kriteria ────────────────────────────────────────────────────────── */
   const simpanKriteria = async (e) => {
     e.preventDefault();
-    if (Number(formKrit.bobot) <= 0) return showToast('Bobot harus lebih dari 0', 'error');
     setLoading(true);
     try {
-      await axios.put(`${API}/kriteria/${modalKrit.id_kriteria}`, formKrit, { headers: authH() });
+      // Bobot tidak dikirim di sini: total 100% dijaga lewat modal "Atur Bobot".
+      await axios.put(
+        `${API}/kriteria/${modalKrit.id_kriteria}`,
+        {
+          nama_kriteria: formKrit.nama_kriteria,
+          tipe: formKrit.tipe,
+          bobot: modalKrit.bobot,
+        },
+        { headers: authH() }
+      );
       setModalKrit(null);
       fetchData();
       showToast('Kriteria berhasil diperbarui');
     } catch (err) {
       showToast(err.response?.data?.message || 'Gagal', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const bukaModalBobot = () => {
+    const awal = {};
+    kriteriaData.forEach((k) => {
+      awal[k.id_kriteria] = Number(k.bobot);
+    });
+    setFormBobot(awal);
+    setModalBobot(true);
+  };
+
+  const totalBobotForm = Object.values(formBobot).reduce((s, v) => s + (Number(v) || 0), 0);
+
+  const simpanBobot = async (e) => {
+    e.preventDefault();
+    if (Math.abs(totalBobotForm - 100) > 0.001) {
+      showToast(`Total bobot harus tepat 100% (saat ini ${totalBobotForm}%).`, 'error');
+      return;
+    }
+    setLoading(true);
+    try {
+      await axios.put(`${API}/admin/kriteria/bobot`, { bobot: formBobot }, { headers: authH() });
+      setModalBobot(false);
+      fetchData();
+      showToast('Bobot kriteria berhasil diperbarui');
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Gagal menyimpan bobot', 'error');
     } finally {
       setLoading(false);
     }
@@ -1768,6 +1822,35 @@ export default function AdminDashboard() {
                 </div>
               )}
 
+              {/* Peringatan matriks belum lengkap */}
+              {activeMenu === 'matriks' &&
+                pengajuanList.some(
+                  (p) => p.status === 'disetujui' && !punyaMatriks(p)
+                ) && (
+                  <div
+                    className="no-print"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      padding: '12px 16px',
+                      borderRadius: 10,
+                      background: '#fef3c7',
+                      border: '1px solid #fcd34d',
+                      color: '#92400e',
+                      fontSize: 12.5,
+                      fontWeight: 600,
+                    }}
+                  >
+                    <MI name="warning" size={18} style={{ color: '#d97706' }} />
+                    <span>
+                      Sebagian warga belum punya matriks penilaian lengkap (10 kriteria). Baris
+                      bertanda “—” belum dihitung SAW. Jalankan “Sapu Ajaib” atau setujui ulang
+                      pengajuannya.
+                    </span>
+                  </div>
+                )}
+
               <div
                 style={{
                   background: '#fff',
@@ -1863,14 +1946,19 @@ export default function AdminDashboard() {
                               {activeMenu === 'matriks' ? (
                                 <span
                                   className="matriks-val"
+                                  title={
+                                    getSkor(p, k + 1) === null
+                                      ? 'Matriks belum di-generate untuk kriteria ini'
+                                      : undefined
+                                  }
                                   style={{
                                     fontFamily: 'monospace',
                                     fontWeight: 700,
                                     fontSize: 13,
-                                    color: '#111827',
+                                    color: getSkor(p, k + 1) === null ? '#d97706' : '#111827',
                                   }}
                                 >
-                                  {getSkor(p, k + 1)}
+                                  {getSkor(p, k + 1) ?? '—'}
                                 </span>
                               ) : (
                                 <span
@@ -2189,16 +2277,49 @@ export default function AdminDashboard() {
                     style={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 7,
-                      padding: '7px 14px',
-                      borderRadius: 9,
-                      background: '#EBF3FF',
+                      gap: 10,
+                      flexWrap: 'wrap',
+                      justifyContent: 'flex-end',
                     }}
                   >
-                    <MI name="calculate" size={15} style={{ color: '#1A56DB' }} />
-                    <span style={{ fontSize: 12, fontWeight: 700, color: '#1A56DB' }}>
-                      Total Bobot: {kriteriaData.reduce((s, k) => s + Number(k.bobot), 0)}
-                    </span>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 7,
+                        padding: '7px 14px',
+                        borderRadius: 9,
+                        background:
+                          Math.abs(
+                            kriteriaData.reduce((s, k) => s + Number(k.bobot), 0) - 100
+                          ) < 0.001
+                            ? '#EBF3FF'
+                            : '#fef3c7',
+                      }}
+                    >
+                      <MI name="calculate" size={15} style={{ color: '#1A56DB' }} />
+                      <span style={{ fontSize: 12, fontWeight: 700, color: '#1A56DB' }}>
+                        Total Bobot: {kriteriaData.reduce((s, k) => s + Number(k.bobot), 0)}%
+                      </span>
+                    </div>
+                    <button
+                      onClick={bukaModalBobot}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: '8px 14px',
+                        borderRadius: 9,
+                        border: 'none',
+                        background: '#1A56DB',
+                        color: '#fff',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <MI name="tune" size={15} /> Atur Bobot
+                    </button>
                   </div>
                 </div>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -2567,7 +2688,16 @@ export default function AdminDashboard() {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr>
-                      {['No', 'Profil & Nama', 'Username', 'RT', 'Alamat', 'Hak Akses', 'Aksi'].map(
+                      {[
+                        'No',
+                        'Profil & Nama',
+                        'Username',
+                        'RT',
+                        'Tautan Warga',
+                        'Alamat',
+                        'Hak Akses',
+                        'Aksi',
+                      ].map(
                         (h) => (
                           <th key={h} style={tblTh}>
                             {h}
@@ -2622,6 +2752,41 @@ export default function AdminDashboard() {
                           </td>
                           <td style={{ ...tblTd, textAlign: 'center', fontSize: 12.5 }}>
                             {u.rt || '-'}
+                          </td>
+                          <td style={tblTd}>
+                            {u.role !== 'warga' ? (
+                              <span style={{ color: '#cbd5e1', fontSize: 12 }}>—</span>
+                            ) : u.id_warga ? (
+                              <span
+                                title={`Tertaut ke warga #${u.id_warga}`}
+                                style={{
+                                  display: 'inline-block',
+                                  padding: '3px 8px',
+                                  borderRadius: 6,
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  background: '#d1fae5',
+                                  color: '#065f46',
+                                }}
+                              >
+                                ✓ #{u.id_warga}
+                              </span>
+                            ) : (
+                              <span
+                                title="Akun belum tertaut ke data warga, jadi tidak bisa mengajukan. Tautkan lewat tombol edit."
+                                style={{
+                                  display: 'inline-block',
+                                  padding: '3px 8px',
+                                  borderRadius: 6,
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  background: '#fef3c7',
+                                  color: '#92400e',
+                                }}
+                              >
+                                ⚠ belum
+                              </span>
+                            )}
                           </td>
                           <td
                             style={{
@@ -3090,26 +3255,133 @@ export default function AdminDashboard() {
                   </Sel>
                 </div>
               </div>
-              <div>
-                <Lbl required>Bobot (0 – 100)</Lbl>
-                <Inp
-                  type="number"
-                  min="0.1"
-                  max="100"
-                  step="0.1"
-                  required
-                  value={formKrit.bobot}
-                  onChange={(e) => setFormKrit({ ...formKrit, bobot: Number(e.target.value) })}
-                />
-                <div style={{ fontSize: 11.5, color: '#94a3b8', marginTop: 5 }}>
-                  SawController akan menormalisasi otomatis: bobot / totalBobot
-                </div>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '10px 13px',
+                  borderRadius: 9,
+                  background: '#F0F6FF',
+                  fontSize: 11.5,
+                  color: '#475569',
+                }}
+              >
+                <MI name="info" size={15} style={{ color: '#1A56DB' }} />
+                <span>
+                  Bobot C{modalKrit.id_kriteria} saat ini <b>{modalKrit.bobot}%</b>. Total bobot
+                  seluruh kriteria wajib 100%, jadi bobot diubah serentak lewat tombol{' '}
+                  <b>Atur Bobot</b>.
+                </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
                 <BtnGhost onClick={() => setModalKrit(null)}>Batal</BtnGhost>
                 <BtnPrimary type="submit" disabled={loading}>
                   <MI name="save" size={15} />
                   {loading ? 'Menyimpan...' : 'Simpan Kriteria'}
+                </BtnPrimary>
+              </div>
+            </form>
+          </ModalBox>
+        </Overlay>
+      )}
+
+      {/* ════ MODAL: Atur Bobot Seluruh Kriteria ════ */}
+      {modalBobot && (
+        <Overlay onClose={() => setModalBobot(false)}>
+          <ModalBox maxW={560} fullH>
+            <ModalHead
+              title="Atur Bobot Kriteria"
+              sub="Total seluruh bobot wajib tepat 100%"
+              onClose={() => setModalBobot(false)}
+            />
+            <form
+              onSubmit={simpanBobot}
+              style={{
+                padding: '20px 24px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 14,
+                overflowY: 'auto',
+              }}
+            >
+              {kriteriaData.map((k) => (
+                <div key={k.id_kriteria} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span
+                    style={{
+                      flexShrink: 0,
+                      padding: '3px 9px',
+                      borderRadius: 6,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      background: '#EBF3FF',
+                      color: '#1A56DB',
+                    }}
+                  >
+                    C{k.id_kriteria}
+                  </span>
+                  <span style={{ flex: 1, fontSize: 12.5, color: '#0f172a', fontWeight: 600 }}>
+                    {k.nama_kriteria}
+                  </span>
+                  <div style={{ position: 'relative', width: 92, flexShrink: 0 }}>
+                    <Inp
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                      required
+                      value={formBobot[k.id_kriteria] ?? ''}
+                      onChange={(e) =>
+                        setFormBobot({ ...formBobot, [k.id_kriteria]: e.target.value })
+                      }
+                      style={{ paddingRight: 26, textAlign: 'right' }}
+                    />
+                    <span
+                      style={{
+                        position: 'absolute',
+                        right: 10,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        fontSize: 11,
+                        color: '#94a3b8',
+                        pointerEvents: 'none',
+                      }}
+                    >
+                      %
+                    </span>
+                  </div>
+                </div>
+              ))}
+
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '11px 14px',
+                  borderRadius: 9,
+                  background:
+                    Math.abs(totalBobotForm - 100) < 0.001 ? '#d1fae5' : '#ffdad6',
+                  color: Math.abs(totalBobotForm - 100) < 0.001 ? '#065f46' : '#ba1a1a',
+                  fontSize: 12.5,
+                  fontWeight: 700,
+                }}
+              >
+                <span>Total bobot</span>
+                <span>
+                  {Number(totalBobotForm.toFixed(2))}%{' '}
+                  {Math.abs(totalBobotForm - 100) < 0.001 ? '✓' : '(harus 100%)'}
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                <BtnGhost onClick={() => setModalBobot(false)}>Batal</BtnGhost>
+                <BtnPrimary
+                  type="submit"
+                  disabled={loading || Math.abs(totalBobotForm - 100) > 0.001}
+                >
+                  <MI name="save" size={15} />
+                  {loading ? 'Menyimpan...' : 'Simpan Bobot'}
                 </BtnPrimary>
               </div>
             </form>

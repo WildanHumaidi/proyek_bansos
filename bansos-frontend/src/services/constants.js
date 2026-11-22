@@ -3,30 +3,68 @@
  */
 
 export const DAFTAR_OPSI = {
-  q1: ['> 3 KK', '3 KK', '2 KK', '1 KK'],
-  q2: ['>= 6 ORANG', '5 ORANG', '4 ORANG', '<= 3 ORANG'],
-  q3: ['TIDAK SEKOLAH', 'SEKOLAH DASAR (SD)', 'SEKOLAH MENENGAH PERTAMA (SMP)', 'SMA / SARJANA'],
-  q4: ['>= 3 ORANG', '2 ORANG', '1 ORANG', 'TIDAK ADA'],
+  // Label ini HARUS identik dengan `sub_kriteria.keterangan` di database;
+  // backend mencocokkan jawaban ke baris sub-kriteria berdasarkan teks ini.
+  // Mengubah label di sini tanpa mengubah database akan membuat penilaian gagal terbentuk.
+  q1: [
+    '> 3 KK',
+    '3 KK',
+    '2 KK',
+    '1 KK',
+  ],
+  q2: [
+    '> 6 Orang',
+    '5 Orang',
+    '4 Orang',
+    '1 - 3 Orang',
+  ],
+  q3: [
+    'Tidak Sekolah / Tidak Tamat SD',
+    'SD',
+    'SMP',
+    'SMA / SMK / PT',
+  ],
+  q4: [
+    '> 3 Orang',
+    '2 Orang',
+    '1 Orang',
+    'Tidak Ada',
+  ],
   q5: [
-    '< Rp. 1.500.000',
-    'Rp. 1.500.000 - Rp. 3.000.000',
-    'RP. 3.000.000 - Rp. 5.000.000',
-    '> RP. 5.000.000',
+    '< 400 Ribu',
+    '400 - 700 Ribu',
+    '700 Ribu - 1 Juta',
+    '> 1 Juta',
   ],
   q6: [
-    '< Rp. 1.500.000',
-    'Rp. 1.500.000 - Rp. 3.000.000',
-    'RP. 3.000.000 - Rp. 5.000.000',
-    '> RP. 5.000.000',
+    '< 400 Ribu',
+    '400 - 700 Ribu',
+    '700 Ribu - 1 Juta',
+    '> 1 Juta',
   ],
-  q7: ['MENUMPANG', 'SEWA / KONTRAK', 'MILIK ORANG TUA / SAUDARA / KELUARGA', 'MILIK SENDIRI'],
-  q8: ['SUNGAI / MATA AIR', 'SUMUR (BOR/GALI)', 'PDAM', 'KEMASAN / ISI ULANG'],
-  q9: ['TIDAK ADA / LAMPU TEMPEL', 'LISTRIK 450 WATT', 'LISTRIK 900 WATT', 'LISTRIK > 900 WATT'],
+  q7: [
+    'Magersari / Pakai Gratis',
+    'Sewa < 1 Juta',
+    'Milik Orang Tua / Warisan',
+    'Milik Sendiri / Sewa',
+  ],
+  q8: [
+    'Sumur Milik Tetangga',
+    'Sumur Milik Sendiri',
+    'PDAM Terbatas',
+    'PDAM Bebas / Air Kemasan',
+  ],
+  q9: [
+    'Listrik Numpang',
+    'Listrik 450 watt',
+    'Listrik 900 watt',
+    'Listrik > 900 watt',
+  ],
   q10: [
-    'JALAN KAKI / SEPEDA / SEPEDA MOTOR SEADANYA / TRANSPORTASI UMUM',
-    'SEPEDA MOTOR 1 UNIT KONDISI BAIK',
-    'SEPEDA MOTOR LEBIH DARI 1 UNIT DALAM KONDISI BAIK',
-    'MOBIL',
+    'Jalan Kaki / Sepeda / Motor Seadanya',
+    'Sepeda Motor 1 Buah, dalam Kondisi Baik',
+    'Sepeda Motor > 1 Buah, dalam Kondisi Baik',
+    'Mobil',
   ],
 };
 

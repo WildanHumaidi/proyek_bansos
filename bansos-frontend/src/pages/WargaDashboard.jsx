@@ -4,76 +4,107 @@ import { useNavigate } from 'react-router-dom';
 
 const API = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000/api';
 
+// Label opsi HARUS identik dengan `sub_kriteria.keterangan` di database;
+// backend mencocokkan jawaban ke baris sub-kriteria berdasarkan teks ini.
 const PERTANYAAN = [
-  { id: 'q1', label: 'Jumlah KK dalam Satu Rumah', opts: ['> 3 KK', '3 KK', '2 KK', '1 KK'] },
+  {
+    id: 'q1',
+    label: 'Jumlah KK dalam Satu Rumah',
+    opts: [
+      '> 3 KK',
+      '3 KK',
+      '2 KK',
+      '1 KK',
+    ],
+  },
   {
     id: 'q2',
     label: 'Jumlah Anggota Keluarga',
-    opts: ['>= 6 ORANG', '5 ORANG', '4 ORANG', '<= 3 ORANG'],
+    opts: [
+      '> 6 Orang',
+      '5 Orang',
+      '4 Orang',
+      '1 - 3 Orang',
+    ],
   },
   {
     id: 'q3',
     label: 'Pendidikan Kepala Keluarga',
     opts: [
-      'TIDAK SEKOLAH',
-      'SEKOLAH DASAR (SD)',
-      'SEKOLAH MENENGAH PERTAMA (SMP)',
-      'SMA / SARJANA',
+      'Tidak Sekolah / Tidak Tamat SD',
+      'SD',
+      'SMP',
+      'SMA / SMK / PT',
     ],
   },
   {
     id: 'q4',
     label: 'Jumlah Anggota yang Bersekolah',
-    opts: ['>= 3 ORANG', '2 ORANG', '1 ORANG', 'TIDAK ADA'],
+    opts: [
+      '> 3 Orang',
+      '2 Orang',
+      '1 Orang',
+      'Tidak Ada',
+    ],
   },
   {
     id: 'q5',
     label: 'Rata-rata Pengeluaran per Bulan',
     opts: [
-      '< Rp 1.500.000',
-      'Rp 1.500.000 – Rp 3.000.000',
-      'Rp 3.000.000 – Rp 5.000.000',
-      '> Rp 5.000.000',
+      '< 400 Ribu',
+      '400 - 700 Ribu',
+      '700 Ribu - 1 Juta',
+      '> 1 Juta',
     ],
   },
   {
     id: 'q6',
     label: 'Rata-rata Penghasilan per Bulan',
     opts: [
-      '< Rp 1.500.000',
-      'Rp 1.500.000 – Rp 3.000.000',
-      'Rp 3.000.000 – Rp 5.000.000',
-      '> Rp 5.000.000',
+      '< 400 Ribu',
+      '400 - 700 Ribu',
+      '700 Ribu - 1 Juta',
+      '> 1 Juta',
     ],
   },
   {
     id: 'q7',
     label: 'Status Kepemilikan Rumah',
-    opts: ['MENUMPANG', 'SEWA / KONTRAK', 'MILIK ORANG TUA / SAUDARA / KELUARGA', 'MILIK SENDIRI'],
+    opts: [
+      'Magersari / Pakai Gratis',
+      'Sewa < 1 Juta',
+      'Milik Orang Tua / Warisan',
+      'Milik Sendiri / Sewa',
+    ],
   },
   {
     id: 'q8',
     label: 'Sumber Air Bersih',
-    opts: ['SUNGAI / MATA AIR', 'SUMUR (BOR/GALI)', 'PDAM', 'KEMASAN / ISI ULANG'],
+    opts: [
+      'Sumur Milik Tetangga',
+      'Sumur Milik Sendiri',
+      'PDAM Terbatas',
+      'PDAM Bebas / Air Kemasan',
+    ],
   },
   {
     id: 'q9',
     label: 'Sumber Penerangan / Listrik',
     opts: [
-      'TIDAK ADA / LAMPU TEMPEL',
-      'LISTRIK 450 WATT',
-      'LISTRIK 900 WATT',
-      'LISTRIK > 900 WATT',
+      'Listrik Numpang',
+      'Listrik 450 watt',
+      'Listrik 900 watt',
+      'Listrik > 900 watt',
     ],
   },
   {
     id: 'q10',
     label: 'Kepemilikan Kendaraan',
     opts: [
-      'JALAN KAKI / SEPEDA / MOTOR SEADANYA / TRANSPORTASI UMUM',
-      'SEPEDA MOTOR 1 UNIT (KONDISI BAIK)',
-      'SEPEDA MOTOR LEBIH DARI 1 UNIT (KONDISI BAIK)',
-      'MOBIL',
+      'Jalan Kaki / Sepeda / Motor Seadanya',
+      'Sepeda Motor 1 Buah, dalam Kondisi Baik',
+      'Sepeda Motor > 1 Buah, dalam Kondisi Baik',
+      'Mobil',
     ],
   },
 ];
@@ -286,10 +317,18 @@ export default function WargaDashboard() {
     e.preventDefault();
     if (!pesanBaru.trim() || !statusBansos) return;
     const token = localStorage.getItem('token'),
-      teks = pesanBaru;
+      teks = pesanBaru,
+      // id lokal sementara; pesan hanya dianggap terkirim setelah API membalas OK
+      tempId = `pending-${Date.now()}`;
     setPesanList((p) => [
       ...p,
-      { pengirim_role: 'warga', isi_pesan: teks, created_at: new Date().toISOString() },
+      {
+        temp_id: tempId,
+        pengirim_role: 'warga',
+        isi_pesan: teks,
+        created_at: new Date().toISOString(),
+        status_kirim: 'pending',
+      },
     ]);
     setPesanBaru('');
     try {
@@ -298,10 +337,20 @@ export default function WargaDashboard() {
         { isi_pesan: teks },
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      setPesanList((p) =>
+        p.map((m) => (m.temp_id === tempId ? { ...m, status_kirim: 'sent' } : m))
+      );
     } catch (err) {
       console.error('Gagal mengirim pesan chat:', err);
+      setPesanList((p) =>
+        p.map((m) => (m.temp_id === tempId ? { ...m, status_kirim: 'failed' } : m))
+      );
       setError('Gagal mengirim pesan chat.');
     }
+  };
+
+  const hapusPesanGagal = (tempId) => {
+    setPesanList((p) => p.filter((m) => m.temp_id !== tempId));
   };
 
   const sw = statusBansos ? statusCfg(statusBansos.status) : null;
@@ -1644,7 +1693,27 @@ export default function WargaDashboard() {
                               textAlign: 'right',
                             }}
                           >
+                            {p.status_kirim === 'pending' && 'mengirim… '}
                             {fmtTime(p.created_at)}
+                            {p.status_kirim === 'failed' && (
+                              <button
+                                type="button"
+                                onClick={() => hapusPesanGagal(p.temp_id)}
+                                title="Pesan gagal terkirim — klik untuk menghapus dari layar"
+                                style={{
+                                  marginLeft: 6,
+                                  border: 'none',
+                                  background: 'transparent',
+                                  color: '#ffd0d0',
+                                  fontSize: 10,
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  padding: 0,
+                                }}
+                              >
+                                ⚠ gagal
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>
