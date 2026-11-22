@@ -1,0 +1,30 @@
+# .htaccess untuk root htdocs AwardSpace
+#
+# Tujuan: mengarahkan semua request ke public/ TANPA mengubah kode aplikasi.
+# Struktur di server:
+#   htdocs/
+#     .htaccess          <- file ini
+#     public/index.php   <- entry point Laravel
+#     vendor/            <- dependency (sudah termasuk)
+#     .env               <- kredensial (JANGAN bisa diakses browser)
+#
+# Kalau panel AwardSpace mengizinkan set document root ke public/,
+# file ini TIDAK diperlukan — pakai cara itu lebih aman.
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Blokir akses langsung ke file sensitif
+    RewriteRule ^\.env - [F,L]
+    RewriteRule ^composer\.(json|lock)$ - [F,L]
+    RewriteRule ^(app|bootstrap|config|database|routes|storage|tests|vendor)/ - [F,L]
+
+    # Arahkan semua request ke public/
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+
+# Kalau mod_rewrite tidak aktif, minimal lindungi .env
+<FilesMatch "^\.env">
+    Require all denied
+</FilesMatch>

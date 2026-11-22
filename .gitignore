@@ -28,6 +28,10 @@ bansos-backend/storage/framework/views/
 .phpunit.result.cache
 **/.phpunit.cache/
 
+# Artefak deploy (paket ZIP & dump database berisi data warga — jangan commit)
+bansos-backend/dist-deploy/
+bansos-backend/deploy_bansos.sql
+
 # IDE & OS
 .idea/
 .vscode/
