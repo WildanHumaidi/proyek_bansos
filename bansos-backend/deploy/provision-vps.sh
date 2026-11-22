@@ -183,10 +183,16 @@ nginx -t && systemctl reload nginx
 
 # ── 8. Firewall ───────────────────────────────────────────────────────────
 log "8/8 Firewall"
-ufw allow OpenSSH
+# PENTING: banyak VPS Indonesia memakai port SSH non-standar (mis. 20209).
+# Kalau UFW hanya membuka 22, koneksi SSH langsung terputus permanen.
+SSH_PORT_AKTIF="${SSH_PORT_AKTIF:-$(sshd -T 2>/dev/null | awk '/^port /{print $2; exit}')}"
+SSH_PORT_AKTIF="${SSH_PORT_AKTIF:-22}"
+echo "    port SSH terdeteksi: ${SSH_PORT_AKTIF}"
+ufw allow "${SSH_PORT_AKTIF}/tcp"
+[ "$SSH_PORT_AKTIF" != "22" ] && ufw allow 22/tcp || true
 ufw allow 'Nginx Full'
 ufw --force enable
-ufw status
+ufw status verbose
 
 echo
 echo "=============================================================="
