@@ -21,9 +21,24 @@ mkdir -p "$STAGE"
 
 echo "==> 2/5 Menyalin aplikasi"
 cd "$BACKEND_DIR"
-for item in app bootstrap config database public resources routes storage vendor artisan composer.json composer.lock; do
+for item in app bootstrap config database public resources routes storage artisan composer.json composer.lock; do
   [ -e "$item" ] && cp -r "$item" "$STAGE/"
 done
+
+# Vendor WAJIB versi produksi (tanpa dev dependency). Kalau memakai vendor lokal,
+# phpunit/pint/faker ikut terbawa ~31 MB dan kuota 1 GB AwardSpace terbuang.
+VENDOR_PROD="${VENDOR_PROD:-}"
+if [ -n "$VENDOR_PROD" ] && [ -d "$VENDOR_PROD" ]; then
+  echo "    memakai vendor produksi: $VENDOR_PROD"
+  cp -r "$VENDOR_PROD" "$STAGE/vendor"
+else
+  echo "    PERINGATAN: VENDOR_PROD tidak diset."
+  echo "    Jalankan dulu:"
+  echo "      composer install --no-dev --optimize-autoloader --working-dir=<dir>"
+  echo "    lalu: VENDOR_PROD=<dir>/vendor bash deploy/buat-paket-awardspace.sh"
+  echo "    Tanpa ini, phpunit/pint/faker (~31 MB) ikut terpaket."
+  cp -r vendor "$STAGE/vendor"
+fi
 
 echo "==> 3/5 Membersihkan isi yang tidak perlu di server"
 rm -rf "$STAGE"/storage/logs/*.log
