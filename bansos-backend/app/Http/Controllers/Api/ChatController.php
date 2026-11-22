@@ -22,9 +22,13 @@ class ChatController extends Controller
             return $pengajuan;
         }
 
-        // Warga hanya boleh mengakses chat pengajuannya sendiri
+        // Warga hanya boleh mengakses chat pengajuannya sendiri.
+        // Identitas dicek lewat id_warga, BUKAN nama: nama bisa duplikat, sehingga
+        // mencocokkan nama memungkinkan akun lain membaca percakapan orang lain.
         if ($user->role === 'warga') {
-            if (! $pengajuan->warga || $pengajuan->warga->nama_lengkap !== $user->name) {
+            $idWargaPemilik = $pengajuan->warga?->id_warga;
+
+            if ($idWargaPemilik === null || (int) $user->id_warga !== (int) $idWargaPemilik) {
                 abort(response()->json([
                     'success' => false,
                     'message' => 'Akses ditolak: Anda tidak memiliki akses ke percakapan ini.',
@@ -67,7 +71,13 @@ class ChatController extends Controller
 
         $this->authorizeAccess($request, $id_pengajuan);
 
-        $role = $request->user()->role === 'rt' ? 'rt' : 'warga';
+        $role = $request->user()->role;
+
+        // Peran disimpan apa adanya agar jejak audit benar: sebelumnya admin dan RW
+        // ikut tercatat sebagai 'warga'.
+        if (! in_array($role, ['warga', 'rt', 'rw', 'admin'], true)) {
+            $role = 'warga';
+        }
 
         DB::table('pesan_chat')->insert([
             'id_pengajuan' => $id_pengajuan,

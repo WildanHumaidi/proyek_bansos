@@ -15,14 +15,6 @@ class ChatSecurityTest extends TestCase
 
     public function test_chat_ownership_and_rt_authorization(): void
     {
-        $wargaA = User::create([
-            'name' => 'Warga A',
-            'username' => 'wargaa',
-            'password' => bcrypt('password'),
-            'role' => 'warga',
-            'rt' => '001',
-        ]);
-
         $wargaModelA = Warga::create([
             'nama_lengkap' => 'Warga A',
             'alamat' => 'Alamat A',
@@ -31,10 +23,28 @@ class ChatSecurityTest extends TestCase
             'password' => bcrypt('secret'),
         ]);
 
+        $wargaA = User::create([
+            'name' => 'Warga A',
+            'username' => 'wargaa',
+            'password' => bcrypt('password'),
+            'role' => 'warga',
+            'rt' => '001',
+            'id_warga' => $wargaModelA->id_warga,
+        ]);
+
         $pengajuanA = Pengajuan::create([
             'id_warga' => $wargaModelA->id_warga,
             'status' => 'menunggu',
             'jawaban_mentah' => json_encode(['q1' => '1 KK']),
+        ]);
+
+        // Warga B adalah orang lain dengan identitas warga terpisah.
+        $wargaModelB = Warga::create([
+            'nama_lengkap' => 'Warga B',
+            'alamat' => 'Alamat B',
+            'rt' => '001',
+            'rw' => '008',
+            'password' => bcrypt('secret'),
         ]);
 
         $wargaB = User::create([
@@ -43,6 +53,7 @@ class ChatSecurityTest extends TestCase
             'password' => bcrypt('password'),
             'role' => 'warga',
             'rt' => '001',
+            'id_warga' => $wargaModelB->id_warga,
         ]);
 
         $rt2 = User::create([

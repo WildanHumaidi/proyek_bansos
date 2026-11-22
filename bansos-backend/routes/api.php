@@ -68,10 +68,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/users/{id}', [UserController::class, 'destroy']);
         Route::delete('/admin/users/{id}', [AdminRtController::class, 'deleteUser']);
         Route::delete('/admin/pengajuan/{id}', [AdminRtController::class, 'destroyPengajuan']);
+        Route::put('/admin/users/{id}/taut-warga', [AdminRtController::class, 'tautkanWarga']);
         Route::post('/admin/pengajuan/import', [AdminRtController::class, 'importCsv']);
         Route::put('/kriteria/{id}', [KriteriaController::class, 'update']);
         Route::put('/admin/subkriteria/{id}', [KriteriaController::class, 'updateSubKriteria']);
-        Route::match(['get', 'post'], '/admin/fix-data', [AdminRtController::class, 'fixDataMentah']);
+        Route::post('/admin/fix-data', [AdminRtController::class, 'fixDataMentah']);
+        Route::put('/admin/kriteria/bobot', [KriteriaController::class, 'updateBobotBulk']);
         Route::get('/logs', [LogController::class, 'index']);
     });
 });

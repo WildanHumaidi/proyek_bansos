@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Kriteria;
 use App\Models\SubKriteria;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class KriteriaController extends Controller
 {
@@ -29,6 +30,7 @@ class KriteriaController extends Controller
      * BUG FIX:
      * 1. Validasi bobot diubah dari max:1 → max:100 (DB simpan nilai 0–100, bukan 0–1)
      * 2. Tambahkan update nama_kriteria yang sebelumnya tidak ada
+     * 3. Tolak perubahan yang membuat total bobot seluruh kriteria ≠ 100
      */
     public function update(Request $request, $id)
     {
@@ -42,6 +44,24 @@ class KriteriaController extends Controller
         $kriteria = Kriteria::where('id_kriteria', $id)->first();
         if (! $kriteria) {
             return response()->json(['success' => false, 'message' => 'Kriteria tidak ditemukan'], 404);
+        }
+
+        // Total bobot harus tetap 100 agar persentase di UI bermakna. SawController
+        // memang menormalisasi otomatis, tetapi membiarkan total 180% atau 30% membuat
+        // laporan ke RW menyesatkan dan menyembunyikan salah input.
+        $totalSetelahUpdate = (float) Kriteria::where('id_kriteria', '!=', $id)->sum('bobot')
+            + (float) $request->bobot;
+
+        if (abs($totalSetelahUpdate - 100) > 0.001) {
+            return response()->json([
+                'success' => false,
+                'message' => sprintf(
+                    'Total bobot seluruh kriteria harus 100%%. Dengan bobot %s, totalnya menjadi %s%%. Sesuaikan kriteria lain terlebih dahulu.',
+                    rtrim(rtrim(number_format((float) $request->bobot, 2, '.', ''), '0'), '.'),
+                    rtrim(rtrim(number_format($totalSetelahUpdate, 2, '.', ''), '0'), '.')
+                ),
+                'total_bobot' => round($totalSetelahUpdate, 2),
+            ], 422);
         }
 
         $data = [
@@ -65,6 +85,74 @@ class KriteriaController extends Controller
             'success' => true,
             'message' => 'Kriteria berhasil diperbarui',
             'data' => $kriteria->fresh(),
+        ]);
+    }
+
+    /**
+     * PUT /api/admin/kriteria/bobot
+     * Simpan bobot seluruh kriteria sekaligus.
+     *
+     * Bobot diubah bersama-sama karena totalnya wajib 100%: mengubah satu kriteria
+     * saja selalu merusak total, sehingga penyesuaian harus dilakukan serentak.
+     */
+    public function updateBobotBulk(Request $request)
+    {
+        $request->validate([
+            'bobot' => 'required|array|min:1',
+            'bobot.*' => 'required|numeric|min:0|max:100',
+        ]);
+
+        $semuaKriteria = Kriteria::orderBy('id_kriteria')->get();
+
+        if ($semuaKriteria->isEmpty()) {
+            return response()->json(['success' => false, 'message' => 'Data kriteria tidak ditemukan.'], 404);
+        }
+
+        // Setiap kriteria yang ada wajib punya nilai bobot; kalau tidak, total 100
+        // bisa tercapai dengan mengabaikan kriteria tertentu secara diam-diam.
+        $idDikirim = array_map('intval', array_keys($request->bobot));
+        $idWajib = $semuaKriteria->pluck('id_kriteria')->map(fn ($id) => (int) $id)->all();
+
+        sort($idDikirim);
+        sort($idWajib);
+
+        if ($idDikirim !== $idWajib) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Semua kriteria harus disertakan saat mengubah bobot.',
+                'kriteria_wajib' => $idWajib,
+            ], 422);
+        }
+
+        $total = array_sum(array_map('floatval', $request->bobot));
+
+        if (abs($total - 100) > 0.001) {
+            return response()->json([
+                'success' => false,
+                'message' => sprintf(
+                    'Total bobot harus tepat 100%%, saat ini %s%%.',
+                    rtrim(rtrim(number_format($total, 2, '.', ''), '0'), '.')
+                ),
+                'total_bobot' => round($total, 2),
+            ], 422);
+        }
+
+        DB::transaction(function () use ($request) {
+            foreach ($request->bobot as $id => $bobot) {
+                Kriteria::where('id_kriteria', (int) $id)->update(['bobot' => (float) $bobot]);
+            }
+
+            LogController::catatLog(
+                auth()->user()->name ?? 'sistem',
+                auth()->user()->role ?? 'admin',
+                'Update bobot seluruh kriteria: '.json_encode($request->bobot)
+            );
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Bobot kriteria berhasil diperbarui.',
+            'data' => Kriteria::orderBy('id_kriteria')->get(),
         ]);
     }
 

@@ -10,6 +10,12 @@ class KriteriaSeeder extends Seeder
 {
     public function run()
     {
+        // Skala nilai mengikuti acuan jurnal (Tabel 2 & 3):
+        //   benefit (C1, C2, C4) → makin besar nilai makin diprioritaskan (x / max)
+        //   cost (C3, C5-C10)    → makin KECIL nilai makin diprioritaskan (min / x)
+        // Jadi pada kriteria cost, kondisi paling sejahtera bernilai 10 dan kondisi
+        // paling membutuhkan bernilai 2.5. Nilai ini identik dengan
+        // `docs/archive/db_bansos_saw.sql`; jangan dibalik tanpa mengubah SawController.
         $kriteriaData = [
             [
                 'nama_kriteria' => 'Jumlah KK dalam 1 Rumah',
@@ -38,10 +44,10 @@ class KriteriaSeeder extends Seeder
                 'tipe' => 'cost',
                 'bobot' => 10,
                 'sub' => [
-                    ['keterangan' => 'Tidak Sekolah / Tidak Tamat SD', 'nilai' => 10],
-                    ['keterangan' => 'SD', 'nilai' => 7.5],
-                    ['keterangan' => 'SMP', 'nilai' => 5],
-                    ['keterangan' => 'SMA / SMK / PT', 'nilai' => 2.5],
+                    ['keterangan' => 'Tidak Sekolah / Tidak Tamat SD', 'nilai' => 2.5],
+                    ['keterangan' => 'SD', 'nilai' => 5],
+                    ['keterangan' => 'SMP', 'nilai' => 7.5],
+                    ['keterangan' => 'SMA / SMK / PT', 'nilai' => 10],
                 ],
             ],
             [
@@ -60,10 +66,10 @@ class KriteriaSeeder extends Seeder
                 'tipe' => 'cost',
                 'bobot' => 10,
                 'sub' => [
-                    ['keterangan' => '< 400 Ribu', 'nilai' => 10],
-                    ['keterangan' => '400 - 700 Ribu', 'nilai' => 7.5],
-                    ['keterangan' => '700 Ribu - 1 Juta', 'nilai' => 5],
-                    ['keterangan' => '> 1 Juta', 'nilai' => 2.5],
+                    ['keterangan' => '< 400 Ribu', 'nilai' => 2.5],
+                    ['keterangan' => '400 - 700 Ribu', 'nilai' => 5],
+                    ['keterangan' => '700 Ribu - 1 Juta', 'nilai' => 7.5],
+                    ['keterangan' => '> 1 Juta', 'nilai' => 10],
                 ],
             ],
             [
@@ -71,10 +77,10 @@ class KriteriaSeeder extends Seeder
                 'tipe' => 'cost',
                 'bobot' => 10,
                 'sub' => [
-                    ['keterangan' => '< 400 Ribu', 'nilai' => 10],
-                    ['keterangan' => '400 - 700 Ribu', 'nilai' => 7.5],
-                    ['keterangan' => '700 Ribu - 1 Juta', 'nilai' => 5],
-                    ['keterangan' => '> 1 Juta', 'nilai' => 2.5],
+                    ['keterangan' => '< 400 Ribu', 'nilai' => 2.5],
+                    ['keterangan' => '400 - 700 Ribu', 'nilai' => 5],
+                    ['keterangan' => '700 Ribu - 1 Juta', 'nilai' => 7.5],
+                    ['keterangan' => '> 1 Juta', 'nilai' => 10],
                 ],
             ],
             [
@@ -82,10 +88,10 @@ class KriteriaSeeder extends Seeder
                 'tipe' => 'cost',
                 'bobot' => 10,
                 'sub' => [
-                    ['keterangan' => 'Magersari / Pakai Gratis', 'nilai' => 10],
-                    ['keterangan' => 'Sewa < 1 Juta', 'nilai' => 7.5],
-                    ['keterangan' => 'Milik Orang Tua / Warisan', 'nilai' => 5],
-                    ['keterangan' => 'Milik Sendiri / Sewa', 'nilai' => 2.5],
+                    ['keterangan' => 'Magersari / Pakai Gratis', 'nilai' => 2.5],
+                    ['keterangan' => 'Sewa < 1 Juta', 'nilai' => 5],
+                    ['keterangan' => 'Milik Orang Tua / Warisan', 'nilai' => 7.5],
+                    ['keterangan' => 'Milik Sendiri / Sewa', 'nilai' => 10],
                 ],
             ],
             [
@@ -93,10 +99,10 @@ class KriteriaSeeder extends Seeder
                 'tipe' => 'cost',
                 'bobot' => 10,
                 'sub' => [
-                    ['keterangan' => 'Sumur Milik Tetangga', 'nilai' => 10],
-                    ['keterangan' => 'Sumur Milik Sendiri', 'nilai' => 7.5],
-                    ['keterangan' => 'PDAM Terbatas', 'nilai' => 5],
-                    ['keterangan' => 'PDAM Bebas / Air Kemasan', 'nilai' => 2.5],
+                    ['keterangan' => 'Sumur Milik Tetangga', 'nilai' => 2.5],
+                    ['keterangan' => 'Sumur Milik Sendiri', 'nilai' => 5],
+                    ['keterangan' => 'PDAM Terbatas', 'nilai' => 7.5],
+                    ['keterangan' => 'PDAM Bebas / Air Kemasan', 'nilai' => 10],
                 ],
             ],
             [
@@ -104,10 +110,10 @@ class KriteriaSeeder extends Seeder
                 'tipe' => 'cost',
                 'bobot' => 10,
                 'sub' => [
-                    ['keterangan' => 'Listrik Numpang', 'nilai' => 10],
-                    ['keterangan' => 'Listrik 450 watt', 'nilai' => 7.5],
-                    ['keterangan' => 'Listrik 900 watt', 'nilai' => 5],
-                    ['keterangan' => 'Listrik > 900 watt', 'nilai' => 2.5],
+                    ['keterangan' => 'Listrik Numpang', 'nilai' => 2.5],
+                    ['keterangan' => 'Listrik 450 watt', 'nilai' => 5],
+                    ['keterangan' => 'Listrik 900 watt', 'nilai' => 7.5],
+                    ['keterangan' => 'Listrik > 900 watt', 'nilai' => 10],
                 ],
             ],
             [
@@ -115,10 +121,10 @@ class KriteriaSeeder extends Seeder
                 'tipe' => 'cost',
                 'bobot' => 10,
                 'sub' => [
-                    ['keterangan' => 'Jalan Kaki / Sepeda / Motor Seadanya', 'nilai' => 10],
-                    ['keterangan' => 'Sepeda Motor 1 Buah, dalam Kondisi Baik', 'nilai' => 7.5],
-                    ['keterangan' => 'Sepeda Motor > 1 Buah, dalam Kondisi Baik', 'nilai' => 5],
-                    ['keterangan' => 'Mobil', 'nilai' => 2.5],
+                    ['keterangan' => 'Jalan Kaki / Sepeda / Motor Seadanya', 'nilai' => 2.5],
+                    ['keterangan' => 'Sepeda Motor 1 Buah, dalam Kondisi Baik', 'nilai' => 5],
+                    ['keterangan' => 'Sepeda Motor > 1 Buah, dalam Kondisi Baik', 'nilai' => 7.5],
+                    ['keterangan' => 'Mobil', 'nilai' => 10],
                 ],
             ],
         ];

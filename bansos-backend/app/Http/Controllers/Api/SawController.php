@@ -66,19 +66,26 @@ class SawController extends Controller
         // $matriks[id_pengajuan][id_kriteria] = nilai_subkriteria (float)
         $matriks = [];
         $meta = []; // simpan nama & info warga
+        $dilewati = []; // pengajuan yang tidak lengkap, dilaporkan ke pemanggil
+
+        $jumlahKriteria = $kriteriaList->count();
 
         foreach ($pengajuanList as $p) {
             if (! $p->warga) {
+                $dilewati[] = ['id_pengajuan' => $p->id_pengajuan, 'alasan' => 'data warga tidak ditemukan'];
+
+                continue;
+            }
+
+            // Baris tanpa identitas warga tidak boleh masuk perankingan: tanpa nama,
+            // hasil tidak bisa ditindaklanjuti dan hanya mengacaukan urutan.
+            if (trim((string) $p->warga->nama_lengkap) === '') {
+                $dilewati[] = ['id_pengajuan' => $p->id_pengajuan, 'alasan' => 'nama warga kosong'];
+
                 continue;
             }
 
             $idP = $p->id_pengajuan;
-            $meta[$idP] = [
-                'id_pengajuan' => $idP,
-                'nama_warga' => $p->warga->nama_lengkap,
-                'alamat' => $p->warga->alamat ?? '',
-                'rt' => $p->warga->rt,
-            ];
 
             foreach ($p->penilaian as $penilaian) {
                 if (! $penilaian->subKriteria) {
@@ -86,12 +93,32 @@ class SawController extends Controller
                 }
                 $matriks[$idP][$penilaian->id_kriteria] = (float) $penilaian->subKriteria->nilai;
             }
+
+            // Matriks tidak lengkap (ada kriteria tanpa nilai) membuat skor tidak
+            // sebanding dengan warga lain, jadi dikeluarkan dari ranking.
+            if (count($matriks[$idP] ?? []) < $jumlahKriteria) {
+                $dilewati[] = [
+                    'id_pengajuan' => $idP,
+                    'alasan' => 'matriks penilaian belum lengkap',
+                ];
+                unset($matriks[$idP]);
+
+                continue;
+            }
+
+            $meta[$idP] = [
+                'id_pengajuan' => $idP,
+                'nama_warga' => $p->warga->nama_lengkap,
+                'alamat' => $p->warga->alamat ?? '',
+                'rt' => $p->warga->rt,
+            ];
         }
 
         if (empty($matriks)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Tidak ada data penilaian yang valid.',
+                'dilewati' => $dilewati,
             ], 404);
         }
 
@@ -142,7 +169,15 @@ class SawController extends Controller
         }
 
         // ── 7. Urutkan descending berdasarkan skor ───────────────────
-        usort($hasil, fn ($a, $b) => $b['skor_saw'] <=> $a['skor_saw']);
+        // Tie-break deterministik: skor sama → id_pengajuan terkecil lebih dulu,
+        // supaya peringkat tidak berubah-ubah antar pemanggilan API.
+        usort($hasil, function ($a, $b) {
+            if ($b['skor_saw'] === $a['skor_saw']) {
+                return $a['id_pengajuan'] <=> $b['id_pengajuan'];
+            }
+
+            return $b['skor_saw'] <=> $a['skor_saw'];
+        });
 
         // Tambahkan kolom ranking
         foreach ($hasil as $i => &$row) {
@@ -154,6 +189,7 @@ class SawController extends Controller
             'source' => 'php',
             'total' => count($hasil),
             'data' => $hasil,
+            'dilewati' => $dilewati,
         ]);
     }
 

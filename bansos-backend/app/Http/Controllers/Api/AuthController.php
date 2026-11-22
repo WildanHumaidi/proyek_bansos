@@ -4,9 +4,13 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\Warga;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
@@ -24,14 +28,28 @@ class AuthController extends Controller
                 'alamat' => 'required|string',
             ]);
 
-            $user = User::create([
-                'name' => $request->nama_lengkap,
-                'username' => $request->username,
-                'password' => Hash::make($request->password),
-                'role' => 'warga',
-                'rt' => $request->rt,
-                'alamat' => $request->alamat,
-            ]);
+            $user = DB::transaction(function () use ($request) {
+                // Registrasi membuat identitas warga milik akun ini sendiri, lalu
+                // menautkannya lewat id_warga. Tidak mencocokkan nama, karena nama
+                // bisa duplikat dan akan menimpa data warga lain.
+                $warga = Warga::create([
+                    'nama_lengkap' => trim($request->nama_lengkap),
+                    'alamat' => $request->alamat,
+                    'rt' => $request->rt,
+                    'rw' => '008',
+                    'password' => Hash::make(Str::random(32)),
+                ]);
+
+                return User::create([
+                    'name' => trim($request->nama_lengkap),
+                    'username' => $request->username,
+                    'password' => Hash::make($request->password),
+                    'role' => 'warga',
+                    'rt' => $request->rt,
+                    'alamat' => $request->alamat,
+                    'id_warga' => $warga->id_warga,
+                ]);
+            });
 
             $token = $user->createToken('auth_token')->plainTextToken;
 
@@ -42,6 +60,8 @@ class AuthController extends Controller
                 'token' => $token,
             ], 201);
 
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
@@ -75,6 +95,8 @@ class AuthController extends Controller
                 'token' => $token,
             ]);
 
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
@@ -92,6 +114,8 @@ class AuthController extends Controller
                 'success' => true,
                 'message' => 'Logout berhasil',
             ]);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }

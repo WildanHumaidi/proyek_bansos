@@ -5,12 +5,38 @@ namespace Tests\Feature;
 use App\Models\Pengajuan;
 use App\Models\User;
 use App\Models\Warga;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class MigrationSchemaTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_pengajuan_enforces_one_record_per_warga(): void
+    {
+        $warga = Warga::create([
+            'nama_lengkap' => 'Warga Unique',
+            'alamat' => 'Alamat',
+            'rt' => '001',
+            'rw' => '008',
+            'password' => bcrypt('secret'),
+        ]);
+
+        Pengajuan::create([
+            'id_warga' => $warga->id_warga,
+            'status' => 'menunggu',
+            'jawaban_mentah' => json_encode(['q1' => '1 KK']),
+        ]);
+
+        $this->expectException(UniqueConstraintViolationException::class);
+
+        Pengajuan::create([
+            'id_warga' => $warga->id_warga,
+            'status' => 'menunggu',
+            'jawaban_mentah' => json_encode(['q1' => '1 KK']),
+        ]);
+    }
 
     public function test_migrations_create_expected_schema_with_warga_and_jawaban_mentah(): void
     {

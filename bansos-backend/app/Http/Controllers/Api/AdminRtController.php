@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class AdminRtController extends Controller
 {
@@ -19,9 +20,30 @@ class AdminRtController extends Controller
     // BAGIAN 1: MANAJEMEN USER SISTEM
     // ==========================================
 
-    public function getUsers()
+    public function getUsers(Request $request)
     {
-        $users = DB::table('users')->get();
+        $query = DB::table('users')->select([
+            'id',
+            'name',
+            'username',
+            'role',
+            'rt',
+            'alamat',
+            'id_warga',
+            'created_at',
+            'updated_at',
+        ]);
+
+        if ($request->user()->role === 'rt') {
+            $query->where('role', 'warga')
+                ->where(function ($areaQuery) use ($request) {
+                    $rtNum = (int) $request->user()->rt;
+                    $areaQuery->where('rt', $rtNum)
+                        ->orWhere('rt', str_pad($rtNum, 3, '0', STR_PAD_LEFT));
+                });
+        }
+
+        $users = $query->get();
 
         $namaUsersTanpaAlamat = $users->filter(fn ($u) => empty($u->alamat))->pluck('name')->all();
         $wargaMap = [];
@@ -47,6 +69,7 @@ class AdminRtController extends Controller
     public function storeUser(Request $request)
     {
         try {
+            $actor = $request->user();
             $request->validate([
                 'name' => 'required|string',
                 'username' => 'required|unique:users',
@@ -56,12 +79,21 @@ class AdminRtController extends Controller
                 'alamat' => 'nullable|string',
             ]);
 
+            if ($actor->role === 'rt' && $request->role !== 'warga') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ketua RT hanya dapat membuat akun warga.',
+                ], 403);
+            }
+
+            $rt = $actor->role === 'rt' ? $actor->rt : $request->rt;
+
             $user = User::create([
                 'name' => $request->name,
                 'username' => $request->username,
                 'password' => Hash::make($request->password),
-                'role' => $request->role,
-                'rt' => $request->rt,
+                'role' => $actor->role === 'rt' ? 'warga' : $request->role,
+                'rt' => $rt,
                 'alamat' => $request->alamat ?? '', // BUG FIX: sebelumnya tidak ada
             ]);
 
@@ -72,6 +104,8 @@ class AdminRtController extends Controller
             );
 
             return response()->json(['success' => true, 'message' => 'User berhasil ditambahkan!', 'data' => $user]);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
@@ -80,7 +114,17 @@ class AdminRtController extends Controller
     public function updateUser(Request $request, $id)
     {
         try {
+            $actor = $request->user();
             $user = User::findOrFail($id);
+
+            if ($actor->role === 'rt'
+                && ($user->role !== 'warga' || (int) $user->rt !== (int) $actor->rt)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ketua RT hanya dapat mengubah akun warga di wilayahnya.',
+                ], 403);
+            }
+
             $request->validate([
                 'name' => 'required|string',
                 'username' => 'required|unique:users,username,'.$id,
@@ -89,10 +133,17 @@ class AdminRtController extends Controller
                 'alamat' => 'nullable|string',
             ]);
 
+            if ($actor->role === 'rt' && $request->role !== 'warga') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ketua RT tidak dapat mengubah role akun warga.',
+                ], 403);
+            }
+
             $user->name = $request->name;
             $user->username = $request->username;
-            $user->role = $request->role;
-            $user->rt = $request->rt;
+            $user->role = $actor->role === 'rt' ? 'warga' : $request->role;
+            $user->rt = $actor->role === 'rt' ? $actor->rt : $request->rt;
             $user->alamat = $request->alamat ?? $user->alamat;
 
             if ($request->filled('password')) {
@@ -107,6 +158,8 @@ class AdminRtController extends Controller
             );
 
             return response()->json(['success' => true, 'message' => 'Data User berhasil diperbarui!']);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
@@ -116,6 +169,14 @@ class AdminRtController extends Controller
     {
         try {
             $user = User::findOrFail($id);
+
+            if (auth()->id() === $user->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda tidak dapat menghapus akun Anda sendiri.',
+                ], 422);
+            }
+
             $nama = $user->name;
             $user->delete();
 
@@ -126,15 +187,76 @@ class AdminRtController extends Controller
             );
 
             return response()->json(['success' => true, 'message' => 'User berhasil dihapus!']);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
 
+    /**
+     * PUT /api/admin/users/{id}/taut-warga
+     *
+     * Menautkan akun warga ke baris `warga` tertentu. Dipakai untuk akun yang
+     * namanya duplikat sehingga tidak bisa dipasangkan otomatis saat migrasi.
+     * Tanpa tautan ini, akun tidak bisa mengajukan (409) dan tidak bisa membuka
+     * chat — sengaja, agar tidak menebak dan salah memasangkan orang.
+     */
+    public function tautkanWarga(Request $request, $id)
+    {
+        $request->validate([
+            'id_warga' => 'required|integer|exists:warga,id_warga',
+        ]);
+
+        $user = User::findOrFail($id);
+
+        if ($user->role !== 'warga') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hanya akun berperan warga yang dapat ditautkan ke data warga.',
+            ], 422);
+        }
+
+        $warga = Warga::findOrFail($request->id_warga);
+
+        // Satu baris warga hanya boleh dimiliki satu akun, kalau tidak dua akun bisa
+        // mengubah pengajuan yang sama.
+        $sudahDipakai = User::where('id_warga', $warga->id_warga)
+            ->where('id', '!=', $user->id)
+            ->exists();
+
+        if ($sudahDipakai) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Data warga tersebut sudah tertaut ke akun lain.',
+            ], 422);
+        }
+
+        if ((int) $user->rt !== (int) $warga->rt) {
+            return response()->json([
+                'success' => false,
+                'message' => 'RT akun tidak sesuai dengan RT data warga. Periksa kembali.',
+            ], 422);
+        }
+
+        $user->update(['id_warga' => $warga->id_warga]);
+
+        LogController::catatLog(
+            auth()->user()->name ?? 'sistem',
+            auth()->user()->role ?? 'admin',
+            "Tautkan akun {$user->username} ke warga #{$warga->id_warga} ({$warga->nama_lengkap})"
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Akun berhasil ditautkan ke data warga.',
+            'data' => ['id' => $user->id, 'id_warga' => $user->id_warga],
+        ]);
+    }
+
     // ==========================================
     // BAGIAN 2: MANAJEMEN PENGAJUAN & KUESIONER
     // ==========================================
-
     public function getDaftarPengajuan(Request $request)
     {
         try {
@@ -152,8 +274,26 @@ class AdminRtController extends Controller
             $pengajuan = $query->orderBy('created_at', 'desc')->get();
 
             return response()->json(['success' => true, 'data' => $pengajuan]);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    protected function authorizePengajuanArea(Request $request, Pengajuan $pengajuan): void
+    {
+        $user = $request->user();
+
+        if ($user->role !== 'rt') {
+            return;
+        }
+
+        if (! $pengajuan->warga || (int) $pengajuan->warga->rt !== (int) $user->rt) {
+            abort(response()->json([
+                'success' => false,
+                'message' => 'Akses ditolak: Pengajuan ini berada di luar wilayah RT Anda.',
+            ], 403));
         }
     }
 
@@ -163,10 +303,12 @@ class AdminRtController extends Controller
             'status' => 'required|in:menunggu,disetujui,ditolak',
         ]);
 
+        $pengajuan = Pengajuan::with('warga')->findOrFail($id);
+        $this->authorizePengajuanArea($request, $pengajuan);
+
         try {
             DB::beginTransaction();
 
-            $pengajuan = Pengajuan::findOrFail($id);
             $pengajuan->update(['status' => $request->status]);
 
             if ($request->status === 'disetujui' && ! empty($pengajuan->jawaban_mentah)) {
@@ -191,65 +333,79 @@ class AdminRtController extends Controller
         }
     }
 
-    public static function sinkronkanPenilaianDariJawaban($idPengajuan, $rawJawaban): void
+    /**
+     * Membentuk/menyegarkan 10 baris `penilaian` dari `jawaban_mentah`.
+     *
+     * Pencocokan dilakukan terhadap baris `sub_kriteria` milik kriteria itu sendiri
+     * (bukan daftar label hardcoded), karena label kuesioner frontend/CSV bisa
+     * berbeda dari teks di database. Mengembalikan daftar kriteria yang jawabannya
+     * tidak dikenali, supaya pemanggil bisa melaporkannya alih-alih diam-diam
+     * memakai sub-kriteria default.
+     */
+    public static function sinkronkanPenilaianDariJawaban($idPengajuan, $rawJawaban): array
     {
-        $daftarOpsi = [
-            'q1' => ['> 3 KK', '3 KK', '2 KK', '1 KK'],
-            'q2' => ['>= 6 ORANG', '5 ORANG', '4 ORANG', '<= 3 ORANG'],
-            'q3' => ['TIDAK SEKOLAH', 'SEKOLAH DASAR (SD)', 'SEKOLAH MENENGAH PERTAMA (SMP)', 'SMA / SARJANA'],
-            'q4' => ['>= 3 ORANG', '2 ORANG', '1 ORANG', 'TIDAK ADA'],
-            'q5' => ['< Rp. 1.500.000', 'Rp. 1.500.000 - Rp. 3.000.000', 'RP. 3.000.000 - Rp. 5.000.000', '> RP. 5.000.000'],
-            'q6' => ['< Rp. 1.500.000', 'Rp. 1.500.000 - Rp. 3.000.000', 'RP. 3.000.000 - Rp. 5.000.000', '> RP. 5.000.000'],
-            'q7' => ['MENUMPANG', 'SEWA / KONTRAK', 'MILIK ORANG TUA/ SAUDARA /KELUARGA', 'MILIK SENDIRI'],
-            'q8' => ['SUNGAI / MATA AIR', 'SUMUR (BOR/GALI)', 'PDAM', 'KEMASAN / ISI ULANG'],
-            'q9' => ['TIDAK ADA / LAMPU TEMPEL', 'LISTRIK 450 WATT', 'LISTRIK 900 WATT', 'LISTRIK  > 900 WATT'],
-            'q10' => ['JALAN KAKI / SEPEDA / SEPEDA MOTOR SEADANYA / TRANSPORTASI UMUM', 'SEPEDA MOTOR 1 UNIT KONDISI BAIK', 'SEPEDA MOTOR LEBIH DARI 1 UNIT DALAM KONDISI BAIK', 'MOBIL'],
-        ];
-
         $mentah = is_string($rawJawaban) ? json_decode($rawJawaban, true) : $rawJawaban;
         if (is_string($mentah)) {
             $mentah = json_decode($mentah, true);
         }
         if (! is_array($mentah)) {
-            return;
+            return ['terbentuk' => 0, 'tidak_cocok' => []];
         }
 
         Penilaian::where('id_pengajuan', $idPengajuan)->delete();
 
+        $terbentuk = 0;
+        $tidakCocok = [];
+        $normalisasi = fn ($teks) => strtolower(preg_replace('/\s+/', '', (string) $teks));
+
         for ($i = 1; $i <= 10; $i++) {
             $key = "q{$i}";
-            $jawabanUser = strtolower(preg_replace('/\s+/', '', $mentah[$key] ?? ''));
-            $indexOpsi = 2;
-
-            foreach ($daftarOpsi[$key] as $idx => $opsiBenar) {
-                if ($jawabanUser === strtolower(preg_replace('/\s+/', '', $opsiBenar))) {
-                    $indexOpsi = $idx;
-                    break;
-                }
-            }
+            $jawabanUser = $normalisasi($mentah[$key] ?? '');
 
             $subRecords = SubKriteria::where('id_kriteria', $i)
+                ->orderBy('nilai', 'asc')
                 ->orderBy('id_subkriteria', 'asc')
                 ->get();
 
-            $idSub = (isset($subRecords[$indexOpsi]))
-                ? $subRecords[$indexOpsi]->id_subkriteria
-                : (($i - 1) * 4) + $indexOpsi + 1;
+            $cocok = $subRecords->first(
+                fn ($sub) => $normalisasi($sub->keterangan) === $jawabanUser
+            );
+
+            if (! $cocok) {
+                // Coba pencocokan sebagian (mis. "SMA / SMK / S1" vs "SMA / SMK / PT").
+                $cocok = $subRecords->first(function ($sub) use ($normalisasi, $jawabanUser) {
+                    $keterangan = $normalisasi($sub->keterangan);
+
+                    return $jawabanUser !== ''
+                        && $keterangan !== ''
+                        && (str_contains($keterangan, $jawabanUser) || str_contains($jawabanUser, $keterangan));
+                });
+            }
+
+            if (! $cocok) {
+                $tidakCocok[] = $key;
+
+                continue;
+            }
 
             Penilaian::create([
                 'id_pengajuan' => $idPengajuan,
                 'id_kriteria' => $i,
-                'id_subkriteria' => $idSub,
+                'id_subkriteria' => $cocok->id_subkriteria,
             ]);
+            $terbentuk++;
         }
+
+        return ['terbentuk' => $terbentuk, 'tidak_cocok' => $tidakCocok];
     }
 
     public function updateKuesioner(Request $request, $id)
     {
+        $pengajuan = Pengajuan::with('warga')->findOrFail($id);
+        $this->authorizePengajuanArea($request, $pengajuan);
+
         try {
             DB::beginTransaction();
-
-            $pengajuan = Pengajuan::findOrFail($id);
 
             if ($request->has('jawaban_mentah')) {
                 $mentah = is_array($request->jawaban_mentah)
@@ -267,6 +423,10 @@ class AdminRtController extends Controller
                         'id_subkriteria' => (int) $id_sub,
                     ]);
                 }
+            } elseif ($request->has('jawaban_mentah') && $pengajuan->status === 'disetujui') {
+                // Matriks di-generate backend dari jawaban mentah; frontend tidak perlu
+                // mengirim pemetaan sub-kriteria sendiri.
+                self::sinkronkanPenilaianDariJawaban($pengajuan->id_pengajuan, $pengajuan->jawaban_mentah);
             }
 
             DB::commit();
@@ -292,6 +452,8 @@ class AdminRtController extends Controller
             );
 
             return response()->json(['success' => true, 'message' => 'Data berhasil dihapus']);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
@@ -306,7 +468,9 @@ class AdminRtController extends Controller
         ini_set('max_execution_time', 300);
 
         try {
-            $request->validate(['file' => 'required|file']);
+            $request->validate([
+                'file' => 'required|file|mimes:csv,txt|max:5120',
+            ]);
             $path = $request->file('file')->getRealPath();
             $file = fopen($path, 'r');
             if (! $file) {
@@ -395,6 +559,8 @@ class AdminRtController extends Controller
                 'message' => "Berhasil! {$count} data warga tersimpan.",
             ]);
 
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Throwable $e) {
             DB::rollback();
 
@@ -411,39 +577,28 @@ class AdminRtController extends Controller
 
     public function fixDataMentah()
     {
-        $semuaPengajuan = Pengajuan::all();
+        return DB::transaction(function () {
+            $semuaPengajuan = Pengajuan::all();
+            $count = 0;
 
-        $daftarOpsi = [
-            'q1' => ['> 3 KK', '3 KK', '2 KK', '1 KK'],
-            'q2' => ['>= 6 ORANG', '5 ORANG', '4 ORANG', '<= 3 ORANG'],
-            'q3' => ['TIDAK SEKOLAH', 'SEKOLAH DASAR (SD)', 'SEKOLAH MENENGAH PERTAMA (SMP)', 'SMA / SARJANA'],
-            'q4' => ['>= 3 ORANG', '2 ORANG', '1 ORANG', 'TIDAK ADA'],
-            'q5' => ['< Rp. 1.500.000', 'Rp. 1.500.000 - Rp. 3.000.000', 'RP. 3.000.000 - Rp. 5.000.000', '> RP. 5.000.000'],
-            'q6' => ['< Rp. 1.500.000', 'Rp. 1.500.000 - Rp. 3.000.000', 'RP. 3.000.000 - Rp. 5.000.000', '> RP. 5.000.000'],
-            'q7' => ['MENUMPANG', 'SEWA / KONTRAK', 'MILIK ORANG TUA/ SAUDARA /KELUARGA', 'MILIK SENDIRI'],
-            'q8' => ['SUNGAI / MATA AIR', 'SUMUR (BOR/GALI)', 'PDAM', 'KEMASAN / ISI ULANG'],
-            'q9' => ['TIDAK ADA / LAMPU TEMPEL', 'LISTRIK 450 WATT', 'LISTRIK 900 WATT', 'LISTRIK  > 900 WATT'],
-            'q10' => ['JALAN KAKI / SEPEDA / SEPEDA MOTOR SEADANYA / TRANSPORTASI UMUM', 'SEPEDA MOTOR 1 UNIT KONDISI BAIK', 'SEPEDA MOTOR LEBIH DARI 1 UNIT DALAM KONDISI BAIK', 'MOBIL'],
-        ];
-
-        $count = 0;
-        foreach ($semuaPengajuan as $p) {
-            $idPengajuan = $p->id_pengajuan ?? $p->id;
-            if (! empty($p->jawaban_mentah)) {
-                self::sinkronkanPenilaianDariJawaban($idPengajuan, $p->jawaban_mentah);
-                $count++;
+            foreach ($semuaPengajuan as $p) {
+                $idPengajuan = $p->id_pengajuan ?? $p->id;
+                if (! empty($p->jawaban_mentah)) {
+                    self::sinkronkanPenilaianDariJawaban($idPengajuan, $p->jawaban_mentah);
+                    $count++;
+                }
             }
-        }
 
-        LogController::catatLog(
-            auth()->user()->name ?? 'sistem',
-            auth()->user()->role ?? 'admin',
-            "Sapu ajaib: {$count} data kuesioner diperbaiki & matriks di-generate"
-        );
+            LogController::catatLog(
+                auth()->user()->name ?? 'sistem',
+                auth()->user()->role ?? 'admin',
+                "Sapu ajaib: {$count} data kuesioner diperbaiki & matriks di-generate"
+            );
 
-        return response()->json([
-            'success' => true,
-            'message' => "{$count} data diperbaiki dan matriks berhasil di-generate!",
-        ]);
+            return response()->json([
+                'success' => true,
+                'message' => "{$count} data diperbaiki dan matriks berhasil di-generate!",
+            ]);
+        });
     }
 }

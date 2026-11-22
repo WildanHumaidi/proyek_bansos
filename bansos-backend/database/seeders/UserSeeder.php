@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\User;
+use App\Models\Warga;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -36,6 +37,17 @@ class UserSeeder extends Seeder
             ]);
         }
 
+        // Akun demo warga wajib punya identitas warga sendiri dan tertaut lewat
+        // id_warga. Membuat User tanpa id_warga menghasilkan akun yang tidak bisa
+        // mengajukan (409), dan mencocokkan lewat nama akan menimpa warga lain.
+        $wargaDemo = Warga::create([
+            'nama_lengkap' => 'Budi Santoso',
+            'alamat' => 'Jl. Merpati No. 12',
+            'rt' => '001',
+            'rw' => '008',
+            'password' => Hash::make('warga123'),
+        ]);
+
         User::create([
             'name' => 'Budi Santoso',
             'username' => 'warga01',
@@ -43,6 +55,7 @@ class UserSeeder extends Seeder
             'role' => 'warga',
             'rt' => '001',
             'alamat' => 'Jl. Merpati No. 12',
+            'id_warga' => $wargaDemo->id_warga,
         ]);
     }
 }
