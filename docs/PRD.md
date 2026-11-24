@@ -30,6 +30,11 @@ Sistem menerapkan Role-Based Access Control (RBAC) 4 tingkat:
 
 ## 3. Fitur yang Sudah Ada (User Stories)
 
+### 3.0 Halaman Publik (Landing Page) — `/`
+- **US-PUB-01:** Sebagai Pengunjung (belum login), saya dapat membuka alamat utama aplikasi dan melihat halaman pengenalan (landing page) berisi profil program bansos, alur pendaftaran, manfaat sistem, syarat pendaftaran, serta FAQ.
+- **US-PUB-02:** Sebagai Pengunjung, saya dapat berpindah ke halaman Masuk (`/login`) atau Daftar (`/register`) melalui tombol pada landing page.
+- **US-PUB-03:** Sebagai Pengguna yang sudah login, saat membuka `/` saya tetap diarahkan otomatis ke dashboard sesuai peran (bukan landing page).
+
 ### 3.1 Autentikasi & Profil
 - **US-AUTH-01:** Sebagai Warga baru, saya dapat mendaftarkan akun secara mandiri dengan mengisi Nama Lengkap, Username, Password, RT, dan Alamat agar dapat mengajukan bansos.
 - **US-AUTH-02:** Sebagai Pengguna (semua peran), saya dapat masuk (login) menggunakan Username dan Password, lalu diarahkan secara otomatis ke dashboard sesuai peran saya.
@@ -67,6 +72,7 @@ Sistem menerapkan Role-Based Access Control (RBAC) 4 tingkat:
 ## 4. Functional Requirements (FR)
 
 ### FR-01: Modul Autentikasi & Akun
+- **FR-01.0:** Halaman `/` (landing page) wajib dapat diakses **tanpa autentikasi** dan menampilkan konten edukasi publik (profil program, alur, syarat, FAQ) tanpa data pribadi warga.
 - **FR-01.1:** Sistem wajib mengenkripsi password menggunakan `Bcrypt` (Laravel default cost: 12).
 - **FR-01.2:** Endpoint `/api/login` wajib memverifikasi username & password dan mengembalikan Bearer Token via Laravel Sanctum serta objek data profil pengguna.
 - **FR-01.3:** Endpoint `/api/register` wajib memvalidasi keunikan username dan menetapkan peran default sebagai `warga`.
@@ -110,10 +116,12 @@ Sistem menerapkan Role-Based Access Control (RBAC) 4 tingkat:
 ## 5. Non-Functional Requirements (NFR)
 
 - **NFR-01 (Keamanan Transpor Data):** Seluruh komunikasi frontend ke backend melalui protokol REST API dengan autentikasi Bearer Token (Sanctum).
+- **NFR-01a (Privasi Konten Publik):** Konten yang dapat diakses tanpa login hanya boleh bersifat edukatif/informatif; data warga, skor SAW, dan daftar penerima tidak boleh diekspos melalui halaman atau endpoint publik (menindaklanjuti temuan SEC-01 di `docs/AUDIT.md`).
 - **NFR-02 (Responsivitas Antarmuka):** Antarmuka dibangun menggunakan layout adaptif, tipografi standar *Plus Jakarta Sans*, dan elemen ikonik *Material Symbols Outlined*.
 - **NFR-03 (Pencetakan Terstandarisasi):** Modul cetak memanfaatkan media query `@media print` CSS landscape A4, menyembunyikan navigasi interaktif, dan menghasilkan tabel dokumen formal dengan kop resmi instansi RT/RW.
 - **NFR-04 (Integritas Data Transaksional):** Operasi batch kritis seperti Import CSV menggunakan `DB::beginTransaction()` dan `DB::rollback()` untuk mencegah inkonsistensi saat kegagalan parsing baris.
 - **NFR-05 (Kompatibilitas Runtime):** Backend kompatibel PHP 8.2+ dan Laravel 12; Frontend kompatibel Node.js 18+ dengan Vite 8 dan React 19.
+- **NFR-06 (Aksesibilitas Dasar):** Teks sekunder harus memenuhi rasio kontras WCAG AA minimum 4.5:1 (teks normal) dan 3.0:1 (teks besar ≥18,66px tebal / ikon grafis), target sentuh minimal 44px pada tampilan <900px, serta tidak ada scroll horizontal pada viewport 360px (pengguna warga dengan literasi digital rendah).
 
 ---
 
@@ -134,29 +142,13 @@ Sistem menerapkan Role-Based Access Control (RBAC) 4 tingkat:
 
 Berdasarkan audit mendalam terhadap seluruh berkas kode sumber, ditemukan sejumlah celah teknis dan fitur yang belum tuntas:
 
+> **Catatan status (2026-11-24):** banyak butir pada bagian 7 sudah dibereskan pada gelombang audit Nov 2026 (rincian lengkap & bukti di `docs/AUDIT.md`): middleware peran `role:*` sudah dipasang di seluruh rute privat, rate limiter `/login` aktif (`throttle:10,1`), dead controllers & model ganda dihapus, interceptor 401 terstandarkan pada `src/services/api.js`, serta duplikasi konstanta & komponen yatim dibersihkan. Butir tersisa yang masih berlaku ditandai **[BERLAKU]**. Bagian 7 dipertahankan sebagai riwayat temuan; matriks status resmi ada di `docs/AUDIT.md` dan kartu kanban.
+
 ### 7.1 Backend Gaps & Dead Code
-1. **Otorisasi Role di API Routes Terbuka (Security Loophole):**
-   - Di `routes/api.php`, seluruh rute privat hanya dilindungi oleh middleware `auth:sanctum`.
-   - Tidak ada middleware peran (seperti `role:admin`, `role:rt`, `role:rw`). Pengguna dengan role `warga` yang memiliki token secara teknis dapat melakukan request HTTP langsung ke endpoint mutasi Admin seperti `DELETE /api/users/{id}`, `PUT /api/kriteria/{id}`, atau `POST /api/admin/pengajuan/import`.
-2. **Controller Mati / Tidak Terdaftar (Dead Controllers):**
-   - Berkas `app/Http/Controllers/Api/RtController.php` tidak pernah di-import atau dipanggil dalam `routes/api.php` (fungsinya terduplikasi ke `AdminRtController` dan `ChatController`).
-   - Berkas `app/Http/Controllers/Api/PengajuanController.php` tidak terdaftar di rute mana pun; alur pengajuan dialihkan ke `WargaController` dan `AdminRtController`.
-3. **Duplikasi Model Eloquent:**
-   - Model `App\Models\Penilaian` dan `App\Models\PengajuanDetail` menunjuk ke tabel fisik yang persis sama (`penilaian`).
-4. **Ketiadaan Rate Limiting pada Auth:**
-   - Rute `/login` dan `/register` belum dilengkapi middleware `throttle:login` atau pembatas frekuensi request brute-force.
-5. **Konversi String RT:**
-   - Penomoran RT disimpan bercampur antara format integer (`1`, `2`, `3`) dan string tiga digit ber-padding nol (`'001'`, `'002'`, `'003'`), memaksa banyak baris kode controller dan frontend melakukan normalisasi regex/pad manual.
+1. **[BERLAKU — PARSIAL] Konversi String RT:** Penomoran RT disimpan bercampur antara format integer (`1`, `2`, `3`) dan string tiga digit ber-padding nol (`'001'`, `'002'`, `'003'`), memaksa banyak baris kode controller dan frontend melakukan normalisasi regex/pad manual. Normalisasi lokal sudah diterapkan di frontend (`fmtNum`), namun konsolidasi skema ke satu format belum dilakukan.
 
 ### 7.2 Frontend Gaps & Dead Artifacts
-1. **Komponen Yatim / Tak Terpakai (Orphan Components):**
-   - `src/Components.jsx` tidak pernah di-import oleh halaman mana pun. File ini bahkan memiliki bug impor internal (`import ... from './shared'` yang seharusnya `./service/shared`).
-   - `src/service/Diagnosakoneksi.jsx` merupakan utility pengujian koneksi yang lengkap tetapi tidak didaftarkan pada `App.jsx`.
-2. **Duplikasi File Service API & Helper:**
-   - Ada dua client API: `src/lib/api.js` dan `src/service/api.js` (yang memiliki 401 interceptor). Namun, sebagian besar halaman dashboard meng-import `axios` langsung secara mandiri dengan baseURL ter-hardcode.
-   - Konstanta opsi kuesioner terduplikasi di `src/lib/constants.js` dan `src/service/shared.js`.
-3. **Injeksi Desain Dinamis Runtime:**
-   - Halaman menggunakan hook/fungsi `useDesign` yang menyuntikkan script tag Tailwind CDN dan link Google Fonts langsung ke elemen `<head>` DOM browser pada setiap mount komponen, alih-alih di-bundle via PostCSS/Vite.
+1. **[BERLAKU] Injeksi Desain Dinamis Runtime:** Beberapa halaman masih menyuntikkan script tag Tailwind CDN (`cdn.tailwindcss.com`) dan link Google Fonts langsung ke `<head>` pada saat mount (via `useDesign`), alih-alih di-bundle via PostCSS/Vite, sehingga aplikasi bergantung pada koneksi internet untuk styling penuh (FOUC di jaringan lambat). Bundle CSS lokal sudah dipakai halaman Login/Register/Landing/Warga; dashboard Admin/RT/RW masih memakai Tailwind CDN.
 
 ---
 
@@ -200,6 +192,7 @@ bansos-backend/
 bansos-frontend/
 ├── src/
 │   ├── pages/
+│   │   ├── LandingPage.jsx            [Aktif: /, halaman publik tanpa login]
 │   │   ├── Login.jsx                   [Aktif: /login, auth redirect]
 │   │   ├── RegisterWarga.jsx           [Aktif: /register]
 │   │   ├── WargaDashboard.jsx          [Aktif: /warga, portal warga]
@@ -208,12 +201,9 @@ bansos-frontend/
 │   │   └── AdminDashboard.jsx          [Aktif: /dashboard, admin super control]
 │   ├── service/
 │   │   ├── api.js                      [Duplikat/Parsial: Axios instance + 401 interceptor]
-│   │   ├── shared.js                   [Helper formatting, konstanta opsi, print CSS]
-│   │   └── Diagnosakoneksi.jsx         [ORPHAN: Diagnostic test page, unrouted]
+│   │   └── shared.js                   [Helper formatting, konstanta opsi, print CSS]
 │   ├── lib/
-│   │   ├── api.js                      [Aktif parsial: getUser helper untuk App.jsx]
-│   │   └── constants.js                [Duplikat helper & DAFTAR_OPSI]
-│   ├── Components.jsx                  [ORPHAN: Tak terpakai di komponen mana pun]
+│   │   └── api.js                      [Aktif parsial: getUser helper untuk App.jsx]
 │   ├── App.jsx                         [Router & role guard]
 │   └── main.jsx
 ```
@@ -222,14 +212,16 @@ bansos-frontend/
 
 ## 9. Rekomendasi Roadmap Perbaikan
 
-1. **Security Hardening (Prioritas 1):**
-   - Tambahkan middleware role backend (misal: `EnsureUserHasRole:admin`) pada rute sensitif di `api.php`.
-   - Terapkan rate limiter pada rute `/login`.
-2. **Pembersihan Arsitektur & Dead Code (Prioritas 2):**
-   - Hapus atau satukan `RtController.php` dan `PengajuanController.php`.
-   - Hapus model ganda `PengajuanDetail.php` dan standarkan penggunaan pada `Penilaian.php`.
-   - Hapus komponen yatim `Components.jsx` atau refaktorisasi komponen UI dashboard untuk menggunakannya.
-   - Satukan `src/lib/api.js` dan `src/service/api.js` menjadi satu client HTTP tunggal yang di-import seragam oleh seluruh halaman.
-3. **Refaktorisasi Basis Data (Prioritas 3):**
+> **Catatan status (2026-11-24):** prioritas 1 & 2 di bawah sudah tuntas pada gelombang audit Nov 2026 — middleware role, rate limiter, penghapusan dead controller/model ganda/komponen yatim, dan konsolidasi client API. Rincian & bukti: `docs/AUDIT.md`, kartu kanban `it-engineering`.
+
+1. **Security Hardening (Prioritas 1) — [SELESAI 2026-11]:**
+   - Middleware peran `role:admin` / `role:rt` / `role:rw` sudah dipasang pada seluruh rute privat di `api.php`.
+   - Rate limiter `/login` aktif (`throttle:10,1`).
+2. **Pembersihan Arsitektur & Dead Code (Prioritas 2) — [SELESAI 2026-11]:**
+   - `RtController.php` & `PengajuanController.php` dihapus; `PengajuanDetail.php` (model ganda) disatukan ke `Penilaian.php`.
+   - Komponen yatim `Components.jsx` dan duplikasi konstanta (`src/lib/constants.js`, `src/service/shared.js`) dibersihkan; client HTTP distandarkan ke `src/services/api.js` (interceptor 401).
+3. **Refaktorisasi Basis Data (Prioritas 3) — [TERBUKA]:**
    - Migrasikan relasi `users` dan `warga` menjadi relasi relasional formal (`user_id` foreign key) untuk mencegah kegagalan pencocokan data jika terjadi pengubahan nama warga.
-   - Buat format kolom `rt` konsisten integer atau string 3 digit di seluruh skema.
+   - Buat format kolom `rt` konsisten integer atau string 3 digit di seluruh skema (konsolidasi dari normalisasi lokal `fmtNum` saat ini).
+4. **Dependensi Styling Runtime (Prioritas 4) — [TERBUKA]:**
+   - Pindahkan dashboard Admin/RT/RW dari Tailwind CDN + Google Fonts runtime ke bundle lokal via Vite/PostCSS, seragam dengan halaman publik (selesai untuk Landing/Login/Register/Warga).
