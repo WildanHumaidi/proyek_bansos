@@ -50,6 +50,23 @@ function useDesign() {
           * { box-shadow:none!important; }
         }
         .print-header { display:none; }
+        /* ── Responsif HP ── */
+        @media (max-width: 900px) {
+          .rw-sidebar {
+            position: fixed !important; top: 0; left: 0; bottom: 0;
+            width: 256px !important; max-width: 82vw;
+            z-index: 200;
+            transform: translateX(-102%);
+            transition: transform .22s ease;
+            box-shadow: 0 0 0 0 rgba(15,23,42,.35);
+          }
+          .rw-sidebar.open { transform: translateX(0); box-shadow: 0 0 0 100vmax rgba(15,23,42,.35); }
+          .rw-header { padding: 0 12px !important; height: 56px !important; gap: 8px; }
+          .rw-header-title { font-size: 14px !important; }
+          .rw-main-pad { padding: 16px 12px !important; }
+          .rw-burger { display: inline-flex !important; }
+        }
+        @media print { .rw-burger, .rw-scrim { display:none!important; } }
       `;
       document.head.appendChild(st);
     }
@@ -114,6 +131,7 @@ export default function RwDashboard() {
     }
   });
   const [activeMenu, setActiveMenu] = useState('beranda');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [wargaList, setWargaList] = useState([]);
   const [rankingData, setRankingData] = useState([]);
@@ -256,7 +274,7 @@ export default function RwDashboard() {
 
       {/* ════ SIDEBAR ════ */}
       <aside
-        className="no-print"
+        className={`no-print rw-sidebar ${sidebarOpen ? 'open' : ''}`}
         style={{
           width: 252,
           flexShrink: 0,
@@ -270,6 +288,7 @@ export default function RwDashboard() {
       >
         {/* Brand */}
         <div
+          className="rw-sidebar-brand"
           style={{
             padding: '20px 20px 16px',
             borderBottom: '1px solid #C6DCFF',
@@ -416,7 +435,10 @@ export default function RwDashboard() {
                   return (
                     <button
                       key={key}
-                      onClick={() => setActiveMenu(key)}
+                      onClick={() => {
+                        setActiveMenu(key);
+                        setSidebarOpen(false);
+                      }}
                       style={{
                         width: '100%',
                         display: 'flex',
@@ -526,10 +548,10 @@ export default function RwDashboard() {
       </aside>
 
       {/* ════ MAIN ════ */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div className="rw-main" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* Header */}
         <header
-          className="no-print"
+          className="no-print rw-header"
           style={{
             height: 64,
             flexShrink: 0,
@@ -541,7 +563,27 @@ export default function RwDashboard() {
             padding: '0 32px',
           }}
         >
-          <div>
+          <button
+            className="rw-burger no-print"
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Buka menu"
+            style={{
+              display: 'none',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 38,
+              height: 38,
+              borderRadius: 10,
+              border: '1.5px solid #C6DCFF',
+              background: '#FAFCFF',
+              color: '#1A56DB',
+              cursor: 'pointer',
+              flexShrink: 0,
+            }}
+          >
+            <MI name="menu" size={20} />
+          </button>
+          <div className="rw-header-title">
             <h1 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: 0 }}>
               {pageTitle}
             </h1>
@@ -595,6 +637,7 @@ export default function RwDashboard() {
 
         <main
           id="rw-main"
+          className="rw-main-pad"
           style={{ flex: 1, overflowY: 'auto', padding: 28, background: '#F0F6FF' }}
         >
           {/* ══ BERANDA ══ */}
@@ -1331,6 +1374,19 @@ export default function RwDashboard() {
           )}
         </main>
       </div>
+
+      {/* Scrim mobile — tutup sidebar saat diketuk */}
+      <div
+        className="rw-scrim no-print"
+        onClick={() => setSidebarOpen(false)}
+        style={{
+          display: sidebarOpen ? 'block' : 'none',
+          position: 'fixed',
+          inset: 0,
+          zIndex: 190,
+          background: 'transparent',
+        }}
+      />
     </div>
   );
 }

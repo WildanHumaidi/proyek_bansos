@@ -159,6 +159,30 @@ const CSS = `
   @keyframes fadeUp  { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes spin    { to { transform: rotate(360deg); } }
   @media print { .no-print { display: none !important; } }
+
+  /* ── Responsif HP: warga banyak yang pakai HP layar kecil ── */
+  @media (max-width: 900px) {
+    .warga-nav-wrap { flex-wrap: wrap; height: auto !important; padding: 8px 14px !important; gap: 6px; }
+    .warga-tabs { order: 3; width: 100%; overflow-x: auto; margin-top: 2px; padding-bottom: 2px; }
+    .warga-tabs .nav-tab { padding: 10px 14px; font-size: 13px; }
+    .warga-user-chip { padding: 5px 8px !important; }
+    .warga-user-name .nama { font-size: 12px !important; }
+    .warga-user-name .sub { display: none; }
+    .warga-hero { grid-template-columns: 1fr !important; }
+    .warga-hero-side { padding: 20px 24px !important; }
+    .warga-stats { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
+    .warga-detail-grid { grid-template-columns: 1fr !important; gap: 10px !important; }
+    .warga-actions { flex-direction: column; align-items: stretch; }
+    .warga-actions > * { width: 100%; }
+    /* Target sentuh minimal 44px — jempol warga sering kurang presisi */
+    .nav-tab { min-height: 44px; }
+    .opt-card { min-height: 44px; align-items: center; }
+    .btn-blue, .btn-ghost { min-height: 44px; }
+    main { padding: 18px 14px !important; }
+  }
+  @media (max-width: 480px) {
+    .warga-stats { grid-template-columns: 1fr !important; }
+  }
 `;
 
 /* ─── Icon ───────────────────────────────────────────────────────────────── */
@@ -387,7 +411,7 @@ export default function WargaDashboard() {
                 animation: 'spin .8s linear infinite',
               }}
             />
-            <div style={{ color: '#64748b', fontSize: 14 }}>Memuat data pengajuan...</div>
+            <div style={{ color: '#526078', fontSize: 14 }}>Memuat data pengajuan...</div>
           </div>
         </div>
       </>
@@ -409,6 +433,7 @@ export default function WargaDashboard() {
         }}
       >
         <div
+          className="warga-nav-wrap no-print"
           style={{
             maxWidth: 1100,
             margin: '0 auto',
@@ -487,7 +512,7 @@ export default function WargaDashboard() {
           </div>
 
           {/* Tabs */}
-          <div style={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+          <div className="warga-tabs" style={{ display: 'flex', alignItems: 'center', height: '100%' }}>
             {navItems.map(({ key, label }) => (
               <button
                 key={key}
@@ -515,7 +540,7 @@ export default function WargaDashboard() {
           </div>
 
           {/* User */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div className="warga-user-chip" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div
               style={{
                 display: 'flex',
@@ -543,11 +568,14 @@ export default function WargaDashboard() {
               >
                 {userData?.name?.charAt(0)?.toUpperCase()}
               </div>
-              <div>
-                <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0f172a', lineHeight: 1.2 }}>
+              <div className="warga-user-name">
+                <div
+                  className="nama"
+                  style={{ fontSize: 12.5, fontWeight: 700, color: '#0f172a', lineHeight: 1.2 }}
+                >
                   {userData?.name}
                 </div>
-                <div style={{ fontSize: 10.5, color: '#1A56DB', fontWeight: 600 }}>
+                <div className="sub" style={{ fontSize: 10.5, color: '#1A56DB', fontWeight: 600 }}>
                   Warga · RT {userData?.rt || '—'}
                 </div>
               </div>
@@ -600,7 +628,7 @@ export default function WargaDashboard() {
           >
             {/* Hero */}
             <div
-              className="card"
+              className="card warga-hero"
               style={{ overflow: 'hidden', display: 'grid', gridTemplateColumns: '1fr 300px' }}
             >
               <div style={{ padding: '36px 40px' }}>
@@ -645,7 +673,7 @@ export default function WargaDashboard() {
                   Akses ringkasan pengajuan, lengkapi kuesioner, dan pantau proses verifikasi
                   bantuan sosial Anda secara real-time.
                 </p>
-                <div style={{ display: 'flex', gap: 10 }}>
+                <div style={{ display: 'flex', gap: 10 }} className="warga-actions">
                   {!statusBansos ? (
                     <button className="btn-blue" onClick={() => setActiveNav('kuesioner')}>
                       <MI name="edit_document" size={16} fill /> Isi Kuesioner Sekarang
@@ -661,6 +689,7 @@ export default function WargaDashboard() {
                 </div>
               </div>
               <div
+                className="warga-hero-side"
                 style={{
                   background: 'linear-gradient(135deg,#1A56DB 0%,#1e40af 100%)',
                   display: 'flex',
@@ -735,7 +764,7 @@ export default function WargaDashboard() {
                   <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>
                     Alur Pengajuan Bantuan
                   </div>
-                  <div style={{ fontSize: 12.5, color: '#94a3b8', marginTop: 3 }}>
+                  <div style={{ fontSize: 12.5, color: '#526078', marginTop: 3 }}>
                     Pantau tahapan dokumen Anda saat ini
                   </div>
                 </div>
@@ -833,7 +862,7 @@ export default function WargaDashboard() {
                           style={{
                             fontSize: 14,
                             fontWeight: 800,
-                            color: s.active ? '#1A56DB' : '#94a3b8',
+                            color: s.active ? '#1A56DB' : '#526078',
                           }}
                         >
                           {i + 1}
@@ -845,12 +874,12 @@ export default function WargaDashboard() {
                         style={{
                           fontSize: 12.5,
                           fontWeight: 700,
-                          color: s.done || s.active ? '#0f172a' : '#94a3b8',
+                          color: s.done || s.active ? '#0f172a' : '#526078',
                         }}
                       >
                         {s.label}
                       </div>
-                      <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{s.sub}</div>
+                      <div style={{ fontSize: 11, color: '#526078', marginTop: 2 }}>{s.sub}</div>
                     </div>
                   </div>
                 ))}
@@ -887,7 +916,7 @@ export default function WargaDashboard() {
             </div>
 
             {/* Info cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16 }}>
+            <div className="warga-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16 }}>
               <div className="card" style={{ padding: '22px 24px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
                   <div
@@ -918,14 +947,14 @@ export default function WargaDashboard() {
                     </span>
                   )}
                 </div>
-                <div style={{ fontSize: 12, color: '#64748b', marginBottom: 4 }}>
+                <div style={{ fontSize: 12, color: '#526078', marginBottom: 4 }}>
                   Status Kuesioner
                 </div>
                 <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a' }}>
                   {statusBansos ? sw?.label || 'Terkirim' : 'Belum Diisi'}
                 </div>
                 {statusBansos?.created_at && (
-                  <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
+                  <div style={{ fontSize: 11, color: '#526078', marginTop: 4 }}>
                     Dikirim: {fmtDate(statusBansos.created_at)}
                   </div>
                 )}
@@ -949,7 +978,7 @@ export default function WargaDashboard() {
                       position: 'relative',
                     }}
                   >
-                    <MI name="forum" fill size={20} style={{ color: '#059669' }} />
+                    <MI name="forum" fill size={20} style={{ color: '#047857' }} />
                     {pesanList.length > 0 && (
                       <div
                         style={{
@@ -965,9 +994,9 @@ export default function WargaDashboard() {
                       />
                     )}
                   </div>
-                  <MI name="arrow_forward" size={16} style={{ color: '#94a3b8' }} />
+                  <MI name="arrow_forward" size={16} style={{ color: '#526078' }} />
                 </div>
-                <div style={{ fontSize: 12, color: '#64748b', marginBottom: 4 }}>
+                <div style={{ fontSize: 12, color: '#526078', marginBottom: 4 }}>
                   Diskusi dengan RT
                 </div>
                 <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a' }}>
@@ -1000,7 +1029,7 @@ export default function WargaDashboard() {
                 <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a' }}>
                   RT {userData?.rt || '—'} / RW 08
                 </div>
-                <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>
+                <div style={{ fontSize: 11, color: '#526078', marginTop: 4 }}>
                   Data dapat diperbarui oleh RT
                 </div>
               </div>
@@ -1081,7 +1110,10 @@ export default function WargaDashboard() {
                   Data Anda telah terekam pada <strong>{fmtDate(statusBansos.created_at)}</strong>.
                   Pengisian ulang tidak diperkenankan untuk menjaga integritas data penilaian.
                 </p>
-                <div style={{ display: 'flex', justifyContent: 'center', gap: 10 }}>
+                <div
+                  className="warga-actions"
+                  style={{ display: 'flex', justifyContent: 'center', gap: 10 }}
+                >
                   <button className="btn-blue" onClick={() => setActiveNav('status')}>
                     <MI name="pending_actions" size={15} /> Lihat Status
                   </button>
@@ -1107,7 +1139,7 @@ export default function WargaDashboard() {
                     <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a' }}>
                       {step === 0 ? 'Bagian 1 — Data Diri' : 'Bagian 2 — Kuesioner Ekonomi'}
                     </div>
-                    <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
+                    <div style={{ fontSize: 12, color: '#526078', marginTop: 2 }}>
                       {step === 0
                         ? 'Isi identitas dan domisili Anda'
                         : `${pct} dari 10 pertanyaan terjawab`}
@@ -1126,7 +1158,7 @@ export default function WargaDashboard() {
                         }}
                       />
                     ))}
-                    <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 4 }}>
+                    <span style={{ fontSize: 11, color: '#526078', marginLeft: 4 }}>
                       {step + 1}/2
                     </span>
                   </div>
@@ -1370,7 +1402,7 @@ export default function WargaDashboard() {
                         >
                           <MI name="arrow_back" size={15} /> Kembali
                         </button>
-                        <div style={{ fontSize: 12.5, color: '#64748b' }}>
+                        <div style={{ fontSize: 12.5, color: '#526078' }}>
                           <strong style={{ color: pct === 10 ? '#15803d' : '#0f172a' }}>
                             {pct}
                           </strong>
@@ -1430,12 +1462,12 @@ export default function WargaDashboard() {
                 <MI
                   name="inbox"
                   size={48}
-                  style={{ color: '#C6DCFF', display: 'block', margin: '0 auto 16px' }}
+                  style={{ color: '#5480be', display: 'block', margin: '0 auto 16px' }}
                 />
                 <div style={{ fontSize: 17, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>
                   Belum Ada Pengajuan
                 </div>
-                <p style={{ fontSize: 14, color: '#64748b', marginBottom: 22 }}>
+                <p style={{ fontSize: 14, color: '#526078', marginBottom: 22 }}>
                   Anda belum pernah mengisi kuesioner. Lengkapi formulir untuk memulai proses.
                 </p>
                 <button className="btn-blue" onClick={() => setActiveNav('kuesioner')}>
@@ -1473,7 +1505,7 @@ export default function WargaDashboard() {
                       style={{
                         fontSize: 11,
                         fontWeight: 700,
-                        color: '#94a3b8',
+                        color: '#526078',
                         textTransform: 'uppercase',
                         letterSpacing: '.08em',
                         marginBottom: 5,
@@ -1507,7 +1539,7 @@ export default function WargaDashboard() {
                   >
                     Detail Pengajuan
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                  <div className="warga-detail-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                     {[
                       { label: 'Nomor Pengajuan', value: `#${statusBansos.id_pengajuan || '—'}` },
                       { label: 'Tanggal Dikirim', value: fmtDate(statusBansos.created_at) },
@@ -1527,7 +1559,7 @@ export default function WargaDashboard() {
                           style={{
                             fontSize: 11,
                             fontWeight: 700,
-                            color: '#94a3b8',
+                            color: '#526078',
                             textTransform: 'uppercase',
                             letterSpacing: '.06em',
                             marginBottom: 5,
@@ -1563,12 +1595,12 @@ export default function WargaDashboard() {
                 <MI
                   name="forum"
                   size={48}
-                  style={{ color: '#C6DCFF', display: 'block', margin: '0 auto 16px' }}
+                  style={{ color: '#5480be', display: 'block', margin: '0 auto 16px' }}
                 />
                 <div style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>
                   Fitur Diskusi Belum Tersedia
                 </div>
-                <p style={{ fontSize: 14, color: '#64748b', marginBottom: 22 }}>
+                <p style={{ fontSize: 14, color: '#526078', marginBottom: 22 }}>
                   Selesaikan pengisian kuesioner terlebih dahulu.
                 </p>
                 <button className="btn-blue" onClick={() => setActiveNav('kuesioner')}>
@@ -1607,7 +1639,7 @@ export default function WargaDashboard() {
                     <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>
                       Diskusi dengan Ketua RT
                     </div>
-                    <div style={{ fontSize: 11.5, color: '#94a3b8' }}>
+                    <div style={{ fontSize: 11.5, color: '#526078' }}>
                       Pengajuan #{statusBansos.id_pengajuan} · Pesan tercatat secara resmi
                     </div>
                   </div>
@@ -1640,7 +1672,7 @@ export default function WargaDashboard() {
                   }}
                 >
                   {pesanList.length === 0 ? (
-                    <div style={{ margin: 'auto', textAlign: 'center', color: '#94a3b8' }}>
+                    <div style={{ margin: 'auto', textAlign: 'center', color: '#526078' }}>
                       <MI
                         name="chat_bubble_outline"
                         size={36}
@@ -1663,7 +1695,7 @@ export default function WargaDashboard() {
                           style={{
                             fontSize: 10,
                             fontWeight: 700,
-                            color: '#94a3b8',
+                            color: '#526078',
                             marginBottom: 3,
                             textAlign: p.pengirim_role === 'warga' ? 'right' : 'left',
                           }}
@@ -1762,7 +1794,7 @@ export default function WargaDashboard() {
                       name="send"
                       fill
                       size={17}
-                      style={{ color: pesanBaru.trim() ? '#fff' : '#94a3b8' }}
+                      style={{ color: pesanBaru.trim() ? '#fff' : '#526078' }}
                     />
                   </button>
                 </form>

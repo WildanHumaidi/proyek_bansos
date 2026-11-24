@@ -31,6 +31,16 @@ const GLOBAL_CSS = `
   .inp:focus { border-color: #1A56DB; background: #fff; box-shadow: 0 0 0 3px rgba(0,81,213,.08); }
   .inp-pw { padding-right: 44px; }
   @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  .auth-grid { min-height: 100vh; display: grid; grid-template-columns: 1fr 1fr; overflow-x: hidden; }
+  .auth-grid > * { min-width: 0; }
+  .auth-brand { display: flex; flex-direction: column; justify-content: space-between; }
+  .auth-form { display: flex; align-items: center; justify-content: center; }
+  @media (max-width: 900px) {
+    .auth-grid { grid-template-columns: 1fr; }
+    .auth-brand { flex-direction: row; align-items: center; padding: 16px 20px !important; }
+    .auth-brand > div:nth-child(2), .auth-brand > div:nth-child(3) { display: none; }
+    .auth-form { padding: 36px 20px !important; align-items: flex-start; }
+  }
 `;
 
 const MI = ({ name, fill = false, size = 20, style: s = {} }) => (
@@ -93,14 +103,12 @@ export default function Login() {
     <>
       <style>{GLOBAL_CSS}</style>
 
-      <div style={{ minHeight: '100vh', display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
+      <div className="auth-grid">
         {/* ── KIRI: Branding Panel ── */}
         <div
+          className="auth-brand"
           style={{
             background: 'linear-gradient(155deg, #0C2D6B 0%, #1A56DB 60%, #3B82F6 100%)',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
             padding: '48px 56px',
             position: 'relative',
             overflow: 'hidden',
@@ -271,10 +279,8 @@ export default function Login() {
 
         {/* ── KANAN: Form Login ── */}
         <div
+          className="auth-form"
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
             padding: '48px 56px',
             background: '#fff',
           }}
@@ -293,7 +299,7 @@ export default function Login() {
               >
                 Masuk ke Sistem
               </h2>
-              <p style={{ fontSize: 14.5, color: '#64748b', lineHeight: 1.6 }}>
+              <p style={{ fontSize: 14.5, color: '#526078', lineHeight: 1.6 }}>
                 Masukkan kredensial Anda untuk mengakses portal sesuai peran yang ditetapkan.
               </p>
             </div>
@@ -351,7 +357,7 @@ export default function Login() {
                       left: 13,
                       top: '50%',
                       transform: 'translateY(-50%)',
-                      color: '#94a3b8',
+                      color: '#526078',
                     }}
                   />
                   <input
@@ -390,7 +396,7 @@ export default function Login() {
                       left: 13,
                       top: '50%',
                       transform: 'translateY(-50%)',
-                      color: '#94a3b8',
+                      color: '#526078',
                     }}
                   />
                   <input
@@ -421,7 +427,7 @@ export default function Login() {
                     <MI
                       name={showPw ? 'visibility' : 'visibility_off'}
                       size={18}
-                      style={{ color: '#94a3b8' }}
+                      style={{ color: '#526078' }}
                     />
                   </button>
                 </div>
@@ -465,12 +471,31 @@ export default function Login() {
                   </>
                 )}
               </button>
+
+              {/* Bantuan untuk warga yang belum terbiasa memakai aplikasi */}
+              <div
+                style={{
+                  marginTop: 4,
+                  fontSize: 12.5,
+                  color: '#526078',
+                  lineHeight: 1.6,
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 7,
+                }}
+              >
+                <MI name="help" size={15} style={{ color: '#526078', flexShrink: 0, marginTop: 1 }} />
+                <span>
+                  Lupa kata sandi? Hubungi Ketua RT di wilayah Anda — beliau bisa mengatur ulang
+                  kata sandi Anda.
+                </span>
+              </div>
             </form>
 
             {/* Divider */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, margin: '28px 0' }}>
               <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
-              <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 600 }}>ATAU</span>
+              <span style={{ fontSize: 12, color: '#526078', fontWeight: 600 }}>ATAU</span>
               <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
             </div>
 
@@ -501,7 +526,7 @@ export default function Login() {
               }}
             >
               <MI name="person_add" size={17} />
-              Daftar sebagai Warga Baru
+              Belum punya akun? Daftar di sini
             </Link>
 
             {/* Role info */}
@@ -518,7 +543,7 @@ export default function Login() {
                 style={{
                   fontSize: 11,
                   fontWeight: 700,
-                  color: '#94a3b8',
+                  color: '#526078',
                   textTransform: 'uppercase',
                   letterSpacing: '.08em',
                   marginBottom: 10,
@@ -530,8 +555,8 @@ export default function Login() {
                 {[
                   { role: 'Admin', icon: 'admin_panel_settings', color: '#0051d5', bg: '#eff6ff' },
                   { role: 'Ketua RW', icon: 'account_balance', color: '#7c3aed', bg: '#f5f3ff' },
-                  { role: 'Ketua RT', icon: 'home_work', color: '#0891b2', bg: '#ecfeff' },
-                  { role: 'Warga', icon: 'person', color: '#059669', bg: '#f0fdf4' },
+                  { role: 'Ketua RT', icon: 'home_work', color: '#155e75', bg: '#ecfeff' },
+                  { role: 'Warga', icon: 'person', color: '#047857', bg: '#f0fdf4' },
                 ].map(({ role, icon, color, bg }) => (
                   <div
                     key={role}

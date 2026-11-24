@@ -53,6 +53,24 @@ function useDesign() {
         }
         .print-status { display:none; }
         .badge-screen { display:inline-flex; }
+        /* ── Responsif HP: sidebar jadi overlay + konten penuh layar ── */
+        @media (max-width: 900px) {
+          .rt-sidebar {
+            position: fixed !important; top: 0; left: 0; bottom: 0;
+            width: 256px !important; max-width: 82vw;
+            z-index: 200;
+            transform: translateX(-102%);
+            transition: transform .22s ease;
+            box-shadow: 0 0 0 0 rgba(15,23,42,.35);
+          }
+          .rt-sidebar.open { transform: translateX(0); box-shadow: 0 0 0 100vmax rgba(15,23,42,.35); }
+          .rt-main { min-height: 0; }
+          .rt-header { padding: 0 12px !important; height: 56px !important; gap: 8px; }
+          .rt-header-title { font-size: 14px !important; }
+          .rt-main-pad { padding: 16px 12px !important; }
+          .rt-burger { display: inline-flex !important; }
+        }
+        @media print { .rt-burger, .rt-scrim { display:none!important; } }
       `;
       document.head.appendChild(st);
     }
@@ -262,6 +280,7 @@ export default function RtDashboard() {
     }
   });
   const [activeMenu, setActiveMenu] = useState('beranda');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const [wargaList, setWargaList] = useState([]);
@@ -570,7 +589,7 @@ export default function RtDashboard() {
 
       {/* ── SIDEBAR ── */}
       <aside
-        className="no-print"
+        className={`no-print rt-sidebar ${sidebarOpen ? 'open' : ''}`}
         style={{
           width: 248,
           flexShrink: 0,
@@ -583,6 +602,7 @@ export default function RtDashboard() {
       >
         {/* Brand (Diseragamkan dengan Admin/RW) */}
         <div
+          className="rt-sidebar-brand"
           style={{
             padding: '20px 20px 16px',
             borderBottom: '1px solid #C6DCFF',
@@ -719,7 +739,10 @@ export default function RtDashboard() {
             return (
               <button
                 key={key}
-                onClick={() => setActiveMenu(key)}
+                onClick={() => {
+                  setActiveMenu(key);
+                  setSidebarOpen(false);
+                }}
                 style={{
                   width: '100%',
                   display: 'flex',
@@ -820,10 +843,10 @@ export default function RtDashboard() {
       </aside>
 
       {/* ── MAIN ── */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div className="rt-main" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* Header */}
         <header
-          className="no-print"
+          className="no-print rt-header"
           style={{
             height: 64,
             flexShrink: 0,
@@ -835,7 +858,27 @@ export default function RtDashboard() {
             padding: '0 32px',
           }}
         >
-          <div>
+          <button
+            className="rt-burger no-print"
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Buka menu"
+            style={{
+              display: 'none',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 38,
+              height: 38,
+              borderRadius: 10,
+              border: '1.5px solid #C6DCFF',
+              background: '#FAFCFF',
+              color: '#1A56DB',
+              cursor: 'pointer',
+              flexShrink: 0,
+            }}
+          >
+            <MI name="menu" size={20} />
+          </button>
+          <div className="rt-header-title">
             <h1 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: 0 }}>
               {pageTitle}
             </h1>
@@ -885,7 +928,7 @@ export default function RtDashboard() {
           </div>
         </header>
 
-        <main style={{ flex: 1, overflowY: 'auto', padding: 28, background: '#F0F6FF' }}>
+        <main className="rt-main-pad" style={{ flex: 1, overflowY: 'auto', padding: 28, background: '#F0F6FF' }}>
           {/* ════ BERANDA ════ */}
           {activeMenu === 'beranda' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
@@ -2834,6 +2877,19 @@ export default function RtDashboard() {
           </div>
         </Overlay>
       )}
+
+      {/* Scrim mobile — tutup sidebar saat diketuk */}
+      <div
+        className="rt-scrim no-print"
+        onClick={() => setSidebarOpen(false)}
+        style={{
+          display: sidebarOpen ? 'block' : 'none',
+          position: 'fixed',
+          inset: 0,
+          zIndex: 190,
+          background: 'transparent',
+        }}
+      />
     </div>
   );
 }

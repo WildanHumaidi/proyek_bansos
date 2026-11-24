@@ -32,6 +32,24 @@ function useDesign() {
         @keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
         @keyframes popIn  { from { opacity:0; transform:scale(.97) translateY(6px); } to { opacity:1; transform:scale(1) translateY(0); } }
 
+        /* ── Responsif HP ── */
+        @media (max-width: 900px) {
+          .admin-sidebar {
+            position: fixed !important; top: 0; left: 0; bottom: 0;
+            width: 256px !important; max-width: 82vw;
+            z-index: 200;
+            transform: translateX(-102%);
+            transition: transform .22s ease;
+            box-shadow: 0 0 0 0 rgba(15,23,42,.35);
+          }
+          .admin-sidebar.open { transform: translateX(0); box-shadow: 0 0 0 100vmax rgba(15,23,42,.35); }
+          .admin-header { padding: 0 12px !important; height: 56px !important; gap: 8px; }
+          .admin-header-title { font-size: 14px !important; }
+          .admin-main-pad { padding: 16px 12px !important; }
+          .admin-burger { display: inline-flex !important; }
+        }
+        @media print { .admin-burger, .admin-scrim { display:none!important; } }
+
         @media print {
           @page { size: A4 landscape; margin: 8mm 12mm; }
 
@@ -533,6 +551,7 @@ export default function AdminDashboard() {
     }
   });
   const [activeMenu, setActiveMenu] = useState('beranda');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
   /* data */
@@ -991,7 +1010,7 @@ export default function AdminDashboard() {
 
       {/* ════════ SIDEBAR ════════ */}
       <aside
-        className="no-print"
+        className={`no-print admin-sidebar ${sidebarOpen ? 'open' : ''}`}
         style={{
           width: 252,
           flexShrink: 0,
@@ -1005,6 +1024,7 @@ export default function AdminDashboard() {
       >
         {/* Brand */}
         <div
+          className="admin-sidebar-brand"
           style={{
             padding: '20px 20px 16px',
             borderBottom: '1px solid #C6DCFF',
@@ -1152,7 +1172,10 @@ export default function AdminDashboard() {
                   return (
                     <button
                       key={key}
-                      onClick={() => setActiveMenu(key)}
+                      onClick={() => {
+                        setActiveMenu(key);
+                        setSidebarOpen(false);
+                      }}
                       style={{
                         width: '100%',
                         display: 'flex',
@@ -1277,10 +1300,10 @@ export default function AdminDashboard() {
       </aside>
 
       {/* ════════ MAIN ════════ */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div className="admin-main" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* Header */}
         <header
-          className="no-print"
+          className="no-print admin-header"
           style={{
             height: 64,
             flexShrink: 0,
@@ -1292,7 +1315,27 @@ export default function AdminDashboard() {
             padding: '0 32px',
           }}
         >
-          <div style={{ display: 'flex', align: 'center', gap: 12 }}>
+          <button
+            className="admin-burger no-print"
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Buka menu"
+            style={{
+              display: 'none',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 38,
+              height: 38,
+              borderRadius: 10,
+              border: '1.5px solid #C6DCFF',
+              background: '#FAFCFF',
+              color: '#1A56DB',
+              cursor: 'pointer',
+              flexShrink: 0,
+            }}
+          >
+            <MI name="menu" size={20} />
+          </button>
+          <div className="admin-header-title" style={{ display: 'flex', align: 'center', gap: 12 }}>
             <div>
               <h1
                 style={{
@@ -1366,6 +1409,7 @@ export default function AdminDashboard() {
 
         <main
           id="print-main"
+          className="admin-main-pad"
           style={{ flex: 1, overflowY: 'auto', padding: 28, background: '#F0F6FF' }}
         >
           {/* ══════ BERANDA ══════ */}
@@ -3453,6 +3497,19 @@ export default function AdminDashboard() {
           </ModalBox>
         </Overlay>
       )}
+
+      {/* Scrim mobile — tutup sidebar saat diketuk */}
+      <div
+        className="admin-scrim no-print"
+        onClick={() => setSidebarOpen(false)}
+        style={{
+          display: sidebarOpen ? 'block' : 'none',
+          position: 'fixed',
+          inset: 0,
+          zIndex: 190,
+          background: 'transparent',
+        }}
+      />
     </div>
   );
 }
