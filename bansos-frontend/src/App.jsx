@@ -1,20 +1,13 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import RegisterWarga from './pages/RegisterWarga';
+import LandingPage from './pages/LandingPage';
 import AdminDashboard from './pages/AdminDashboard';
 import RtDashboard from './pages/RtDashboard';
 import RwDashboard from './pages/RwDashboard';
 import WargaDashboard from './pages/WargaDashboard';
 import DiagnosaKoneksi from './pages/DiagnosaKoneksi';
 import { getUser } from './lib/api';
-
-/* Redirect ke dashboard sesuai role jika sudah login */
-function RoleRedirect() {
-  const user = getUser();
-  if (!user) return <Navigate to="/login" replace />;
-  const routes = { admin: '/dashboard', rt: '/rt', rw: '/rw', warga: '/warga' };
-  return <Navigate to={routes[user.role] || '/warga'} replace />;
-}
 
 /* Proteksi route — cek token & role */
 function Protected({ roles, children }) {
@@ -28,8 +21,8 @@ export default function App() {
   return (
     <Router>
       <Routes>
-        {/* Root → redirect cerdas */}
-        <Route path="/" element={<RoleRedirect />} />
+        {/* Root → beranda publik (tanpa login) / redirect cerdas jika sudah login */}
+        <Route path="/" element={<LandingPage />} />
 
         {/* Autentikasi */}
         <Route path="/login" element={<Login />} />
