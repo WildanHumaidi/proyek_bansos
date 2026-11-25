@@ -60,7 +60,7 @@ class AdminRtControllerFixesTest extends TestCase
 
         Sanctum::actingAs($admin);
 
-        $responsePost = $this->postJson('/api/admin/fix-data');
+        $responsePost = $this->postJson('/api/admin/fix-data', ['mode' => 'apply']);
         $responsePost->assertStatus(200);
         $this->assertEquals(10, Penilaian::where('id_pengajuan', $pengajuan->id_pengajuan)->count());
 
@@ -87,7 +87,12 @@ class AdminRtControllerFixesTest extends TestCase
         $pengajuan = Pengajuan::create([
             'id_warga' => $warga->id_warga,
             'status' => 'disetujui',
-            'jawaban_mentah' => json_encode(['q1' => '1 KK']),
+            'jawaban_mentah' => json_encode([
+                'q1' => '1 KK', 'q2' => '4 Orang', 'q3' => 'SD',
+                'q4' => 'Tidak Ada', 'q5' => '400 - 700 Ribu', 'q6' => '< 400 Ribu',
+                'q7' => 'Sewa < 1 Juta', 'q8' => 'Sumur Milik Sendiri',
+                'q9' => 'Listrik 450 watt', 'q10' => 'Sepeda Motor 1 Buah, dalam Kondisi Baik',
+            ]),
         ]);
 
         Sanctum::actingAs($admin);

@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\KriteriaController;
 use App\Http\Controllers\Api\LogController;
+use App\Http\Controllers\Api\PengaduanController;
 use App\Http\Controllers\Api\SawController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\WargaController;
@@ -26,9 +27,16 @@ Route::middleware('auth:sanctum')->group(function () {
     // --- Auth Umum ---
     Route::post('/logout', [AuthController::class, 'logout']);
 
+    // ── Pengaduan (Warga / RT / RW / Admin) ────────────────────────────────
+    Route::get('/pengaduan', [PengaduanController::class, 'index']);
+    Route::post('/pengaduan', [PengaduanController::class, 'store']);
+    Route::put('/pengaduan/{id}', [PengaduanController::class, 'update']);
+
     // ── Chat (Warga ↔ RT / Admin) ─────────────────────────────────────────
     Route::get('/chat/{id}', [ChatController::class, 'getPesan']);
-    Route::post('/chat/{id}', [ChatController::class, 'storePesan']);
+    Route::post('/chat/{id}', [ChatController::class, 'storePesan'])->middleware('throttle:chat');
+    Route::get('/chat/{id}/belum-dibaca', [ChatController::class, 'belumDibaca']);
+    Route::put('/chat/{id}/baca', [ChatController::class, 'tandaiDibaca']);
 
     // ── Khusus Warga ──────────────────────────────────────────────────────
     Route::middleware('role:warga')->group(function () {
@@ -52,7 +60,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/admin/users', [AdminRtController::class, 'getUsers']);
         Route::get('/kriteria', [KriteriaController::class, 'index']);
         Route::get('/kriteria/{id}/subkriteria', [KriteriaController::class, 'getSubKriteria']);
-        Route::get('/saw/hitung', [SawController::class, 'hitungRanking']);
+        Route::get('/saw/hitung', [SawController::class, 'hitungRanking'])->middleware('throttle:saw');
+        Route::get('/saw/report/export', [SawController::class, 'exportReport'])->middleware('throttle:saw');
     });
 
     // ── Admin & RW — Dataset Global ───────────────────────────────────────
@@ -69,10 +78,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/admin/users/{id}', [AdminRtController::class, 'deleteUser']);
         Route::delete('/admin/pengajuan/{id}', [AdminRtController::class, 'destroyPengajuan']);
         Route::put('/admin/users/{id}/taut-warga', [AdminRtController::class, 'tautkanWarga']);
-        Route::post('/admin/pengajuan/import', [AdminRtController::class, 'importCsv']);
+        Route::post('/admin/pengajuan/import', [AdminRtController::class, 'importCsv'])->middleware('throttle:import');
         Route::put('/kriteria/{id}', [KriteriaController::class, 'update']);
         Route::put('/admin/subkriteria/{id}', [KriteriaController::class, 'updateSubKriteria']);
-        Route::post('/admin/fix-data', [AdminRtController::class, 'fixDataMentah']);
+        Route::post('/admin/fix-data', [AdminRtController::class, 'fixDataMentah'])->middleware('throttle:import');
         Route::put('/admin/kriteria/bobot', [KriteriaController::class, 'updateBobotBulk']);
         Route::get('/logs', [LogController::class, 'index']);
     });

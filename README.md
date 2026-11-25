@@ -40,17 +40,21 @@ Penyaluran bantuan sosial di tingkat kewilayahan sering menghadapi kendala verif
 ### 1. Administrator Sistem (Super Admin)
 - **Manajemen Pengguna Lengkap**: CRUD akun untuk seluruh peran (Admin, RW, RT, Warga) dengan isolasi nomor RT.
 - **Kalibrasi Kriteria & Bobot**: Penyesuaian nama, tipe (*benefit* / *cost*), dan bobot kriteria secara dinamis.
-- **Import Data Massal**: Pengunggahan kuesioner warga via file CSV dengan pencocokan otomatis.
+- **Import Data Massal**: Pengunggahan kuesioner warga via file CSV dengan validasi header, pelaporan per baris, dan status hasil **selalu `menunggu`** — bukan disetujui otomatis. Satu baris gagal membatalkan seluruh impor (atomik).
 - **Audit Logging**: Pencatatan aktivitas sistem penting (perubahan status, kalkulasi ranking) ke tabel `activity_logs`.
+- **Utilitas Perbaikan Data**: `/api/admin/fix-data` berjalan **dry-run** secara default; perubahan hanya terjadi dengan `mode=apply` eksplisit.
 
 ### 2. Ketua RW
 - **Monitoring Makro Wilayah**: Pemantauan agregat data warga dan pengajuan dari seluruh RT di bawah lingkup RW.
 - **Kalkulasi & Analisis SAW**: Eksekusi perankingan global dengan visualisasi skor preferensi tertinggi hingga terendah.
-- **Ekspor Dokumen**: Cetak laporan dan rekapitulasi data penerima bantuan dalam format standar cetak.
+- **Ekspor Laporan**: Unduh laporan perankingan sebagai berkas CSV/TSV dari server (`GET /api/saw/report/export`), dengan nilai dan cakupan yang identik dengan yang tampil di layar.
+- **Pengawasan Pengaduan**: Melihat pengaduan dari seluruh RT dan mengambil alih penanganan bila RT tidak tersedia.
 
 ### 3. Ketua RT
 - **Verifikasi Lapangan Faktual**: Meninjau jawaban kuesioner warga di RT-nya sebelum disetujui atau ditolak.
 - **Otomatisasi Penilaian**: Persetujuan pengajuan otomatis meng-generate rekam matriks penilaian kriteria.
+- **Rekomendasi Terbatas Wilayah**: Hasil SAW hanya berisi warga RT-nya sendiri, dengan peringkat mulai dari 1 (`ranking_rt`) — bukan peringkat global RW.
+- **Penanganan Pengaduan**: Menerima/menolak keluhan warga wilayahnya beserta tanggapan; pengaduan RT lain tidak terlihat.
 - **Pendaftaran Warga Terpimpin**: Mendaftarkan warga yang memiliki keterbatasan akses teknologi.
 - **Ruang Diskusi (Chat)**: Komunikasi dua arah langsung dengan warga per pengajuan untuk klarifikasi berkas.
 
@@ -58,7 +62,10 @@ Penyaluran bantuan sosial di tingkat kewilayahan sering menghadapi kendala verif
 - **Registrasi & Login Mandiri**: Pembuatan akun warga terverifikasi nomor RT domisili.
 - **Kuesioner Terstandar**: Pengisian 10 butir pertanyaan sosio-ekonomi dengan indikator progres visual.
 - **Pelacakan Status Real-time**: Indikator status (Menunggu Verifikasi, Disetujui, Ditolak) secara transparan.
+- **Pengaduan**: Mengirim keluhan (kategori umum/data/verifikasi/pencairan/lainnya), melihat status & riwayat penanganannya — hanya milik sendiri.
 - **Konsultasi Interaktif**: Mengirim dan menerima pesan tanggapan dari Ketua RT.
+
+> **Pengaduan lintas peran:** warga membuat → RT wilayahnya menindaklanjuti (terima/tolak + tanggapan) → RW & admin melihat seluruh RT dan dapat mengambil alih. Setiap perubahan status tercatat di `pengaduan_riwayat`.
 
 ---
 
@@ -74,6 +81,14 @@ Algoritma Simple Additive Weighting menormalisasi matriks keputusan $X$ menjadi 
    $$V_i = \sum_{j=1}^{n} w_j \cdot r_{ij}$$
 
 Keluaran $V_i$ tertinggi menunjukkan warga dengan prioritas bantuan sosial paling mendesak.
+
+**Catatan implementasi (2026-11):** perhitungan dipusatkan di `App\Services\SawCalculator`
+sehingga `/saw/hitung`, `/saw/dataset`, dan `/saw/report/export` memakai satu definisi
+eligibilitas dan satu snapshot transaksi. Alternatif yang tidak eligible (warga tidak
+ditemukan, nama kosong, matriks belum lengkap) **tidak dibuang diam-diam** — semuanya
+dikembalikan di field `dilewati` dan ditampilkan sebagai banner di ketiga dashboard staf.
+Kriteria yang nilainya konstan di seluruh alternatif dilaporkan di
+`kriteria_tanpa_variasi` karena kontribusinya ke peringkat nol.
 
 ---
 
@@ -136,10 +151,12 @@ Database seeder menyediakan akun bawaan untuk tiap hak akses:
 | **Warga** | `warga01` | `warga123` | Simulasi pengajuan dan status warga |
 
 > **Catatan:** akun `warga01` hanya dibuat oleh `UserSeeder` (lingkungan demo/uji).
-> Pada database produksi yang diisi lewat import CSV, akun warga dibuat dari data
-> warga nyata dan ditautkan lewat kolom `users.id_warga` — bukan dicocokkan
-> berdasarkan nama. Akun yang belum tertaut akan ditolak (409) saat mengajukan;
-> admin dapat menautkannya lewat `PUT /api/admin/users/{id}/taut-warga`.
+> Seeder ini **idempoten** — dijalankan berulang tidak menggandakan akun — dan
+> **tidak boleh dijalankan di production**: password demo di tabel atas hanya untuk
+> pengembangan lokal. Pada database produksi yang diisi lewat import CSV, akun warga
+> dibuat dari data warga nyata dan ditautkan lewat kolom `users.id_warga` — bukan
+> dicocokkan berdasarkan nama. Akun yang belum tertaut akan ditolak (409) saat
+> mengajukan; admin dapat menautkannya lewat `PUT /api/admin/users/{id}/taut-warga`.
 
 ---
 
@@ -148,7 +165,7 @@ Database seeder menyediakan akun bawaan untuk tiap hak akses:
 Seluruh fungsionalitas dan konsistensi kode dijamin oleh rangkaian pengujian otomatis dan linter:
 
 ```bash
-# Backend Automated Tests (19 tests, 48 assertions)
+# Backend Automated Tests (136 tests, 3031 assertions)
 cd bansos-backend
 php artisan test
 
@@ -163,6 +180,39 @@ npm run format
 npm run build
 ```
 
+### Dependency audit
+
+```bash
+cd bansos-backend && composer audit     # 0 advisory (2026-11-25)
+cd ../bansos-frontend && npm audit      # 0 vulnerabilities (2026-11-25)
+```
+
+Kedua audit bersih per 2026-11-25. Sebelumnya: 53 advisory backend (1 critical —
+TokenGuard auth bypass, 15 high) dan 17 advisory frontend (12 high, termasuk axios
+& react-router-dom). Rincian di `FIX_IMPLEMENTATION_REPORT.md` §8a.
+
+### Regression gate per tingkat keparahan
+
+| Berkas | Cakupan |
+|---|---|
+| `tests/Feature/P0RemediationTest.php` | 10 test — CSV asli → mapper → penilaian → `menunggu` → approval → SAW → ranking API |
+| `tests/Feature/P1RemediationTest.php` | 10 test — identitas warga, validasi jawaban, rollback approval, header CSV, resubmission |
+| `tests/Feature/P2RemediationTest.php` | 3 test — export laporan, kesamaan eligibility dataset↔ranking, snapshot transaksi |
+| `tests/Feature/PengaduanTest.php` | 11 test — pengaduan warga/RT/RW/admin: isolasi wilayah, status valid, riwayat, akun tanpa identitas |
+| `tests/Unit/RtFormatterTest.php` | 6 test — kontrak kanonikalisasi RT (`formatRt`, `intValue`, `sama`, rule validasi termasuk penolakan RT 0) |
+| `tests/Feature/JurnalKelompokTest.php` | 26 test — delapan kelompok pengujian jurnal (autentikasi, registrasi, kuesioner, verifikasi RT, SAW + matriks, import CSV, manajemen akun, cetak laporan) |
+| `tests/Feature/P3HygieneTest.php` | 8 test — kolom `warga.password` dihapus, status baca chat (isolasi lintas pengguna), rate limit `saw` & `chat` |
+| `tests/Feature/ChatPollingTest.php` | 4 test — `GET` tidak menandai terbaca, urutan pesan deterministik, pesan baru terlihat pada polling berikutnya, isolasi lintas warga |
+
+### UAT guard (UI mobile)
+
+Dua belas skrip Playwright di `docs/uat/` menjaga overflow 360px, sidebar off-canvas,
+kontras WCAG (Beranda, halaman ranking, panel pengaduan), font race, isolasi data
+pengaduan antar RT, format label RT yang konsisten, status baca chat, polling
+percakapan (warga & RT), tidak adanya ketergantungan Tailwind CDN, dan font yang
+di-host sendiri (tanpa permintaan ke Google Fonts). Cara menjalankan: lihat
+`docs/uat/README.md`.
+
 ---
 
 ## Struktur Repositori
@@ -174,8 +224,9 @@ proyek_bansos/
 │       └── ci.yml             # GitHub Actions CI workflow (lint & test)
 ├── bansos-backend/             # RESTful API Backend
 │   ├── app/
-│   │   ├── Http/Controllers/Api/ # API Controllers (Auth, SAW, RT, Warga, Chat)
+│   │   ├── Http/Controllers/Api/ # API Controllers (Auth, SAW, RT, Warga, Chat, Pengaduan)
 │   │   ├── Http/Middleware/      # Role-based Guard Middleware
+│   │   ├── Services/             # SSOT: RtFormatter, JawabanMapper, CsvImporter, SawCalculator
 │   │   └── Models/               # Model Eloquent & Relasi
 │   ├── config/cors.php           # Konfigurasi CORS berbasis env
 │   ├── database/
@@ -189,7 +240,9 @@ proyek_bansos/
 ├── bansos-frontend/            # Frontend SPA (React 19 + Vite)
 │   ├── src/
 │   │   ├── pages/                # AdminDashboard, RtDashboard, RwDashboard, WargaDashboard
-│   │   ├── services/             # api.js (Axios client & auth) & constants.js
+│   │   ├── components/           # RankingWarnings (banner dilewati/kriteria konstan/error)
+│   │   ├── services/             # api.js (Axios client & auth)
+│   │   ├── lib/                  # report.js (unduh laporan), api.js (re-export)
 │   │   ├── App.jsx               # Client router & protected routes
 │   │   └── main.jsx
 │   ├── .env.example              # Konfigurasi environment frontend
@@ -198,8 +251,12 @@ proyek_bansos/
 │
 ├── docs/
 │   ├── screenshots/              # Folder penampung tangkapan layar antarmuka
+│   ├── uat/                      # Skrip guard UI mobile (Playwright)
 │   ├── AUDIT.md                  # Laporan audit arsitektur & keamanan
-│   └── PRD.md                    # Dokumen spesifikasi kebutuhan produk
+│   ├── PRD.md                    # Dokumen spesifikasi kebutuhan produk
+│   └── SAW_JOURNAL_RECONCILIATION.md  # Rekonsiliasi matriks sistem vs jurnal
+├── FIX_IMPLEMENTATION_REPORT.md  # Hasil remediasi re-audit 2026-11 + daftar terbuka
+├── RE_AUDIT_BANSOS_HUB_REPORT.md # Laporan re-audit jurnal-grounded
 ├── CONTRIBUTING.md             # Panduan kontribusi tim
 ├── LICENSE                     # Lisensi MIT
 └── README.md                   # Dokumentasi utama proyek
@@ -215,6 +272,10 @@ proyek_bansos/
 - [x] Import dataset kuesioner warga massal via CSV.
 - [x] Audit keamanan, penghapusan token dump, penanganan rate limiting, dan IDOR prevention.
 - [x] Setup CI Pipeline otomatis (GitHub Actions) dan linting Pint + ESLint.
+- [x] Remediasi re-audit 2026-11: mapper CSV tanpa fallback (900/900 sel benar),
+      impor berstatus `menunggu`, scope ranking per RT + `ranking_rt` server-side,
+      banner `dilewati`, export laporan CSV server-side, sub-sistem pengaduan.
+      Rincian & bukti: `FIX_IMPLEMENTATION_REPORT.md`.
 - [ ] Ekspor laporan ke format Excel XLSX native untuk kebutuhan arsip kelurahan.
 - [ ] Notifikasi status pengajuan via WhatsApp Gateway / Email.
 - [ ] Modul penentuan kuota dinamis penerima bansos per RT berdasarkan pagu anggaran.

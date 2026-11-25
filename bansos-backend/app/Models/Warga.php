@@ -15,6 +15,5 @@ class Warga extends Model
         'alamat',
         'rt',
         'rw',
-        'password',
     ];
 }

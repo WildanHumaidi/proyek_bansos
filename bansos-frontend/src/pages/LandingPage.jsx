@@ -3,8 +3,6 @@ import { getUser } from '../lib/api';
 
 /* ─── Design Bootstrap (sama seperti halaman lain di proyek ini) ─────────── */
 const CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-  @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { font-family: 'Plus Jakarta Sans', sans-serif; background: #F0F6FF; color: #0f172a; -webkit-font-smoothing: antialiased; }
   .material-symbols-outlined { font-family: 'Material Symbols Outlined'; font-variation-settings: 'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24; font-style: normal; display: inline-block; line-height: 1; text-transform: none; letter-spacing: normal; white-space: nowrap; }

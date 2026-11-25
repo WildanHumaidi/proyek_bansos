@@ -20,11 +20,6 @@ class Penilaian extends Model
         return $this->belongsTo(Pengajuan::class, 'id_pengajuan', 'id_pengajuan');
     }
 
-    public function kriteria()
-    {
-        return $this->belongsTo(Kriteria::class, 'id_kriteria', 'id_kriteria');
-    }
-
     public function subKriteria()
     {
         return $this->belongsTo(SubKriteria::class, 'id_subkriteria', 'id_subkriteria');

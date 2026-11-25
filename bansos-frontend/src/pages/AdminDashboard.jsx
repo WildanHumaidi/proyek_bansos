@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import RankingWarnings from '../components/RankingWarnings';
+import PengaduanPanel from '../components/PengaduanPanel';
+import { rtLabel } from '../lib/rt';
+import { unduhLaporanSaw } from '../lib/report';
 
 const API = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000/api';
 const tok = () => localStorage.getItem('token');
@@ -9,22 +13,6 @@ const authH = () => ({ Authorization: `Bearer ${tok()}` });
 /* ─── Design Bootstrap ───────────────────────────────────────────────────── */
 function useDesign() {
   useEffect(() => {
-    if (!document.getElementById('gf-plus')) {
-      const l = document.createElement('link');
-      l.id = 'gf-plus';
-      l.rel = 'stylesheet';
-      l.href =
-        'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap';
-      document.head.appendChild(l);
-    }
-    if (!document.getElementById('mat-sym')) {
-      const l = document.createElement('link');
-      l.id = 'mat-sym';
-      l.rel = 'stylesheet';
-      l.href =
-        'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap';
-      document.head.appendChild(l);
-    }
     if (!document.getElementById('admin-print')) {
       const st = document.createElement('style');
       st.id = 'admin-print';
@@ -230,7 +218,7 @@ const fmtDateTime = (s) =>
 const roleCfg = (role, rt) => {
   if (role === 'admin') return { label: 'Administrator', bg: '#fef9c3', color: '#a16207' };
   if (role === 'rw') return { label: 'Ketua RW', bg: '#f3e8ff', color: '#7c3aed' };
-  if (role === 'rt') return { label: `Ketua RT ${rt || '-'}`, bg: '#dbeafe', color: '#1d4ed8' };
+  if (role === 'rt') return { label: `Ketua ${rtLabel(rt)}`, bg: '#dbeafe', color: '#1d4ed8' };
   return { label: 'Warga', bg: '#f1f5f9', color: '#475569' };
 };
 
@@ -401,7 +389,7 @@ const ModalHead = ({ title, sub, onClose }) => (
   >
     <div>
       <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a' }}>{title}</div>
-      {sub && <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>{sub}</div>}
+      {sub && <div style={{ fontSize: 12, color: '#475569', marginTop: 2 }}>{sub}</div>}
     </div>
     <button
       onClick={onClose}
@@ -418,7 +406,7 @@ const ModalHead = ({ title, sub, onClose }) => (
         flexShrink: 0,
       }}
     >
-      <MI name="close" size={17} style={{ color: '#64748b' }} />
+      <MI name="close" size={17} style={{ color: '#475569' }} />
     </button>
   </div>
 );
@@ -436,7 +424,7 @@ const Lbl = ({ children, required: req }) => (
     }}
   >
     {children}
-    {req && <span style={{ color: '#dc2626', marginLeft: 2 }}>*</span>}
+    {req && <span style={{ color: '#b91c1c', marginLeft: 2 }}>*</span>}
   </label>
 );
 
@@ -557,6 +545,9 @@ export default function AdminDashboard() {
   /* data */
   const [pengajuanList, setPengajuanList] = useState([]);
   const [rankingData, setRankingData] = useState([]);
+  const [dilewati, setDilewati] = useState([]);
+  const [kriteriaTanpaVariasi, setKriteriaTanpaVariasi] = useState([]);
+  const [rankingError, setRankingError] = useState(null);
   const [userList, setUserList] = useState([]);
   const [kriteriaData, setKriteriaData] = useState([]);
   const [subKriteriaData, setSubKriteriaData] = useState([]);
@@ -633,6 +624,9 @@ export default function AdminDashboard() {
       if (['beranda', 'ranking'].includes(activeMenu)) {
         const r = await axios.get(`${API}/saw/hitung?t=${Date.now()}`, { headers: authH() });
         setRankingData(r.data.data || []);
+        setDilewati(r.data.dilewati || []);
+        setKriteriaTanpaVariasi(r.data.kriteria_tanpa_variasi || []);
+        setRankingError(null);
       }
       if (['beranda', 'users'].includes(activeMenu)) {
         const r = await axios.get(`${API}/users`, { headers: authH() });
@@ -648,6 +642,9 @@ export default function AdminDashboard() {
       }
     } catch (e) {
       console.error('Gagal memuat data:', e);
+      if (['beranda', 'ranking'].includes(activeMenu)) {
+        setRankingError(e.response?.data?.message || 'Server tidak merespons. Muat ulang halaman atau jalankan kalkulasi lagi.');
+      }
     } finally {
       setLoading(false);
     }
@@ -732,9 +729,13 @@ export default function AdminDashboard() {
       const r = await axios.get(`${API}/saw/hitung?t=${Date.now()}`, { headers: authH() });
       if (r.data.success) {
         setRankingData(r.data.data || []);
+        setDilewati(r.data.dilewati || []);
+        setKriteriaTanpaVariasi(r.data.kriteria_tanpa_variasi || []);
+        setRankingError(null);
         showToast(`Kalkulasi selesai — ${r.data.total} warga terhitung`);
       } else showToast('Kalkulasi SAW gagal', 'error');
     } catch (err) {
+      setRankingError(err.response?.data?.message || err.message);
       showToast(`Server error: ${err.message}`, 'error');
     } finally {
       setLoading(false);
@@ -924,6 +925,7 @@ export default function AdminDashboard() {
         { key: 'beranda', icon: 'dashboard', label: 'Beranda' },
         { key: 'pengajuan', icon: 'description', label: 'Data Kuesioner', badge: countPending },
         { key: 'matriks', icon: 'grid_view', label: 'Matriks SAW' },
+        { key: 'pengaduan', icon: 'campaign', label: 'Pengaduan' },
         { key: 'ranking', icon: 'leaderboard', label: 'Hasil Keputusan' },
       ],
     },
@@ -942,6 +944,7 @@ export default function AdminDashboard() {
       beranda: 'Dashboard Administrator',
       pengajuan: 'Manajemen Kuesioner Warga',
       matriks: 'Matriks Nilai SAW',
+      pengaduan: 'Pengaduan Warga',
       ranking: 'Hasil Keputusan SAW',
       kriteria: 'Kelola Kriteria & Bobot',
       users: 'Manajemen Akun Sistem',
@@ -953,7 +956,7 @@ export default function AdminDashboard() {
     padding: '11px 18px',
     fontSize: 11,
     fontWeight: 700,
-    color: '#64748b',
+    color: '#475569',
     textAlign: 'left',
     textTransform: 'uppercase',
     letterSpacing: '.06em',
@@ -993,7 +996,7 @@ export default function AdminDashboard() {
             gap: 10,
             padding: '12px 20px',
             borderRadius: 12,
-            background: toast.type === 'error' ? '#dc2626' : '#1A56DB',
+            background: toast.type === 'error' ? '#b91c1c' : '#1A56DB',
             color: '#fff',
             fontSize: 13,
             fontWeight: 600,
@@ -1211,7 +1214,7 @@ export default function AdminDashboard() {
                       {badge > 0 && (
                         <span
                           style={{
-                            background: '#ef4444',
+                            background: '#dc2626',
                             color: '#fff',
                             fontSize: 10,
                             fontWeight: 700,
@@ -1242,7 +1245,7 @@ export default function AdminDashboard() {
           }}
         >
           <button
-            onClick={() => window.print()}
+            onClick={() => unduhLaporanSaw('csv')}
             style={{
               width: '100%',
               display: 'flex',
@@ -1268,7 +1271,7 @@ export default function AdminDashboard() {
               e.currentTarget.style.color = '#374151';
             }}
           >
-            <MI name="print" size={15} /> Cetak Laporan
+            <MI name="download" size={15} /> Unduh Laporan
           </button>
           <button
             onClick={() => {
@@ -1349,7 +1352,7 @@ export default function AdminDashboard() {
                 {pageTitle}
               </h1>
               {loading && (
-                <p style={{ fontSize: 11, color: '#94a3b8', margin: 0 }}>Memuat data...</p>
+                <p style={{ fontSize: 11, color: '#475569', margin: 0 }}>Memuat data...</p>
               )}
             </div>
           </div>
@@ -1393,7 +1396,7 @@ export default function AdminDashboard() {
               <BtnPrimary
                 onClick={jalankanSAW}
                 disabled={loading}
-                style={{ background: '#059669' }}
+                style={{ background: '#047857' }}
               >
                 <MI name="calculate" size={15} />
                 {loading ? 'Menghitung...' : 'Hitung Ulang SAW'}
@@ -1438,7 +1441,7 @@ export default function AdminDashboard() {
                     label: 'Warga Disetujui',
                     value: countDiterima,
                     icon: 'verified',
-                    color: '#059669',
+                    color: '#047857',
                     bg: '#dcfce7',
                     sub: 'Siap kalkulasi SAW',
                   },
@@ -1446,7 +1449,7 @@ export default function AdminDashboard() {
                     label: 'Menunggu Verifikasi',
                     value: countPending,
                     icon: 'pending_actions',
-                    color: '#ca8a04',
+                    color: '#a16207',
                     bg: '#fef9c3',
                     sub: 'Perlu tindakan',
                   },
@@ -1485,7 +1488,7 @@ export default function AdminDashboard() {
                         style={{
                           fontSize: 10,
                           fontWeight: 700,
-                          color: '#94a3b8',
+                          color: '#475569',
                           background: '#FAFCFF',
                           padding: '3px 8px',
                           borderRadius: 5,
@@ -1495,11 +1498,11 @@ export default function AdminDashboard() {
                         Live
                       </span>
                     </div>
-                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>{label}</div>
+                    <div style={{ fontSize: 12, color: '#475569', marginBottom: 2 }}>{label}</div>
                     <div style={{ fontSize: 32, fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>
                       {value}
                     </div>
-                    <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 5 }}>{sub}</div>
+                    <div style={{ fontSize: 11, color: '#475569', marginTop: 5 }}>{sub}</div>
                   </div>
                 ))}
               </div>
@@ -1588,7 +1591,7 @@ export default function AdminDashboard() {
                       alignItems: 'center',
                       gap: 8,
                       padding: '12px 22px',
-                      background: '#059669',
+                      background: '#047857',
                       color: '#fff',
                       border: 'none',
                       borderRadius: 10,
@@ -1664,7 +1667,7 @@ export default function AdminDashboard() {
                                 height: 30,
                                 borderRadius: '50%',
                                 background: i === 0 ? '#0051d5' : '#f1f5f9',
-                                color: i === 0 ? '#fff' : '#64748b',
+                                color: i === 0 ? '#fff' : '#475569',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
@@ -1687,7 +1690,7 @@ export default function AdminDashboard() {
                                 color: '#475569',
                               }}
                             >
-                              RT {r.rt || '-'}
+                              {rtLabel(r.rt)}
                             </span>
                           </td>
                           <td
@@ -1710,7 +1713,7 @@ export default function AdminDashboard() {
                             style={{
                               padding: '32px',
                               textAlign: 'center',
-                              color: '#94a3b8',
+                              color: '#475569',
                               fontSize: 13,
                             }}
                           >
@@ -1741,11 +1744,11 @@ export default function AdminDashboard() {
                     {
                       label: 'Disetujui',
                       count: countDiterima,
-                      color: '#059669',
+                      color: '#047857',
                       track: '#dcfce7',
                     },
-                    { label: 'Ditolak', count: countDitolak, color: '#dc2626', track: '#fee2e2' },
-                    { label: 'Pending', count: countPending, color: '#ca8a04', track: '#fef9c3' },
+                    { label: 'Ditolak', count: countDitolak, color: '#b91c1c', track: '#fee2e2' },
+                    { label: 'Pending', count: countPending, color: '#a16207', track: '#fef9c3' },
                   ].map(({ label, count, color, track }) => {
                     const total = pengajuanList.length;
                     const pct = total > 0 ? Math.round((count / total) * 100) : 0;
@@ -1763,7 +1766,7 @@ export default function AdminDashboard() {
                           <span style={{ color: '#0f172a' }}>{label}</span>
                           <span style={{ color }}>
                             {count} warga{' '}
-                            <span style={{ color: '#94a3b8', fontWeight: 400 }}>({pct}%)</span>
+                            <span style={{ color: '#475569', fontWeight: 400 }}>({pct}%)</span>
                           </span>
                         </div>
                         <div
@@ -1792,7 +1795,7 @@ export default function AdminDashboard() {
                       paddingTop: 8,
                       borderTop: '1px solid #f1f5f9',
                       fontSize: 12.5,
-                      color: '#64748b',
+                      color: '#475569',
                     }}
                   >
                     Total pengajuan:{' '}
@@ -1859,7 +1862,7 @@ export default function AdminDashboard() {
                     </button>
                   ))}
                   <span
-                    style={{ marginLeft: 'auto', fontSize: 12, color: '#94a3b8', fontWeight: 600 }}
+                    style={{ marginLeft: 'auto', fontSize: 12, color: '#475569', fontWeight: 600 }}
                   >
                     {filteredPengajuan.length} dari {pengajuanList.length} data
                   </span>
@@ -1886,7 +1889,7 @@ export default function AdminDashboard() {
                       fontWeight: 600,
                     }}
                   >
-                    <MI name="warning" size={18} style={{ color: '#d97706' }} />
+                    <MI name="warning" size={18} style={{ color: '#b45309' }} />
                     <span>
                       Sebagian warga belum punya matriks penilaian lengkap (10 kriteria). Baris
                       bertanda “—” belum dihitung SAW. Jalankan “Sapu Ajaib” atau setujui ulang
@@ -1919,7 +1922,7 @@ export default function AdminDashboard() {
                         ? `Matriks Nilai SAW — ${pengajuanList.filter((p) => p.status === 'disetujui').length} warga disetujui`
                         : `Total ${filteredPengajuan.length} Kuesioner`}
                     </div>
-                    <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
+                    <div style={{ fontSize: 12, color: '#475569', marginTop: 2 }}>
                       {activeMenu === 'matriks'
                         ? 'Nilai rij dari sub-kriteria masing-masing warga'
                         : 'Data kuesioner dari seluruh wilayah RT'}
@@ -1938,7 +1941,7 @@ export default function AdminDashboard() {
                             style={{
                               fontWeight: 500,
                               fontSize: 9.5,
-                              color: '#94a3b8',
+                              color: '#475569',
                               marginTop: 1,
                             }}
                           >
@@ -1971,15 +1974,15 @@ export default function AdminDashboard() {
                           onMouseEnter={(e) => (e.currentTarget.style.background = '#fafcff')}
                           onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                         >
-                          <td style={{ ...tblTd, fontWeight: 700, color: '#94a3b8', width: 44 }}>
+                          <td style={{ ...tblTd, fontWeight: 700, color: '#475569', width: 44 }}>
                             {i + 1}
                           </td>
                           <td style={tblTd}>
                             <div style={{ fontWeight: 700, fontSize: 13 }}>
                               {p.warga?.nama_lengkap || p.warga?.name || 'Tanpa Nama'}
                             </div>
-                            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>
-                              RT {p.warga?.rt || '-'}
+                            <div style={{ fontSize: 11, color: '#475569', marginTop: 1 }}>
+                              {rtLabel(p.warga?.rt)}
                             </div>
                           </td>
                           {Array.from({ length: 10 }, (_, k) => (
@@ -1999,7 +2002,7 @@ export default function AdminDashboard() {
                                     fontFamily: 'monospace',
                                     fontWeight: 700,
                                     fontSize: 13,
-                                    color: getSkor(p, k + 1) === null ? '#d97706' : '#111827',
+                                    color: getSkor(p, k + 1) === null ? '#b45309' : '#111827',
                                   }}
                                 >
                                   {getSkor(p, k + 1) ?? '—'}
@@ -2049,8 +2052,8 @@ export default function AdminDashboard() {
                                   p.status === 'disetujui'
                                     ? '#15803d'
                                     : p.status === 'ditolak'
-                                      ? '#dc2626'
-                                      : '#ca8a04',
+                                      ? '#b91c1c'
+                                      : '#a16207',
                                 fontFamily: "'Plus Jakarta Sans',sans-serif",
                               }}
                             >
@@ -2090,7 +2093,7 @@ export default function AdminDashboard() {
                                     borderRadius: 8,
                                     border: 'none',
                                     background: '#fee2e2',
-                                    color: '#dc2626',
+                                    color: '#b91c1c',
                                     cursor: 'pointer',
                                     display: 'flex',
                                     alignItems: 'center',
@@ -2112,7 +2115,7 @@ export default function AdminDashboard() {
                           style={{
                             padding: '48px',
                             textAlign: 'center',
-                            color: '#94a3b8',
+                            color: '#475569',
                             fontSize: 13,
                           }}
                         >
@@ -2125,6 +2128,9 @@ export default function AdminDashboard() {
               </div>
             </div>
           )}
+
+          {/* ══════ PENGADUAN ══════ */}
+          {activeMenu === 'pengaduan' && <PengaduanPanel role="admin" />}
 
           {/* ══════ RANKING ══════ */}
           {activeMenu === 'ranking' && (
@@ -2158,15 +2164,27 @@ export default function AdminDashboard() {
                     menggunakan metode SAW di sisi server (PHP).
                   </span>
                 </div>
-                <BtnPrimary
-                  onClick={jalankanSAW}
-                  disabled={loading}
-                  style={{ background: '#059669', flexShrink: 0 }}
-                >
-                  <MI name="refresh" size={15} />
-                  {loading ? 'Menghitung...' : 'Hitung Ulang'}
-                </BtnPrimary>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                  <BtnPrimary
+                    onClick={jalankanSAW}
+                    disabled={loading}
+                    style={{ background: '#047857', minHeight: 40 }}
+                  >
+                    <MI name="refresh" size={15} />
+                    {loading ? 'Menghitung...' : 'Hitung Ulang'}
+                  </BtnPrimary>
+                  <BtnGhost onClick={() => unduhLaporanSaw('csv')} style={{ minHeight: 40 }}>
+                    <MI name="download" size={15} /> Unduh
+                  </BtnGhost>
+                </div>
               </div>
+
+              {/* Status ranking: warga terlewat & kriteria konstan (BUG-09/BUG-05) */}
+              <RankingWarnings
+                dilewati={dilewati}
+                kriteriaTanpaVariasi={kriteriaTanpaVariasi}
+                error={rankingError}
+              />
 
               <div
                 style={{
@@ -2185,7 +2203,6 @@ export default function AdminDashboard() {
                         'Alamat',
                         'RT',
                         'Nilai Preferensi (V)',
-                        'Kelayakan',
                       ].map((h) => (
                         <th key={h} style={tblTh}>
                           {h}
@@ -2206,15 +2223,18 @@ export default function AdminDashboard() {
                               width: 32,
                               height: 32,
                               borderRadius: '50%',
+                              // Tangga warna: putih di atas biru gelap hanya lolos
+                              // WCAG AA sampai #2563eb; peringkat 3 memakai latar
+                              // terang + teks gelap agar tetap terbaca.
                               background:
                                 i === 0
                                   ? '#0051d5'
                                   : i === 1
-                                    ? '#3b82f6'
+                                    ? '#2563eb'
                                     : i === 2
-                                      ? '#93c5fd'
+                                      ? '#bfdbfe'
                                       : '#f1f5f9',
-                              color: i < 3 ? '#fff' : '#64748b',
+                              color: i === 2 ? '#1e3a8a' : i < 2 ? '#fff' : '#475569',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
@@ -2230,7 +2250,7 @@ export default function AdminDashboard() {
                           style={{
                             ...tblTd,
                             fontSize: 12.5,
-                            color: '#64748b',
+                            color: '#475569',
                             maxWidth: 180,
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
@@ -2251,7 +2271,7 @@ export default function AdminDashboard() {
                               color: '#1d4ed8',
                             }}
                           >
-                            RT {w.rt || '-'}
+                            {rtLabel(w.rt)}
                           </span>
                         </td>
                         <td
@@ -2270,11 +2290,11 @@ export default function AdminDashboard() {
                     {rankingData.length === 0 && (
                       <tr>
                         <td
-                          colSpan="6"
+                          colSpan="5"
                           style={{
                             padding: '48px',
                             textAlign: 'center',
-                            color: '#94a3b8',
+                            color: '#475569',
                             fontSize: 13,
                           }}
                         >
@@ -2313,7 +2333,7 @@ export default function AdminDashboard() {
                     <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>
                       Daftar Kriteria SAW
                     </div>
-                    <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
+                    <div style={{ fontSize: 12, color: '#475569', marginTop: 2 }}>
                       Normalisasi bobot dilakukan otomatis oleh SawController (bobot / totalBobot)
                     </div>
                   </div>
@@ -2386,7 +2406,7 @@ export default function AdminDashboard() {
                           onMouseEnter={(e) => (e.currentTarget.style.background = '#fafcff')}
                           onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                         >
-                          <td style={{ ...tblTd, fontWeight: 700, color: '#94a3b8', width: 44 }}>
+                          <td style={{ ...tblTd, fontWeight: 700, color: '#475569', width: 44 }}>
                             {i + 1}
                           </td>
                           <td style={tblTd}>
@@ -2412,7 +2432,7 @@ export default function AdminDashboard() {
                                 fontSize: 11,
                                 fontWeight: 700,
                                 background: k.tipe === 'benefit' ? '#dcfce7' : '#fee2e2',
-                                color: k.tipe === 'benefit' ? '#15803d' : '#dc2626',
+                                color: k.tipe === 'benefit' ? '#15803d' : '#b91c1c',
                               }}
                             >
                               {k.tipe === 'benefit' ? 'Benefit' : 'Cost'}
@@ -2505,7 +2525,7 @@ export default function AdminDashboard() {
                           style={{
                             padding: '48px',
                             textAlign: 'center',
-                            color: '#94a3b8',
+                            color: '#475569',
                             fontSize: 13,
                           }}
                         >
@@ -2551,7 +2571,7 @@ export default function AdminDashboard() {
                       style={{
                         fontSize: 12,
                         fontWeight: 700,
-                        color: '#64748b',
+                        color: '#475569',
                         background: 'none',
                         border: 'none',
                         cursor: 'pointer',
@@ -2577,7 +2597,7 @@ export default function AdminDashboard() {
                           onMouseEnter={(e) => (e.currentTarget.style.background = '#f0f9ff')}
                           onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                         >
-                          <td style={{ ...tblTd, fontWeight: 700, color: '#94a3b8', width: 44 }}>
+                          <td style={{ ...tblTd, fontWeight: 700, color: '#475569', width: 44 }}>
                             {i + 1}
                           </td>
                           <td style={tblTd}>{sk.keterangan}</td>
@@ -2600,8 +2620,8 @@ export default function AdminDashboard() {
                                   sk.nilai >= 7.5
                                     ? '#15803d'
                                     : sk.nilai >= 5
-                                      ? '#ca8a04'
-                                      : '#dc2626',
+                                      ? '#a16207'
+                                      : '#b91c1c',
                               }}
                             >
                               {sk.nilai}
@@ -2638,7 +2658,7 @@ export default function AdminDashboard() {
                             style={{
                               padding: '32px',
                               textAlign: 'center',
-                              color: '#94a3b8',
+                              color: '#475569',
                               fontSize: 13,
                             }}
                           >
@@ -2669,7 +2689,7 @@ export default function AdminDashboard() {
                       left: 12,
                       top: '50%',
                       transform: 'translateY(-50%)',
-                      color: '#94a3b8',
+                      color: '#475569',
                     }}
                   />
                   <input
@@ -2715,7 +2735,7 @@ export default function AdminDashboard() {
                   ))}
                 </div>
                 <span
-                  style={{ marginLeft: 'auto', fontSize: 12, color: '#94a3b8', fontWeight: 600 }}
+                  style={{ marginLeft: 'auto', fontSize: 12, color: '#475569', fontWeight: 600 }}
                 >
                   {filteredUsers.length} akun
                 </span>
@@ -2759,7 +2779,7 @@ export default function AdminDashboard() {
                           onMouseEnter={(e) => (e.currentTarget.style.background = '#fafcff')}
                           onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                         >
-                          <td style={{ ...tblTd, fontWeight: 700, color: '#94a3b8', width: 44 }}>
+                          <td style={{ ...tblTd, fontWeight: 700, color: '#475569', width: 44 }}>
                             {i + 1}
                           </td>
                           <td style={tblTd}>
@@ -2795,11 +2815,11 @@ export default function AdminDashboard() {
                             {u.username}
                           </td>
                           <td style={{ ...tblTd, textAlign: 'center', fontSize: 12.5 }}>
-                            {u.rt || '-'}
+                            {u.rt ? rtLabel(u.rt) : '-'}
                           </td>
                           <td style={tblTd}>
                             {u.role !== 'warga' ? (
-                              <span style={{ color: '#cbd5e1', fontSize: 12 }}>—</span>
+                              <span style={{ color: '#64748b', fontSize: 12 }}>—</span>
                             ) : u.id_warga ? (
                               <span
                                 title={`Tertaut ke warga #${u.id_warga}`}
@@ -2836,7 +2856,7 @@ export default function AdminDashboard() {
                             style={{
                               ...tblTd,
                               fontSize: 12.5,
-                              color: '#64748b',
+                              color: '#475569',
                               maxWidth: 160,
                               overflow: 'hidden',
                               textOverflow: 'ellipsis',
@@ -2888,7 +2908,7 @@ export default function AdminDashboard() {
                                   borderRadius: 8,
                                   border: 'none',
                                   background: '#fee2e2',
-                                  color: '#dc2626',
+                                  color: '#b91c1c',
                                   cursor: 'pointer',
                                   display: 'flex',
                                   alignItems: 'center',
@@ -2909,7 +2929,7 @@ export default function AdminDashboard() {
                           style={{
                             padding: '48px',
                             textAlign: 'center',
-                            color: '#94a3b8',
+                            color: '#475569',
                             fontSize: 13,
                           }}
                         >
@@ -2953,7 +2973,7 @@ export default function AdminDashboard() {
                   <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>
                     Riwayat Aktivitas Sistem
                   </div>
-                  <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
+                  <div style={{ fontSize: 12, color: '#475569', marginTop: 2 }}>
                     Menampilkan 500 aktivitas terbaru — endpoint: GET /api/logs
                   </div>
                 </div>
@@ -2990,7 +3010,7 @@ export default function AdminDashboard() {
                           onMouseEnter={(e) => (e.currentTarget.style.background = '#fafcff')}
                           onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                         >
-                          <td style={{ ...tblTd, fontWeight: 700, color: '#94a3b8', width: 44 }}>
+                          <td style={{ ...tblTd, fontWeight: 700, color: '#475569', width: 44 }}>
                             {i + 1}
                           </td>
                           <td
@@ -2998,7 +3018,7 @@ export default function AdminDashboard() {
                               ...tblTd,
                               fontFamily: 'monospace',
                               fontSize: 12,
-                              color: '#64748b',
+                              color: '#475569',
                               whiteSpace: 'nowrap',
                             }}
                           >
@@ -3037,14 +3057,14 @@ export default function AdminDashboard() {
                     gap: 12,
                   }}
                 >
-                  <MI name="history" size={48} style={{ color: '#cbd5e1' }} />
-                  <div style={{ fontSize: 14, fontWeight: 600, color: '#64748b' }}>
+                  <MI name="history" size={48} style={{ color: '#64748b' }} />
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#475569' }}>
                     Belum ada aktivitas tercatat
                   </div>
                   <div
                     style={{
                       fontSize: 12.5,
-                      color: '#94a3b8',
+                      color: '#475569',
                       textAlign: 'center',
                       lineHeight: 1.6,
                     }}
@@ -3387,7 +3407,7 @@ export default function AdminDashboard() {
                         top: '50%',
                         transform: 'translateY(-50%)',
                         fontSize: 11,
-                        color: '#94a3b8',
+                        color: '#475569',
                         pointerEvents: 'none',
                       }}
                     >

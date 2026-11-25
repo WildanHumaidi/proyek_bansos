@@ -2,76 +2,52 @@
 
 namespace Database\Seeders;
 
-use App\Models\Kriteria;
-use App\Models\Pengajuan;
-use App\Models\Penilaian;
-use App\Models\SubKriteria;
-use App\Models\Warga;
+use App\Services\CsvImporter;
 use Illuminate\Database\Seeder;
 
+/**
+ * Impor data warga dari CSV resmi — via CsvImporter (SSOT) agar perilakunya
+ * identik dengan endpoint import admin (P0-01/03/04):
+ *  - mapping jawaban wajib 100% atau baris gagal (tidak ada fallback);
+ *  - status pengajuan = 'menunggu' (tidak ada auto-approve);
+ *  - tidak menimpa warga dengan nama sama;
+ *  - RT (dan seluruh kolom) dibaca dari HEADER, bukan posisi tetap.
+ *
+ * Karena kebijakan ini, file CSV nyata `database/data/data_warga.csv` yang
+ * berisi baris kosong/duplikat/tak-dikenal akan membuat seeder MELAPORKAN
+ * baris gagal alih-alih diam-diam menghasilkan data rusak.
+ */
 class ImportWargaSeeder extends Seeder
 {
     public function run()
     {
+        $path = database_path('data/data_warga.csv');
 
-        $indeks_nama = 1;
-        $indeks_alamat = 2;
-        $indeks_awal_jawaban = 3;
-        $indeks_rt = 13;
+        $this->command?->comment('Membaca '.$path.' ...');
 
-        $csvFile = fopen(base_path('database/data/data_warga.csv'), 'r');
-        $firstline = true;
+        $isi = file_get_contents($path);
 
-        while (($baris = fgetcsv($csvFile, 2000, ';')) !== false) {
+        $hasil = (new CsvImporter)->impor($isi);
 
-            if ($firstline) {
-                $firstline = false;
-
-                continue;
-            }
-
-            if (count($baris) < 13) {
-                continue;
-            }
-
-            $angka_rt = (int) ($baris[$indeks_rt] ?? 1);
-            $format_rt = '00'.$angka_rt;
-
-            $warga = Warga::create([
-                'nama_lengkap' => $baris[$indeks_nama] ?? 'Tanpa Nama',
-                'alamat' => $baris[$indeks_alamat] ?? 'Tanpa Alamat',
-                'rt' => $format_rt,
-                'rw' => '008',
-                'password' => bcrypt('12345678'),
-            ]);
-
-            $pengajuan = Pengajuan::create([
-                'id_warga' => $warga->id_warga,
-                'status' => 'disetujui',
-            ]);
-
-            $kriteria_list = Kriteria::orderBy('id_kriteria', 'asc')->get();
-            $indeks_jawaban_saat_ini = $indeks_awal_jawaban;
-
-            foreach ($kriteria_list as $kriteria) {
-                $teks_jawaban_csv = isset($baris[$indeks_jawaban_saat_ini]) ? trim($baris[$indeks_jawaban_saat_ini]) : '';
-
-                $subkriteria = SubKriteria::where('id_kriteria', $kriteria->id_kriteria)
-                    ->where('keterangan', 'LIKE', '%'.$teks_jawaban_csv.'%')
-                    ->first();
-
-                $id_sub = $subkriteria ? $subkriteria->id_subkriteria : SubKriteria::where('id_kriteria', $kriteria->id_kriteria)->orderBy('nilai', 'asc')->first()->id_subkriteria;
-
-                Penilaian::create([
-                    'id_pengajuan' => $pengajuan->id_pengajuan,
-                    'id_kriteria' => $kriteria->id_kriteria,
-                    'id_subkriteria' => $id_sub,
-                ]);
-
-                $indeks_jawaban_saat_ini++;
-            }
+        if ($hasil['error_header']) {
+            throw new \RuntimeException('ImportWargaSeeder: '.$hasil['error_header']);
         }
 
-        fclose($csvFile);
+        if ($hasil['banyak_gagal'] > 0) {
+            // Baris yang gagal membuat seluruh impor di-rollback (atomic).
+            $barisGagal = collect($hasil['baris'])
+                ->filter(fn ($b) => $b['status'] === 'gagal')
+                ->map(fn ($b) => "baris {$b['baris']}: {$b['detail']}")
+                ->implode("\n");
+
+            throw new \RuntimeException(
+                "ImportWargaSeeder: {$hasil['banyak_gagal']} baris gagal dipetakan sehingga impor dibatalkan.\n{$barisGagal}"
+            );
+        }
+
+        $this->command?->info(
+            "ImportWargaSeeder: {$hasil['banyak_import']} warga dibuat (menunggu verifikasi), "
+            ."{$hasil['banyak_skip']} duplikat dilewati."
+        );
     }
 }

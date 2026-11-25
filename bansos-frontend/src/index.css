@@ -87,3 +87,11 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+
+/* Dulu disediakan oleh Tailwind CDN (`cdn.tailwindcss.com`), yang dihapus karena
+   seluruh kelas di aplikasi ini sudah didefinisikan sendiri di <style> per
+   halaman — hanya satu utilitas Tailwind yang benar-benar terpakai. */
+.select-none {
+  user-select: none;
+  -webkit-user-select: none;
+}

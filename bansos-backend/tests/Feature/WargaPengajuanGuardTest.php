@@ -11,11 +11,20 @@ use App\Models\Warga;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Laravel\Sanctum\Sanctum;
+use Tests\Support\KriteriaFixture;
 use Tests\TestCase;
 
 class WargaPengajuanGuardTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Validasi jawaban server-side butuh vocabulary sub-kriteria (P1-03).
+        KriteriaFixture::seedKriteria();
+    }
 
     protected function admin(): void
     {
@@ -34,8 +43,24 @@ class WargaPengajuanGuardTest extends TestCase
             'alamat' => 'Alamat',
             'rt' => '001',
             'rw' => '008',
-            'password' => bcrypt('secret'),
         ]);
+    }
+
+    /** Payload jawaban lengkap dengan vocabulary valid (P1-03). */
+    protected function jawabanLengkap(): array
+    {
+        return [
+            'q1' => '1 KK',
+            'q2' => '4 Orang',
+            'q3' => 'SD',
+            'q4' => 'Tidak Ada',
+            'q5' => '400 - 700 Ribu',
+            'q6' => '< 400 Ribu',
+            'q7' => 'Sewa < 1 Juta',
+            'q8' => 'Sumur Milik Sendiri',
+            'q9' => 'Listrik 450 watt',
+            'q10' => 'Sepeda Motor 1 Buah, dalam Kondisi Baik',
+        ];
     }
 
     public function test_import_csv_menolak_file_yang_bukan_csv(): void
@@ -52,7 +77,7 @@ class WargaPengajuanGuardTest extends TestCase
         $this->admin();
 
         $csv = "Timestamp;NAMA : ;ALAMAT :;JUMLAH KARTU KELUARGA (KK) DALAM SATU RUMAH : ;JUMLAH ANGGOTA KELUARGA DALAM SATU RUMAH : ;PENDIDIKAN KEPALA KELUARGA : ;JUMLAH ANGGOTA KELUARGA MASIH SEKOLAH/KULIAH : ;PENGELUARAN BULANAN 1 RUMAH : ;PENGHASILAN BULANAN DALAM 1 RUMAH : ;STATUS KEPEMILIKAN RUMAH : ;SUMBER AIR BERSIH :;SUMBER PENERANGAN RUMAH :;TRANSPORTASI YANG DIGUNAKAN : ;RT\r\n"
-            ."4/14/2026 21:43:42;Warga Import ;Jl. Uji;1 KK;5 ORANG;SEKOLAH DASAR (SD);1 ORANG;< Rp. 1.500.000;< Rp. 1.500.000;MENUMPANG;SUNGAI / MATA AIR;TIDAK ADA / LAMPU TEMPEL;JALAN KAKI / SEPEDA / SEPEDA MOTOR SEADANYA / TRANSPORTASI UMUM;1\r\n";
+            ."4/14/2026 21:43:42;Warga Import ;Jl. Uji;1 KK;4 ORANG;SD;Tidak Ada;400 - 700 Ribu;< 400 Ribu;Sewa < 1 Juta;Sumur Milik Sendiri;Listrik 450 watt;Sepeda Motor 1 Buah, dalam Kondisi Baik;1\r\n";
 
         $file = UploadedFile::fake()->createWithContent('data.csv', $csv);
 
@@ -80,7 +105,7 @@ class WargaPengajuanGuardTest extends TestCase
             'nama_lengkap' => 'Warga Guard',
             'alamat' => 'Alamat',
             'rt' => '001',
-            'jawaban_mentah' => ['q1' => '1 KK'],
+            'jawaban_mentah' => $this->jawabanLengkap(),
         ])->assertStatus(400);
 
         $this->assertSame(1, Pengajuan::where('id_warga', $warga->id_warga)->count());
@@ -90,36 +115,22 @@ class WargaPengajuanGuardTest extends TestCase
     {
         $this->admin();
 
-        for ($i = 1; $i <= 10; $i++) {
-            $k = Kriteria::create([
-                'nama_kriteria' => "Kriteria $i",
-                'tipe' => in_array($i, [1, 2, 4], true) ? 'benefit' : 'cost',
-                'bobot' => 10,
-            ]);
-            foreach (['> 3 KK', '3 KK', '2 KK', '1 KK'] as $j => $ket) {
-                SubKriteria::create([
-                    'id_kriteria' => $k->id_kriteria,
-                    'keterangan' => $ket,
-                    'nilai' => [10, 7.5, 5, 2.5][$j],
-                ]);
-            }
-        }
-
         $warga = $this->warga();
         $pengajuan = Pengajuan::create([
             'id_warga' => $warga->id_warga,
             'status' => 'disetujui',
-            'jawaban_mentah' => json_encode(array_fill_keys(
-                array_map(fn ($i) => "q$i", range(1, 10)),
-                '1 KK'
-            )),
+            'jawaban_mentah' => json_encode($this->jawabanLengkap()),
         ]);
 
+        // Ubah SEMUA jawaban ke '2 KK'-style yang valid untuk seluruh kriteria:
+        // gunakan jawaban pertama (paling membutuhkan) dari tiap kriteria.
+        $jawabanBaru = [];
+        foreach (KriteriaFixture::OPSI as $id => $opsi) {
+            $jawabanBaru['q'.$id] = $opsi[0];
+        }
+
         $this->putJson("/api/admin/pengajuan/{$pengajuan->id_pengajuan}/kuesioner", [
-            'jawaban_mentah' => array_fill_keys(
-                array_map(fn ($i) => "q$i", range(1, 10)),
-                '3 KK'
-            ),
+            'jawaban_mentah' => $jawabanBaru,
         ])->assertOk();
 
         $this->assertSame(10, Penilaian::where('id_pengajuan', $pengajuan->id_pengajuan)->count());
@@ -128,13 +139,13 @@ class WargaPengajuanGuardTest extends TestCase
             ->where('id_pengajuan', $pengajuan->id_pengajuan)
             ->get()
             ->pluck('subKriteria.nilai')
-            ->unique()
             ->values()
             ->all();
 
-        // '3 KK' ada di index 1 setiap kriteria → nilai 7.5 untuk benefit, dan
-        // kriteria cost memakai sub-kriteria yang sama (7.5) karena fixture ini
-        // memakai daftar keterangan identik untuk semua kriteria.
-        $this->assertSame([7.5], $nilai);
+        // Opsi pertama tiap kriteria = nilai 10 untuk benefit, 2.5 untuk cost.
+        $this->assertSame(
+            [10.0, 10.0, 2.5, 10.0, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5],
+            $nilai
+        );
     }
 }

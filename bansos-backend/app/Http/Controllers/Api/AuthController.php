@@ -5,11 +5,11 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Warga;
+use App\Services\RtFormatter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -24,20 +24,21 @@ class AuthController extends Controller
                 'nama_lengkap' => 'required|string|max:255',
                 'username' => 'required|string|unique:users',
                 'password' => 'required|min:6',
-                'rt' => 'required',
+                'rt' => ['required', RtFormatter::rule()],
                 'alamat' => 'required|string',
             ]);
 
-            $user = DB::transaction(function () use ($request) {
+            $rt = RtFormatter::formatRt($request->rt);
+
+            $user = DB::transaction(function () use ($request, $rt) {
                 // Registrasi membuat identitas warga milik akun ini sendiri, lalu
                 // menautkannya lewat id_warga. Tidak mencocokkan nama, karena nama
                 // bisa duplikat dan akan menimpa data warga lain.
                 $warga = Warga::create([
                     'nama_lengkap' => trim($request->nama_lengkap),
                     'alamat' => $request->alamat,
-                    'rt' => $request->rt,
+                    'rt' => $rt,
                     'rw' => '008',
-                    'password' => Hash::make(Str::random(32)),
                 ]);
 
                 return User::create([
@@ -45,7 +46,7 @@ class AuthController extends Controller
                     'username' => $request->username,
                     'password' => Hash::make($request->password),
                     'role' => 'warga',
-                    'rt' => $request->rt,
+                    'rt' => $rt,
                     'alamat' => $request->alamat,
                     'id_warga' => $warga->id_warga,
                 ]);

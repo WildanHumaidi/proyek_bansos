@@ -130,18 +130,21 @@ class KriteriaSeeder extends Seeder
         ];
 
         foreach ($kriteriaData as $data) {
-            $kriteria = Kriteria::create([
-                'nama_kriteria' => $data['nama_kriteria'],
-                'tipe' => $data['tipe'],
-                'bobot' => $data['bobot'],
-            ]);
+            // P3-02 (idempoten): identitas stabil memakai nama_kriteria, bukan
+            // ID database. Jalankan ulang tidak menggandakan kriteria/sub-kriteria.
+            $kriteria = Kriteria::firstOrCreate(
+                ['nama_kriteria' => $data['nama_kriteria']],
+                ['tipe' => $data['tipe'], 'bobot' => $data['bobot']]
+            );
 
             foreach ($data['sub'] as $sub) {
-                SubKriteria::create([
-                    'id_kriteria' => $kriteria->id_kriteria,
-                    'keterangan' => $sub['keterangan'],
-                    'nilai' => $sub['nilai'],
-                ]);
+                SubKriteria::firstOrCreate(
+                    [
+                        'id_kriteria' => $kriteria->id_kriteria,
+                        'keterangan' => $sub['keterangan'],
+                    ],
+                    ['nilai' => $sub['nilai']]
+                );
             }
         }
     }

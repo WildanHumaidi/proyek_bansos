@@ -143,12 +143,50 @@ Sistem menerapkan Role-Based Access Control (RBAC) 4 tingkat:
 Berdasarkan audit mendalam terhadap seluruh berkas kode sumber, ditemukan sejumlah celah teknis dan fitur yang belum tuntas:
 
 > **Catatan status (2026-11-24):** banyak butir pada bagian 7 sudah dibereskan pada gelombang audit Nov 2026 (rincian lengkap & bukti di `docs/AUDIT.md`): middleware peran `role:*` sudah dipasang di seluruh rute privat, rate limiter `/login` aktif (`throttle:10,1`), dead controllers & model ganda dihapus, interceptor 401 terstandarkan pada `src/services/api.js`, serta duplikasi konstanta & komponen yatim dibersihkan. Butir tersisa yang masih berlaku ditandai **[BERLAKU]**. Bagian 7 dipertahankan sebagai riwayat temuan; matriks status resmi ada di `docs/AUDIT.md` dan kartu kanban.
+>
+> **Catatan status (2026-11-25):** gelombang remediasi kedua (basis `RE_AUDIT_BANSOS_HUB_REPORT.md`) menutup lapisan transformasi data yang tidak pernah disentuh audit sebelumnya — pemetaan jawaban CSV, status impor, scope ranking, dan ekspor laporan. Rincian lengkap, bukti test, dan daftar yang sengaja belum dikerjakan ada di **`FIX_IMPLEMENTATION_REPORT.md`**. Perubahan kontrak API yang berdampak ke frontend tercatat di §7.3.
 
 ### 7.1 Backend Gaps & Dead Code
-1. **[BERLAKU — PARSIAL] Konversi String RT:** Penomoran RT disimpan bercampur antara format integer (`1`, `2`, `3`) dan string tiga digit ber-padding nol (`'001'`, `'002'`, `'003'`), memaksa banyak baris kode controller dan frontend melakukan normalisasi regex/pad manual. Normalisasi lokal sudah diterapkan di frontend (`fmtNum`), namun konsolidasi skema ke satu format belum dilakukan.
+1. **[SELESAI 2026-11-25] Konversi String RT:** Penomoran RT dulu disimpan bercampur antara integer (`1`) dan string tiga digit (`'001'`), memaksa setiap controller dan halaman menormalkan sendiri. Sekarang jalur tulis backend dipusatkan di `App\Services\RtFormatter` (`formatRt()` menyimpan tiga digit, `intValue()` untuk perbandingan sehingga data lama `'1'` tetap terbaca) dan frontend memakai satu helper `src/lib/rt.js` (`rtInt`, `rtKode`, `rtNomor`, `rtLabel`, `rtSama`). Nilai `<select>` RT di form warga/registrasi kini mengirim `001`/`002`/`003`, dan seluruh label wilayah memakai dua digit. Dijaga `tests/Unit/RtFormatterTest` (5 test) dan `docs/uat/guard_rt_kanonik.mjs`.
 
 ### 7.2 Frontend Gaps & Dead Artifacts
-1. **[BERLAKU] Injeksi Desain Dinamis Runtime:** Beberapa halaman masih menyuntikkan script tag Tailwind CDN (`cdn.tailwindcss.com`) dan link Google Fonts langsung ke `<head>` pada saat mount (via `useDesign`), alih-alih di-bundle via PostCSS/Vite, sehingga aplikasi bergantung pada koneksi internet untuk styling penuh (FOUC di jaringan lambat). Bundle CSS lokal sudah dipakai halaman Login/Register/Landing/Warga; dashboard Admin/RT/RW masih memakai Tailwind CDN.
+1. **[SELESAI 2026-11-25] Injeksi Desain Dinamis Runtime:** Tidak ada lagi injeksi runtime. Tailwind CDN dihapus (praktis tidak dipakai: dari 64 token `className` unik, 63 kelas custom dan hanya `select-none` utilitas Tailwind — kini CSS biasa di `src/index.css`). Google Fonts kini di-host sendiri dari `public/fonts/` lewat `src/fonts.css`, dengan Material Symbols disubset dari 4 MB menjadi 66 KB. `useDesign()` tinggal mengurus print stylesheet.
+2. **[SELESAI 2026-11-25] UI pengaduan:** backend `pengaduan` + `pengaduan_riwayat` sudah berjalan dengan 11 test; panel `src/components/PengaduanPanel.jsx` sekarang dipasang di keempat dashboard (warga kirim & pantau miliknya, RT menindaklanjuti wilayahnya, RW/admin melihat semua dan dapat mengambil alih). Dijaga `docs/uat/guard_pengaduan.mjs` termasuk uji isolasi wilayah.
+3. **[SELESAI 2026-11-25] Kontras halaman ranking:** audit tambahan menemukan teks di bawah ambang WCAG AA pada halaman ranking (Admin: tombol "Hitung Ulang" `#059669` + putih = 3.77; header tabel 4.38. RW: 2.49–2.56. RT: 4.38). Seluruh temuan sudah diperbaiki dan dijaga oleh `docs/uat/guard_kontras_ranking.mjs` (RT/RW/Admin: 0 gagal kontras, 0 target sentuh < 40px). Palet pengganti: teks sekunder `#94a3b8`/`#64748b` → `#475569`, amber `#ca8a04`/`#d97706` → `#a16207`/`#b45309`, merah `#dc2626` → `#b91c1c`, hijau tombol `#059669` → `#047857`, ikon centang `#22c55e` → `#15803d`, cyan `#0891b2` → `#0e7490`.
+
+### 7.3 Kontrak API yang Berubah (2026-11-25)
+
+Perubahan ini wajib diketahui sebelum mengubah frontend atau integrasi lain.
+
+| Endpoint | Perubahan |
+|---|---|
+| `GET /api/saw/hitung` | Untuk peran `rt`, respons **hanya** berisi alternatif RT tersebut (`scope_rt` terisi) dan `ranking` dimulai dari 1. Field baru: `ranking_rt` (posisi dalam RT sendiri), `dilewati[]` (`id_pengajuan`, `nama_warga`, `rt`, `alasan`), `kriteria_tanpa_variasi[]`, `scope_rt`. Bila tidak ada alternatif eligible → `404` dengan `success:false` + `dilewati`. |
+| `GET /api/saw/report/export?format=csv\|tsv` | **Baru.** Mengembalikan file (`Content-Disposition: attachment`) berisi `Nama Warga;RT;Skor;Ranking;Ranking RT;Keterangan`, mengikuti scope peran dan nilai yang sama dengan `/saw/hitung`. Format lain → `422`. |
+| `POST /api/admin/pengajuan/import` | Status hasil impor **selalu** `menunggu`. Respons memuat laporan per baris (ditolak/di-skip + alasan). Satu baris gagal → seluruh impor rollback. |
+| `POST /api/admin/fix-data` | Default `mode=dry-run` (tidak mengubah apa pun). Perubahan hanya terjadi dengan `mode=apply` eksplisit. |
+| `GET/POST /api/pengaduan`, `PUT /api/pengaduan/{id}` | **Baru.** Warga mengirim & melihat miliknya; RT menindaklanjuti wilayahnya; admin dapat mengambil alih. |
+| `GET /api/chat/{id}/belum-dibaca`, `PUT /api/chat/{id}/baca` | **Baru.** Jumlah pesan lawan bicara yang belum dibaca / tandai sudah dibaca. `GET` bersifat read-only — tidak menandai apa pun. |
+| `POST /api/register`, `POST /api/warga/pengajuan`, `POST /api/admin/users` | Field `rt` kini **menolak `"0"`/`"00"`/`"000"`** dengan `422` (sebelumnya lolos validasi lalu menjadi `500`). Nilai `"1"` dan `"001"` sama-sama diterima dan dinormalkan ke `"001"`. |
+
+### 7.4 Ketergantungan (Dependency) — status 2026-11-25
+
+`composer audit` dan `npm audit` bersih (**0 advisory** di kedua sisi). Pembaruan
+dilakukan dalam batas constraint yang sudah ada, sehingga **`composer.json` dan
+`package.json` tidak berubah** — hanya lockfile:
+
+| Sisi | Paket utama | Sebelum → Sesudah |
+|---|---|---|
+| Backend | `laravel/framework` | 12.58.0 → **12.74.0** (menutup 1 critical: TokenGuard auth bypass) |
+| Backend | `laravel/sanctum` | 4.3.1 → **4.5.0** |
+| Backend | `symfony/*` | 7.4.8 → **7.4.24** |
+| Backend | `guzzlehttp/guzzle` | 7.10.0 → **7.17.0** |
+| Backend | `league/commonmark` | 2.8.2 → **2.10.8** |
+| Frontend | `axios` | 1.15.2 → **1.21.1** |
+| Frontend | `react-router-dom` | 7.14.2 → **7.18.7** |
+| Frontend | `vite` | 8.0.10 → **8.3.8** |
+
+Regresi sesudah upgrade: 132 test backend hijau, ESLint bersih, build sukses, dan
+enam guard UAT lolos.
 
 ---
 
@@ -167,24 +205,32 @@ bansos-backend/
 │   │   ├── KriteriaController.php      [Aktif: CRUD kriteria & sub-kriteria]
 │   │   ├── LogController.php           [Aktif: Activity log fetch & audit recording]
 │   │   ├── ChatController.php          [Aktif: Pesan dua arah warga-RT]
-│   │   ├── RtController.php            [DEAD / UNROUTED]
-│   │   └── PengajuanController.php     [DEAD / UNROUTED]
+│   │   └── PengaduanController.php     [Aktif: pengaduan warga/RT/admin]
+│   ├── Services/                       [SSOT — ditambahkan 2026-11-25]
+│   │   ├── RtFormatter.php             [format & validasi RT kanonik]
+│   │   ├── JawabanMapper.php           [jawaban → sub-kriteria, tanpa fallback]
+│   │   ├── PenilaianAssembler.php      [pembentukan baris penilaian]
+│   │   ├── JawabanTidakDikenalException.php
+│   │   ├── CsvImporter.php             [import CSV atomik, status menunggu]
+│   │   └── SawCalculator.php           [ranking & dataset, scope per peran]
 │   └── Models/
 │       ├── User.php
 │       ├── Warga.php
 │       ├── Kriteria.php
 │       ├── SubKriteria.php
 │       ├── Pengajuan.php
-│       ├── Penilaian.php               [Duplikat target tabel]
-│       ├── PengajuanDetail.php         [Duplikat target tabel]
+│       ├── PengajuanRiwayat.php        [arsip jawaban saat pengajuan ulang]
+│       ├── Penilaian.php
+│       ├── Pengaduan.php
+│       ├── PengaduanRiwayat.php
 │       ├── PesanChat.php
 │       └── ActivityLog.php
 ├── database/
-│   ├── migrations/ (9 migration files)
+│   ├── migrations/ (20 migration files)
 │   ├── seeders/    (UserSeeder, KriteriaSeeder, ImportWargaSeeder, DatabaseSeeder)
 │   └── data/data_warga.csv
 └── routes/
-    └── api.php                         [Definisi 20+ endpoint aktif]
+    └── api.php                         [Definisi 42 endpoint aktif]
 ```
 
 ### 8.2 Frontend (React 19 + Vite)
@@ -198,12 +244,15 @@ bansos-frontend/
 │   │   ├── WargaDashboard.jsx          [Aktif: /warga, portal warga]
 │   │   ├── RtDashboard.jsx             [Aktif: /rt, portal ketua RT]
 │   │   ├── RwDashboard.jsx             [Aktif: /rw, portal ketua RW]
-│   │   └── AdminDashboard.jsx          [Aktif: /dashboard, admin super control]
-│   ├── service/
-│   │   ├── api.js                      [Duplikat/Parsial: Axios instance + 401 interceptor]
-│   │   └── shared.js                   [Helper formatting, konstanta opsi, print CSS]
+│   │   ├── AdminDashboard.jsx          [Aktif: /dashboard, admin super control]
+│   │   └── DiagnosaKoneksi.jsx         [Aktif: /diagnosa, cek konektivitas API]
+│   ├── components/
+│   │   └── RankingWarnings.jsx         [Banner dilewati / kriteria konstan / error SAW]
+│   ├── services/
+│   │   └── api.js                      [Axios instance + 401 interceptor + helper auth]
 │   ├── lib/
-│   │   └── api.js                      [Aktif parsial: getUser helper untuk App.jsx]
+│   │   ├── api.js                      [Re-export shim untuk App.jsx & LandingPage]
+│   │   └── report.js                   [unduhLaporanSaw → GET /saw/report/export]
 │   ├── App.jsx                         [Router & role guard]
 │   └── main.jsx
 ```
@@ -213,6 +262,8 @@ bansos-frontend/
 ## 9. Rekomendasi Roadmap Perbaikan
 
 > **Catatan status (2026-11-24):** prioritas 1 & 2 di bawah sudah tuntas pada gelombang audit Nov 2026 — middleware role, rate limiter, penghapusan dead controller/model ganda/komponen yatim, dan konsolidasi client API. Rincian & bukti: `docs/AUDIT.md`, kartu kanban `it-engineering`.
+>
+> **Catatan status (2026-11-25):** prioritas 3 tertutup — jalur tulis RT dipusatkan ke `App\Services\RtFormatter` dan frontend memakai `src/lib/rt.js`, sehingga satu wilayah tidak lagi tampil sebagai `1`, `01`, dan `001` di tempat berbeda. Prioritas 4 (dependensi styling runtime) juga tertutup — Tailwind CDN dihapus dan Google Fonts kini di-host sendiri dari `public/fonts/`. Lihat `FIX_IMPLEMENTATION_REPORT.md` §8c dan §8d.
 
 1. **Security Hardening (Prioritas 1) — [SELESAI 2026-11]:**
    - Middleware peran `role:admin` / `role:rt` / `role:rw` sudah dipasang pada seluruh rute privat di `api.php`.
@@ -223,5 +274,7 @@ bansos-frontend/
 3. **Refaktorisasi Basis Data (Prioritas 3) — [TERBUKA]:**
    - Migrasikan relasi `users` dan `warga` menjadi relasi relasional formal (`user_id` foreign key) untuk mencegah kegagalan pencocokan data jika terjadi pengubahan nama warga.
    - Buat format kolom `rt` konsisten integer atau string 3 digit di seluruh skema (konsolidasi dari normalisasi lokal `fmtNum` saat ini).
-4. **Dependensi Styling Runtime (Prioritas 4) — [TERBUKA]:**
-   - Pindahkan dashboard Admin/RT/RW dari Tailwind CDN + Google Fonts runtime ke bundle lokal via Vite/PostCSS, seragam dengan halaman publik (selesai untuk Landing/Login/Register/Warga).
+4. **Dependensi Styling Runtime (Prioritas 4) — [SELESAI 2026-11-25]:**
+   - **Tailwind CDN: dihapus.** Tidak ada lagi permintaan ke `cdn.tailwindcss.com`; satu-satunya utilitas yang dipakai (`select-none`) kini CSS biasa di `src/index.css`.
+   - **Google Fonts: di-host sendiri.** Berkas font ada di `public/fonts/` dan dimuat lewat `src/fonts.css`. Material Symbols memakai subset 66 KB (64 ikon) alih-alih 4 MB versi penuh. `index.html` bersih dari `preconnect`/`<link>` Google, `useDesign()` tidak lagi menyuntik apa pun, dan `Inter` (dipakai 1 baris) dihapus.
+   - **Konsekuensi:** styling tidak lagi bergantung koneksi internet. Catatan operasional: menambah ikon baru **wajib** memperbarui subset — caranya di `docs/uat/README.md`.

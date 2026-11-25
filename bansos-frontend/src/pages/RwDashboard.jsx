@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import RankingWarnings from '../components/RankingWarnings';
+import PengaduanPanel from '../components/PengaduanPanel';
+import { rtInt, rtLabel } from '../lib/rt';
+import { unduhLaporanSaw } from '../lib/report';
 
 const API = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000/api';
 const tok = () => localStorage.getItem('token');
@@ -9,22 +13,6 @@ const authH = () => ({ Authorization: `Bearer ${tok()}` });
 /* ─── Design Bootstrap ───────────────────────────────────────────────────── */
 function useDesign() {
   useEffect(() => {
-    if (!document.getElementById('gf-plus')) {
-      const l = document.createElement('link');
-      l.id = 'gf-plus';
-      l.rel = 'stylesheet';
-      l.href =
-        'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap';
-      document.head.appendChild(l);
-    }
-    if (!document.getElementById('mat-sym')) {
-      const l = document.createElement('link');
-      l.id = 'mat-sym';
-      l.rel = 'stylesheet';
-      l.href =
-        'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap';
-      document.head.appendChild(l);
-    }
     if (!document.getElementById('rw-css')) {
       const st = document.createElement('style');
       st.id = 'rw-css';
@@ -96,7 +84,6 @@ const MI = ({ name, fill = false, size = 20, style: s = {} }) => (
 );
 
 /* ─── Helpers ────────────────────────────────────────────────────────────── */
-const fmtNum = (n) => n?.toString().padStart(2, '0');
 
 /* ─── Shared inline styles ───────────────────────────────────────────────── */
 const tblTh = {
@@ -135,6 +122,9 @@ export default function RwDashboard() {
   const [loading, setLoading] = useState(false);
   const [wargaList, setWargaList] = useState([]);
   const [rankingData, setRankingData] = useState([]);
+  const [dilewati, setDilewati] = useState([]);
+  const [kriteriaTanpaVariasi, setKriteriaTanpaVariasi] = useState([]);
+  const [rankingError, setRankingError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRT, setFilterRT] = useState('all');
   const [toast, setToast] = useState(null);
@@ -173,9 +163,15 @@ export default function RwDashboard() {
       if (['beranda', 'ranking'].includes(activeMenu)) {
         const r = await axios.get(`${API}/saw/hitung?t=${Date.now()}`, { headers: authH() });
         setRankingData(r.data.data || []);
+        setDilewati(r.data.dilewati || []);
+        setKriteriaTanpaVariasi(r.data.kriteria_tanpa_variasi || []);
+        setRankingError(null);
       }
     } catch (err) {
       console.error('Gagal memuat data RW:', err);
+      if (['beranda', 'ranking'].includes(activeMenu)) {
+        setRankingError(err.response?.data?.message || 'Server tidak merespons. Muat ulang halaman atau jalankan kalkulasi lagi.');
+      }
     } finally {
       setLoading(false);
     }
@@ -194,6 +190,9 @@ export default function RwDashboard() {
     try {
       const r = await axios.get(`${API}/saw/hitung?t=${Date.now()}`, { headers: authH() });
       setRankingData(r.data.data || []);
+      setDilewati(r.data.dilewati || []);
+      setKriteriaTanpaVariasi(r.data.kriteria_tanpa_variasi || []);
+      setRankingError(null);
       showToast('Kalkulasi SAW berhasil diperbarui.');
     } catch {
       showToast('Gagal menjalankan kalkulasi.', 'error');
@@ -203,14 +202,14 @@ export default function RwDashboard() {
   };
 
   /* ── Derived ── */
-  const rtGroups = [...new Set(wargaList.map((w) => Number(w.rt)).filter(Boolean))].sort(
+  const rtGroups = [...new Set(wargaList.map((w) => rtInt(w.rt)).filter(Boolean))].sort(
     (a, b) => a - b
   );
   const topScore = rankingData[0] ? Number(rankingData[0].skor_saw).toFixed(4) : '—';
   const filteredRanking = rankingData.filter((r) => {
     const matchSearch =
       !searchQuery || r.nama_warga?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchRT = filterRT === 'all' || String(Number(r.rt)) === String(Number(filterRT));
+    const matchRT = filterRT === 'all' || rtInt(r.rt) === rtInt(filterRT);
     return matchSearch && matchRT;
   });
 
@@ -220,6 +219,7 @@ export default function RwDashboard() {
       items: [
         { key: 'beranda', icon: 'dashboard', label: 'Beranda' },
         { key: 'warga', icon: 'group', label: 'Database Warga' },
+        { key: 'pengaduan', icon: 'campaign', label: 'Pengaduan' },
         { key: 'ranking', icon: 'leaderboard', label: 'Perangkingan SAW' },
       ],
     },
@@ -229,6 +229,7 @@ export default function RwDashboard() {
     {
       beranda: 'Monitor Wilayah RW',
       warga: 'Database Warga Global',
+      pengaduan: 'Pengaduan Warga',
       ranking: 'Hasil Keputusan SAW',
     }[activeMenu] || '';
 
@@ -258,7 +259,7 @@ export default function RwDashboard() {
             gap: 10,
             padding: '12px 20px',
             borderRadius: 12,
-            background: toast.type === 'error' ? '#dc2626' : '#1A56DB',
+            background: toast.type === 'error' ? '#b91c1c' : '#1A56DB',
             color: '#fff',
             fontSize: 13,
             fontWeight: 600,
@@ -533,7 +534,7 @@ export default function RwDashboard() {
               borderRadius: 9,
               border: 'none',
               background: 'rgba(239,68,68,.1)',
-              color: '#dc2626',
+              color: '#b91c1c',
               fontSize: 12,
               fontWeight: 700,
               cursor: 'pointer',
@@ -587,7 +588,7 @@ export default function RwDashboard() {
             <h1 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: 0 }}>
               {pageTitle}
             </h1>
-            {loading && <p style={{ fontSize: 11, color: '#94a3b8', margin: 0 }}>Memuat data...</p>}
+            {loading && <p style={{ fontSize: 11, color: '#475569', margin: 0 }}>Memuat data...</p>}
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
             {['ranking', 'warga'].includes(activeMenu) && (
@@ -612,6 +613,26 @@ export default function RwDashboard() {
             )}
             {activeMenu === 'ranking' && (
               <button
+                onClick={() => unduhLaporanSaw('csv')}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 7,
+                  padding: '9px 18px',
+                  background: '#fff',
+                  color: '#475569',
+                  border: '1.5px solid #C6DCFF',
+                  borderRadius: 9,
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                <MI name="download" size={15} /> Unduh
+              </button>
+            )}
+            {activeMenu === 'ranking' && (
+              <button
                 onClick={jalankanSAW}
                 disabled={loading}
                 style={{
@@ -619,7 +640,7 @@ export default function RwDashboard() {
                   alignItems: 'center',
                   gap: 7,
                   padding: '9px 18px',
-                  background: '#059669',
+                  background: '#047857',
                   color: '#fff',
                   border: 'none',
                   borderRadius: 9,
@@ -658,7 +679,7 @@ export default function RwDashboard() {
                     label: 'RT Aktif',
                     value: rtGroups.length,
                     icon: 'location_city',
-                    color: '#0891b2',
+                    color: '#0e7490',
                     bg: '#ecfeff',
                     sub: 'Wilayah terdata',
                   },
@@ -666,7 +687,7 @@ export default function RwDashboard() {
                     label: 'Total Kuesioner',
                     value: rankingData.length,
                     icon: 'fact_check',
-                    color: '#059669',
+                    color: '#047857',
                     bg: '#dcfce7',
                     sub: 'Warga terhitung SAW',
                   },
@@ -674,7 +695,7 @@ export default function RwDashboard() {
                     label: 'Skor Tertinggi',
                     value: topScore,
                     icon: 'trending_up',
-                    color: '#ca8a04',
+                    color: '#a16207',
                     bg: '#fef9c3',
                     sub: rankingData[0]?.nama_warga?.split(' ')[0] || '—',
                   },
@@ -713,7 +734,7 @@ export default function RwDashboard() {
                         style={{
                           fontSize: 10,
                           fontWeight: 700,
-                          color: '#94a3b8',
+                          color: '#475569',
                           background: '#FAFCFF',
                           padding: '3px 8px',
                           borderRadius: 5,
@@ -723,14 +744,14 @@ export default function RwDashboard() {
                         Live
                       </span>
                     </div>
-                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>{label}</div>
+                    <div style={{ fontSize: 12, color: '#475569', marginBottom: 2 }}>{label}</div>
                     <div style={{ fontSize: 32, fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>
                       {value}
                     </div>
                     <div
                       style={{
                         fontSize: 11,
-                        color: '#94a3b8',
+                        color: '#475569',
                         marginTop: 5,
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
@@ -816,6 +837,11 @@ export default function RwDashboard() {
               </div>
 
               {/* Top 10 preview */}
+              <RankingWarnings
+                dilewati={dilewati}
+                kriteriaTanpaVariasi={kriteriaTanpaVariasi}
+                error={rankingError}
+              />
               <div
                 style={{
                   background: '#fff',
@@ -837,7 +863,7 @@ export default function RwDashboard() {
                     <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>
                       Top 10 Peringkat Global
                     </div>
-                    <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
+                    <div style={{ fontSize: 12, color: '#475569', marginTop: 2 }}>
                       Hasil kalkulasi SAW terakhir — semua RT
                     </div>
                   </div>
@@ -902,7 +928,7 @@ export default function RwDashboard() {
                               color: '#1d4ed8',
                             }}
                           >
-                            RT {fmtNum(r.rt)}
+                            {rtLabel(r.rt)}
                           </span>
                         </td>
                         <td
@@ -925,7 +951,7 @@ export default function RwDashboard() {
                           style={{
                             padding: '32px',
                             textAlign: 'center',
-                            color: '#94a3b8',
+                            color: '#475569',
                             fontSize: 13,
                           }}
                         >
@@ -947,8 +973,8 @@ export default function RwDashboard() {
                   }}
                 >
                   {rtGroups.map((rt) => {
-                    const total = wargaList.filter((w) => Number(w.rt) === rt).length;
-                    const inRanking = rankingData.filter((r) => Number(r.rt) === rt);
+                    const total = wargaList.filter((w) => rtInt(w.rt) === rtInt(rt)).length;
+                    const inRanking = rankingData.filter((r) => rtInt(r.rt) === rtInt(rt));
                     const best =
                       inRanking.length > 0
                         ? Math.min(
@@ -974,14 +1000,14 @@ export default function RwDashboard() {
                           }}
                         >
                           <div style={{ fontSize: 22, fontWeight: 800, color: '#0f172a' }}>
-                            RT {fmtNum(rt)}
+                            {rtLabel(rt)}
                           </div>
-                          <MI name="home_work" fill size={18} style={{ color: '#94a3b8' }} />
+                          <MI name="home_work" fill size={18} style={{ color: '#475569' }} />
                         </div>
-                        <div style={{ fontSize: 12.5, color: '#64748b', marginBottom: 2 }}>
+                        <div style={{ fontSize: 12.5, color: '#475569', marginBottom: 2 }}>
                           {total} warga terdaftar
                         </div>
-                        <div style={{ fontSize: 11.5, color: '#94a3b8' }}>
+                        <div style={{ fontSize: 11.5, color: '#475569' }}>
                           Rank global terbaik: <strong style={{ color: '#1A56DB' }}>#{best}</strong>
                         </div>
                       </div>
@@ -1022,15 +1048,15 @@ export default function RwDashboard() {
                       transition: '.12s',
                     }}
                   >
-                    {rt === 'all' ? 'Semua RT' : `RT ${fmtNum(Number(rt))}`}
+                    {rt === 'all' ? 'Semua RT' : rtLabel(rt)}
                   </button>
                 ))}
                 <span
-                  style={{ marginLeft: 'auto', fontSize: 12, color: '#94a3b8', fontWeight: 600 }}
+                  style={{ marginLeft: 'auto', fontSize: 12, color: '#475569', fontWeight: 600 }}
                 >
                   {
                     wargaList.filter(
-                      (w) => filterRT === 'all' || String(Number(w.rt)) === String(Number(filterRT))
+                      (w) => filterRT === 'all' || rtInt(w.rt) === rtInt(filterRT)
                     ).length
                   }{' '}
                   warga
@@ -1055,7 +1081,7 @@ export default function RwDashboard() {
                   <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>
                     Database Warga RW
                   </div>
-                  <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
+                  <div style={{ fontSize: 12, color: '#475569', marginTop: 2 }}>
                     {wargaList.length} warga terdaftar dari seluruh RT
                   </div>
                 </div>
@@ -1081,7 +1107,7 @@ export default function RwDashboard() {
                           onMouseEnter={(e) => (e.currentTarget.style.background = '#FAFCFF')}
                           onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                         >
-                          <td style={{ ...tblTd, fontWeight: 700, color: '#94a3b8', width: 44 }}>
+                          <td style={{ ...tblTd, fontWeight: 700, color: '#475569', width: 44 }}>
                             {i + 1}
                           </td>
                           <td style={{ ...tblTd, fontWeight: 600 }}>{w.name}</td>
@@ -1099,7 +1125,7 @@ export default function RwDashboard() {
                             style={{
                               ...tblTd,
                               fontSize: 12.5,
-                              color: '#64748b',
+                              color: '#475569',
                               maxWidth: 200,
                               overflow: 'hidden',
                               textOverflow: 'ellipsis',
@@ -1120,7 +1146,7 @@ export default function RwDashboard() {
                                 color: '#1d4ed8',
                               }}
                             >
-                              RT {fmtNum(Number(w.rt))}
+                              {rtLabel(w.rt)}
                             </span>
                           </td>
                         </tr>
@@ -1132,7 +1158,7 @@ export default function RwDashboard() {
                           style={{
                             padding: '48px',
                             textAlign: 'center',
-                            color: '#94a3b8',
+                            color: '#475569',
                             fontSize: 13,
                           }}
                         >
@@ -1145,6 +1171,9 @@ export default function RwDashboard() {
               </div>
             </div>
           )}
+
+          {/* ══ PENGADUAN ══ */}
+          {activeMenu === 'pengaduan' && <PengaduanPanel role="rw" />}
 
           {/* ══ RANKING ══ */}
           {activeMenu === 'ranking' && (
@@ -1179,7 +1208,7 @@ export default function RwDashboard() {
                       left: 12,
                       top: '50%',
                       transform: 'translateY(-50%)',
-                      color: '#94a3b8',
+                      color: '#475569',
                     }}
                   />
                   <input
@@ -1209,6 +1238,7 @@ export default function RwDashboard() {
                       onClick={() => setFilterRT(rt)}
                       style={{
                         padding: '7px 13px',
+                        minHeight: 40,
                         borderRadius: 8,
                         border: `1.5px solid ${filterRT === rt ? '#1A56DB' : '#C6DCFF'}`,
                         background: filterRT === rt ? '#1A56DB' : '#fff',
@@ -1219,18 +1249,23 @@ export default function RwDashboard() {
                         transition: '.12s',
                       }}
                     >
-                      {rt === 'all' ? 'Semua RT' : `RT ${fmtNum(Number(rt))}`}
+                      {rt === 'all' ? 'Semua RT' : rtLabel(rt)}
                     </button>
                   ))}
                 </div>
                 <span
-                  style={{ marginLeft: 'auto', fontSize: 12, color: '#94a3b8', fontWeight: 600 }}
+                  style={{ marginLeft: 'auto', fontSize: 12, color: '#475569', fontWeight: 600 }}
                 >
                   {filteredRanking.length} dari {rankingData.length} data
                 </span>
               </div>
 
               {/* Info bar */}
+              <RankingWarnings
+                dilewati={dilewati}
+                kriteriaTanpaVariasi={kriteriaTanpaVariasi}
+                error={rankingError}
+              />
               <div
                 style={{
                   background: '#fff',
@@ -1269,7 +1304,7 @@ export default function RwDashboard() {
                   <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>
                     Peringkat Prioritas Penerima Bansos
                   </div>
-                  <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
+                  <div style={{ fontSize: 12, color: '#475569', marginTop: 2 }}>
                     Nilai tertinggi = prioritas utama penerima
                   </div>
                 </div>
@@ -1320,7 +1355,7 @@ export default function RwDashboard() {
                               color: '#1d4ed8',
                             }}
                           >
-                            RT {fmtNum(Number(r.rt))}
+                            {rtLabel(r.rt)}
                           </span>
                         </td>
                         <td
@@ -1343,7 +1378,7 @@ export default function RwDashboard() {
                           style={{
                             padding: '48px',
                             textAlign: 'center',
-                            color: '#94a3b8',
+                            color: '#475569',
                             fontSize: 13,
                           }}
                         >
@@ -1365,7 +1400,7 @@ export default function RwDashboard() {
                     alignItems: 'center',
                   }}
                 >
-                  <span style={{ fontSize: 12, color: '#64748b' }}>
+                  <span style={{ fontSize: 12, color: '#475569' }}>
                     Menampilkan {filteredRanking.length} data
                   </span>
                 </div>

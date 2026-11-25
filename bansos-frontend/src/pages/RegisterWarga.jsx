@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
+import { rtKode } from '../lib/rt';
 
 const API = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000/api';
 
 const GLOBAL_CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-  @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html, body {
     font-family: 'Plus Jakarta Sans', sans-serif;
@@ -484,9 +483,9 @@ export default function RegisterWarga() {
                       <option value="" disabled>
                         Pilih RT
                       </option>
-                      <option value="1">RT 01</option>
-                      <option value="2">RT 02</option>
-                      <option value="3">RT 03</option>
+                      <option value={rtKode(1)}>RT 01</option>
+                      <option value={rtKode(2)}>RT 02</option>
+                      <option value={rtKode(3)}>RT 03</option>
                     </select>
                     <MI
                       name="expand_more"

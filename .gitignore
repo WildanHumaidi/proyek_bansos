@@ -32,6 +32,9 @@ bansos-backend/storage/framework/views/
 bansos-backend/dist-deploy/
 bansos-backend/deploy_bansos.sql
 
+# Backup database (berisi data pribadi warga: nama, alamat, RT/RW)
+docs/archive/*_backup_*.sql
+
 # IDE & OS
 .idea/
 .vscode/

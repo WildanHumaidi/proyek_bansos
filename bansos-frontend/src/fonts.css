@@ -1,0 +1,77 @@
+/* Font di-host sendiri (self-hosted).
+ *
+ * Sebelumnya font diambil runtime dari `fonts.googleapis.com` — di-inject lewat
+ * `useDesign()` di dashboard dan lewat `@import` di Landing/Login/Register. Itu
+ * berarti setiap kali halaman dibuka ada dua permintaan ke domain pihak ketiga
+ * sebelum teks bisa tampil, dan aplikasi tidak bisa dipakai offline.
+ *
+ * Berkasnya diambil sekali dari Google Fonts lalu disimpan di `public/fonts/`.
+ * Yang diunduh hanya subset yang benar-benar dipakai:
+ *
+ *   plus-jakarta-sans-latin.woff2      27 KB  — variable font, semua weight
+ *   plus-jakarta-sans-latin-ext.woff2  21 KB  — nama dengan diakritik
+ *   material-symbols-subset.woff2      65 KB  — 64 ikon yang dipakai (dari 4 MB!)
+ *
+ * Material Symbols penuh berukuran 4 MB karena memuat ~3.500 ikon. Dengan
+ * parameter `icon_names` Google mengirim hanya ikon yang disebut, jadi 65 KB.
+ *
+ * Ikon yang disertakan harus LENGKAP: glyph yang tidak ada di subset akan tampil
+ * sebagai teks (mis. tulisan "dashboard" selebar 162 px), bukan ikon — dan teks
+ * tetap terbaca normal, jadi kegagalan ini mudah lolos. Cara memperbarui subset
+ * ada di docs/uat/README.md; `guard_font_self_hosted.mjs` menangkap kejadian itu.
+ */
+
+/* ── Plus Jakarta Sans ──────────────────────────────────────────────────────
+   Satu berkas variable font melayani weight 200–800; Google mengembalikan URL
+   yang sama untuk 400/500/600/700/800, jadi cukup satu @font-face per subset. */
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('/fonts/plus-jakarta-sans-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('/fonts/plus-jakarta-sans-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+    U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+    U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* ── Material Symbols Outlined ──────────────────────────────────────────────
+   Ikon di aplikasi ini dipakai lewat ligatur: <span class="material-symbols-
+   outlined">home</span>. Karena itu subset-nya harus memuat nama ligatur
+   (`home`, `person`, …), bukan kode titik — parameter `icon_names` melakukan
+   hal itu. */
+@font-face {
+  font-family: 'Material Symbols Outlined';
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: block;
+  src: url('/fonts/material-symbols-subset.woff2') format('woff2');
+}
+
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+}

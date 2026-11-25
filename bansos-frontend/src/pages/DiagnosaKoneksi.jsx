@@ -119,7 +119,7 @@ export default function DiagnosaKoneksi() {
   return (
     <div
       style={{
-        fontFamily: 'Inter, sans-serif',
+        fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
         maxWidth: 700,
         margin: '40px auto',
         padding: '0 20px',

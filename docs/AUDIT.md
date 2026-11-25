@@ -615,3 +615,544 @@ Untuk memulihkan stabilitas dan keamanan aplikasi secara disiplin, urutan perbai
 13. **[SML-04] [SELESAI]** Standarkan penggunaan instance Axios tunggal di frontend.
 14. **[SML-05] [SELESAI]** Optimalkan query N+1 pada `getUsers` menggunakan SQL Join.
 15. **[SML-02 & SML-06] [SELESAI]** Bersihkan komponen yatim dan daftarkan `DiagnosaKoneksi`.
+
+---
+
+## Gelombang Remediasi Kedua (2026-11-25) — Basis RE_AUDIT
+
+Audit di atas menutup lapisan **keamanan, otorisasi, dan arsitektur**, tetapi tidak
+pernah mencapai lapisan **transformasi data** — tempat seluruh temuan CRITICAL
+berada. Re-audit jurnal-grounded (`RE_AUDIT_BANSOS_HUB_REPORT.md`) menemukan bahwa
+mesin SAW-nya benar secara aritmetika, sementara data yang masuk ke mesin itu salah
+secara senyap.
+
+Ringkasan apa yang ditutup pada gelombang ini (rincian + bukti test di
+`FIX_IMPLEMENTATION_REPORT.md`):
+
+| Kelas masalah | Sebelum | Sesudah |
+|---|---|---|
+| Pemetaan jawaban CSV → sub-kriteria | 501 dari 900 sel fallback ke skor terendah (C3/C5/C6 100 % gagal) | 900/900 benar, 0 fallback, gagal = error terstruktur |
+| Status hasil impor | `disetujui` otomatis (tanpa akuntabilitas manusia) | `menunggu`, approval manual aktor berwenang |
+| Identitas rumah tangga | `updateOrCreate` by nama → rumah tangga tertimpa | dedup nama+RT+alamat; nama kembar RT beda = dua record |
+| Scope ranking RT | Seluruh RW bocor, rank global | Scope di backend, `ranking_rt` dari server mulai 1 |
+| Warga yang tidak masuk ranking | Dihitung backend, tidak pernah tampil | Banner `dilewati` di RT/RW/Admin |
+| "Unduh Laporan" | `window.print()` | `GET /saw/report/export` → file CSV nyata |
+| Konsistensi dataset ↔ ranking | Dua jalur eligibility berbeda | Satu `SawCalculator::ambilDataEligible` |
+
+Perubahan ini **tidak membatalkan** temuan SML-06/SML-07 di atas: dashboard masih
+monolitik dan masih memakai Tailwind CDN, dan keduanya tetap tercatat sebagai
+teknis-debt terbuka.
+
+---
+
+## Gelombang Kontras WCAG (2026-11-25)
+
+Guard UAT sebelumnya hanya menyapu halaman Beranda. Sapuan seluruh menu per peran
+menemukan 136 teks di bawah ambang WCAG AA (rasio terburuk 1.48:1 pada placeholder
+`#cbd5e1` di atas putih). Semua sudah diperbaiki dan diukur ulang:
+
+| Halaman | Sebelum | Sesudah |
+|---|---:|---:|
+| Admin ranking | 96 gagal | 0 |
+| Admin menu lain (kuesioner, matriks, kriteria, users, log) | 130 gagal | 0 |
+| RT ranking | 37 gagal | 0 |
+| RT menu lain (beranda, warga, kuesioner, verifikasi) | 4 gagal | 0 |
+| RW ranking + beranda | 6 gagal | 0 |
+
+Pasangan warna pengganti (terukur ≥ 4.5:1): teks sekunder `#94a3b8`/`#64748b` →
+`#475569`; amber `#ca8a04`/`#d97706` → `#a16207`/`#b45309`; merah `#dc2626` →
+`#b91c1c`; tombol hijau `#059669` → `#047857`; ikon centang `#22c55e` → `#15803d`;
+cyan `#0891b2` → `#0e7490`; placeholder `#cbd5e1` → `#64748b`; badge `#ef4444` →
+`#dc2626`; tangga peringkat 2–3 `#3b82f6`/`#93c5fd` → `#2563eb`/`#bfdbfe` +
+teks `#1e3a8a`.
+
+Regresi dijaga oleh `docs/uat/guard_kontras_ranking.mjs` (baru) yang memeriksa
+halaman ranking RT/RW/Admin — celah yang membuat temuan ini lolos dari
+`guard_kontras_wcag.mjs`.
+
+---
+
+## Gelombang UI Pengaduan (2026-11-25)
+
+Backend `pengaduan`/`pengaduan_riwayat` sudah ada sejak gelombang P2, tetapi belum
+punya antarmuka — warga tidak bisa mengadu, RT tidak bisa menindaklanjuti dari
+layar. Ditutup dengan satu komponen `src/components/PengaduanPanel.jsx` yang
+dipasang di keempat dashboard (warga, RT, RW, admin).
+
+Pembagian kewenangan tetap 100  0i server; UI tidak memfilter sendiri:
+
+| Peran | Yang tampil |
+|---|---|
+| Warga | Form kirim (kategori + isi) dan daftar pengaduan **miliknya** saja |
+| RT | Pengaduan wilayahnya saja; tombol Terima/Tolak + kolom tanggapan |
+| RW / Admin | Seluruh RT; dapat mengambil alih bila RT tidak tersedia |
+
+Test backend bertambah dari 5 → **11** (`PengaduanTest`): isolasi wilayah pada
+daftar, kompatibilitas format RT lama (`1` vs `001`), status di luar daftar
+→ 422, isi kosong → 422, akun warga tanpa `id_warga` → 403, dan riwayat yang
+mencatat setiap transisi status.
+
+UI dijaga `docs/uat/guard_pengaduan.mjs`: 4 peran, kontras WCAG AA, target sentuh
+≥ 40px, tanpa overflow 360px, dan asersi bahwa RT 001 **tidak** melihat pengaduan
+RT 003.
+
+---
+
+## Gelombang Kanonikalisasi RT (2026-11-25)
+
+Sebelumnya setiap halaman menormalkan RT dengan caranya sendiri: `padStart(2,'0')`
+di RW, `Number(rt)` di filter, `String(Number(...))` di perbandingan, dan
+`value="1"` pada `<select>` RT di form warga. Akibatnya satu wilayah bisa muncul
+sebagai `1`, `01`, dan `001` pada layar yang berbeda, dan filter berbasis string
+bisa tidak cocok dengan data yang tersimpan tiga digit.
+
+Penutupnya satu helper bersama `src/lib/rt.js`:
+
+| Fungsi | Kegunaan |
+|---|---|
+| `rtInt(v)` | nilai integer RT, `null` bila bukan RT sah |
+| `rtKode(v)` | RT kanonik tiga digit untuk dikirim ke API |
+| `rtNomor(v)` | label dua digit (`01`) |
+| `rtLabel(v)` | label siap pakai (`RT 01`) |
+| `rtSama(a,b)` | perbandingan wilayah yang tahan format lama |
+
+Yang berubah: seluruh label wilayah di dashboard RT/RW/Admin memakai `rtLabel`;
+perbandingan filter memakai `rtInt` (bukan `Number()`/string compare); nilai
+`<select>` RT di `WargaDashboard` dan `RegisterWarga` mengirim `001/002/003`
+(bukan `1/2/3`); helper `fmtNum` lokal di RW dihapus.
+
+Regresi dijaga dua lapis: `tests/Unit/RtFormatterTest` (6 test, 40 assertion) untuk
+kontrak backend, dan `docs/uat/guard_rt_kanonik.mjs` yang memeriksa seluruh label
+RT di UI harus dua digit dan nilai select harus tiga digit (8 pemeriksaan, 0 gagal).
+
+---
+
+## Gelombang Test Jurnal (P2-10, 2026-11-25)
+
+Audit §17.2 mencatat jurnal mengklaim "29/29 test case lulus", tetapi repo hanya
+menutup ~19 padanan dan tiga kelompok hilang total — terutama **cetak laporan**,
+yang sama sekali tidak punya test sehingga `window.print()` palsu (BUG-23) lolos.
+
+`tests/Feature/JurnalKelompokTest.php` (26 test) memetakan delapan kelompok jurnal
+ke perilaku API yang benar-benar menjaga klaim tersebut:
+
+| Kelompok jurnal | Test | Yang dijaga |
+|---|---:|---|
+| 1. Autentikasi | 4 | login valid mengembalikan peran+RT, login salah 401 tanpa bocor alasan, rute privat 401 JSON (bukan redirect HTML), logout mencabut token |
+| 2. Registrasi warga | 4 | identitas warga tertaut, username duplikat 422, password pendek 422, RT tidak sah 422 |
+| 3. Pengajuan kuesioner | 3 | submit menyimpan jawaban mentah + status `menunggu` (matriks baru dibentuk saat approval), pengajuan kedua 400, warga melihat statusnya sendiri |
+| 4. Verifikasi & akses RT | 4 | approve membentuk 10 penilaian, reject, filter wilayah, edit jawaban |
+| 5. Perhitungan SAW | 4 | urutan ranking, matriks keputusan `/saw/dataset` lengkap 10 kolom, kriteria konstan dilaporkan, kriteria bervariasi tidak |
+| 6. Import CSV | 1 | CSV asli → 90 warga, 90 pengajuan `menunggu`, 900 penilaian |
+| 7. Manajemen akun | 2 | tambah/edit/hapus, username duplikat 422 |
+| 8. Cetak laporan | 4 | isi CSV ranking, scope peran pada ekspor, struktur activity log, format tak dikenal 422 |
+
+**Bug nyata yang ditemukan gelombang ini:** `RtFormatter::rule()` memakai pola
+`^[0-9]{1,3}$` yang meloloskan `"0"`; `formatRt()` lalu melempar exception dan
+endpoint membalas **500** alih-alih **422**. Pola diperbaiki menjadi
+`^(?!0+$)[0-9]{1,3}$` dan dijaga `RtFormatterTest`.
+
+---
+
+## Gelombang Higiene P3 (2026-11-25)
+
+Tiga temuan §21/§22.3 ditutup sekaligus, masing-masing dengan bukti test.
+
+### P3-26 — kolom `warga.password` dihapus
+
+Kolom ini ditulis tiga jalur (`AuthController`, `ImportWargaSeeder`,
+`AdminRtController`) tetapi **tidak pernah dibaca**: autentikasi memakai tabel
+`users`. Migrasi `2026_11_25_000005` menghapusnya. `P3HygieneTest` memverifikasi
+`Schema::hasColumn(warga,password) === false` dan bahwa pembuatan warga tetap
+berjalan tanpa kolom itu.
+
+### P3-30 — status baca chat
+
+Sebelumnya tidak ada status apa pun, sehingga badge "ada pesan baru" dihitung
+dari panjang array — ikut menghitung pesan sendiri dan tidak pernah kembali ke
+nol. Sekarang:
+
+| Bagian | Perubahan |
+|---|---|
+| Skema | `pesan_chat.dibaca_pada` (nullable) + index `(id_pengajuan, dibaca_pada)` |
+| API | `GET /chat/{id}/belum-dibaca` → `{jumlah}`; `PUT /chat/{id}/baca` → tandai semua pesan lawan bicara |
+| UI | Badge tab Diskusi & titik merah kartu beranda memakai `jumlah` dari server; dibuka → ditandai dibaca |
+
+`P3HygieneTest` (4 test) dan `docs/uat/guard_chat_belum_dibaca.mjs` (5 pemeriksaan)
+menjaga: pesan sendiri tidak dihitung, badge muncul lalu hilang, status tetap nol
+setelah reload (tersimpan di DB), dan penandaan baca **tidak bocor** ke pengajuan
+warga lain.
+
+### P3-32 — pembatas laju endpoint berat
+
+Hanya `/login` & `/register` yang dibatasi sebelumnya. `AppServiceProvider` kini
+mendaftarkan tiga limiter, dihitung **per pengguna** (bukan per IP, karena beberapa
+RT bisa berbagi satu IP kantor):
+
+| Limiter | Endpoint | Batas |
+|---|---|---|
+| `saw` | `GET /saw/hitung`, `/saw/report/export` | 60/menit |
+| `import` | `POST /admin/pengajuan/import`, `/admin/fix-data` | 10/menit |
+| `chat` | `POST /chat/{id}` | 30/menit |
+
+`P3HygieneTest` membuktikan panggilan ke-61 ke `/saw/hitung` dan ke-31 ke
+`POST /chat` dibalas **429**, dan pesan yang ditolak tidak tersimpan di database.
+
+### P3-28 — dead code
+
+`WargaController::cekStatus` dan `Penilaian::kriteria()` dihapus (tidak pernah
+dipanggil). `PesanChat` dipertahankan karena sekarang dipakai `ChatController`.
+`src/lib/api.js` dipertahankan sebagai shim re-export yang masih diimpor `App.jsx`
+dan `LandingPage.jsx`.
+
+### Catatan operasional: batas login menipu guard UAT
+
+`guard_pengaduan.mjs` sempat tampak flaky (1 dari 3–5 run gagal dengan pesan
+"panel pengaduan tidak muncul"). Penyebabnya bukan UI: skrip login 4× per run,
+sementara `/api/login` dibatasi 10/menit, sehingga run ketiga dalam satu menit
+mendapat **429** dan halaman berhenti di form login. Perbaikan: token diambil
+sekali per peran lewat API lalu disuntik ke `localStorage`, dan skrip mencetak
+pesan eksplisit bila batas tercapai. Sesudah perbaikan, run berurutan hijau
+selama batas login belum tercapai (2 run berturut-turut tanpa jeda, lalu hijau
+lagi setelah jeda ~60 detik).
+
+---
+
+## Gelombang Dependency Audit (P3-33, 2026-11-25)
+
+Dua audit dijalankan dan seluruh temuannya ditutup.
+
+### Backend: 53 advisory (12 paket) → 0
+
+`composer audit` menemukan **1 critical, 15 high, 22 medium, 7 low** (8 tanpa label).
+Yang paling relevan untuk sistem ini:
+
+| Advisory | Paket | Relevansi |
+|---|---|---|
+| *TokenGuard authentication bypass through non-string API credentials* (CVE-2026-114509, **critical**) | `laravel/framework` < 12.68.0 | **langsung** — sistem memakai Sanctum token auth |
+| *CRLF injection in default email rule* (CVE-2026-48019) | `laravel/framework` < 12.60.0 | relevan bila validasi `email` dipakai |
+| *Noncanonical host can bypass host-based checks* (CVE-2026-69246) | `guzzlehttp/guzzle` < 7.15.2 | tidak dipakai runtime, tetap ditutup |
+| 9 advisory DoS/XSS `league/commonmark` | 2.8.2 | tidak dipakai untuk input pengguna |
+
+Ditutup dengan `composer update --with-dependencies`: `laravel/framework`
+12.58.0 → **12.74.0**, `sanctum` 4.3.1 → **4.5.0**, `symfony/*` 7.4.8 → **7.4.24**,
+`guzzle` 7.10.0 → **7.17.0**, `commonmark` 2.8.2 → **2.10.8**.
+**`composer.json` tidak diubah** — semua masih dalam constraint yang ada.
+
+### Frontend: 17 advisory (12 high) → 0
+
+| Paket | Sebelum | Sesudah |
+|---|---|---|
+| `axios` | 1.15.2 (24 advisory, termasuk ReDoS & prototype pollution) | **1.21.1** |
+| `react-router-dom` | 7.14.2 (8 advisory, termasuk open redirect & CSRF) | **7.18.7** |
+| `vite` | 8.0.10 (7 advisory, termasuk RCE via `launch-editor` di Windows) | **8.3.8** |
+| `postcss` | 8.5.22 | **8.5.33** |
+
+`npm audit fix` — **`package.json` tidak diubah**, hanya `package-lock.json`.
+
+### Verifikasi
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `php artisan test` | 132 passed (3013 assertions) |
+| `eslint` / `vite build` | bersih / sukses |
+| `composer audit` | 0 advisory |
+| `npm audit` | 0 vulnerabilities |
+| 6 guard UAT | semua hijau |
+
+**Catatan lingkungan:** `composer` di mesin ini terpasang sebagai skrip shell di
+`C:\Program Files\composer` yang memanggil `composer.phar`; memanggil `composer`
+langsung gagal (`Could not open input file`). Yang bekerja:
+`/c/xampp/php/php.exe "C:/Program Files/composer.phar" <perintah>`.
+
+### Index `pengajuan.status`
+
+Satu-satunya query yang memindai seluruh tabel `pengajuan` adalah filter
+`status = 'disetujui'` di `SawCalculator::ambilDataEligible()` — tanpa index,
+setiap kalkulasi SAW melakukan full table scan. Migrasi
+`2026_11_25_000007_add_status_index_to_pengajuan_table` menambah
+`pengajuan_status_index`.
+
+Verifikasi di SQLite kosong: 20 migrasi berjalan, index terbentuk
+(`pengajuan.pengajuan_status_index`), `migrate:rollback --step=2` menghapusnya
+bersih (index `pengajuan` kembali 1: hanya `pengajuan_id_warga_unique`), dan
+`migrate` ulang mengembalikannya.
+
+---
+
+## Gelombang Polling Chat (P3-30 lanjutan, 2026-11-25)
+
+Status baca sudah tersimpan server sejak gelombang sebelumnya, tetapi pesan masih
+hanya dimuat **sekali**: balasan RT baru terlihat setelah reload manual, dan balasan
+warga baru terlihat di sisi RT setelah modal verifikasi ditutup lalu dibuka ulang.
+
+### Implementasi
+
+| Sisi | Polling hidup saat | Interval | Berhenti saat |
+|---|---|---|---|
+| Warga | ada `id_pengajuan` | 15 s | tab tidak terlihat, atau 401/403/404 |
+| RT | modal verifikasi terbuka | 15 s | modal ditutup, tab tidak terlihat, atau 401/403/404 |
+
+Empat detail yang menentukan:
+
+1. **Pesan lokal dipertahankan.** Entri ber-`temp_id` (masih dikirim) tidak
+   ditimpa hasil polling, karena belum ada di server.
+2. **Tanpa render ulang bila identik.** Perbandingan per indeks pada `id_pesan`;
+   bila sama, state lama dikembalikan sehingga daftar tidak berkedip. Efek
+   auto-scroll diubah dari `[pesanList]` ke `[pesanList.length]`.
+3. **Badge tidak berkedip.** Bila pengguna sedang di tab Diskusi, hasil polling
+   yang masih "belum dibaca" langsung ditandai dibaca.
+4. **Duplikat dihilangkan di sumbernya.** Setelah `POST /chat/{id}` sukses klien
+   mengambil ulang daftar dari server. Sebelum ini, pesan yang baru dikirim tetap
+   membawa `temp_id` sehingga polling berikutnya menampilkan versi ganda.
+
+### Bukti
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `guard_chat_polling.mjs` (baru) | 8/8 PASS — pesan RT muncul tanpa reload dalam 14.8 s, URL tetap `/warga`, badge muncul lalu hilang, pesan tidak terduplikasi |
+| `guard_chat_polling_rt.mjs` (baru) | 6/6 PASS — pesan warga muncul di modal dalam 14.5 s, modal tetap utuh, RT masih bisa mengirim, pesan tersimpan |
+| `tests/Feature/ChatPollingTest.php` (baru) | 4 test / 18 assertion — `GET` tidak menandai terbaca, urutan deterministik, pesan baru terlihat di polling berikutnya, warga lain tetap 403 |
+| Total suite backend | 136 test / 3031 assertion |
+
+### Guard lama yang ikut diperbaiki
+
+`guard_chat_belum_dibaca.mjs` sempat gagal 4 dari 5 pemeriksaan setelah polling
+masuk. Penyebabnya bukan regresi produk: skrip itu login lewat form lalu menebak
+waktu tunggu (`waitForTimeout(3500)`), sehingga kadang membaca tab sebelum
+`fetchStatus` selesai. Sekarang token disuntik ke `localStorage` dan semua
+penantian memakai `waitForFunction` (badge benar-benar muncul/hilang). Sesudah
+perbaikan: 5/5 PASS.
+
+**Catatan batas login.** `guard_chat_polling*.mjs` butuh 2 login per run dan
+`guard_pengaduan.mjs` 4 login per run, sementara `/api/login` dibatasi 10/menit.
+Menjalankan guard berturut-turut tanpa jeda akan kena 429; beri jeda ~60 detik.
+
+---
+
+## Gelombang Hapus Tailwind CDN (2026-11-25)
+
+Tiga dashboard menyuntik `cdn.tailwindcss.com` saat mount — ~120 kB JavaScript plus
+compiler Tailwind yang jalan di browser pengguna, untuk menebak kelas mana yang
+dipakai. Setelah diperiksa, CDN itu **praktis tidak dipakai**.
+
+### Temuan
+
+| Pemeriksaan | Hasil |
+|---|---|
+| Token `className` unik di seluruh `src/` | 64 |
+| Kelas custom, didefinisikan sendiri di `<style>` per halaman | 63 |
+| Utilitas Tailwind yang benar-benar dipakai | **1** — `select-none` |
+
+Semua `rt-main`, `rw-header`, `ld-btn`, `card`, `inp`, `btn-blue`, `warga-tabs`,
+`badge-screen` dan seterusnya adalah CSS biasa di blok `<style>` masing-masing
+halaman. Tidak ada `flex`, `p-4`, `text-sm`, `gap-2`, atau `md:` sama sekali.
+
+### Perubahan
+
+1. Blok injeksi CDN dihapus dari `useDesign()` di `RtDashboard`, `RwDashboard`,
+   `AdminDashboard`.
+2. `select-none` dipindahkan ke `src/index.css` sebagai aturan biasa
+   (`user-select: none` + prefiks `-webkit-`). `index.css` sudah di-import
+   `main.jsx`, jadi berlaku di semua halaman.
+3. Tidak ada perubahan tampilan: semua kelas lain sudah punya aturannya sendiri.
+
+### Bukti
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `guard_tanpa_tailwind_cdn.mjs` (baru) | 7/7 PASS — 0 permintaan ke CDN di 5 halaman, 0 kelas berpola utilitas Tailwind, `user-select: none` tetap berlaku |
+| `guard_overflow_mobile.mjs` | 9 halaman, 0 overflow |
+| `guard_kontras_wcag.mjs` | 204 teks, 0 gagal kontras |
+| `guard_kontras_ranking.mjs` | 3 halaman, 0 gagal |
+| `guard_rt_kanonik.mjs` | 8 pemeriksaan, 0 gagal |
+| `guard_pengaduan.mjs` | 4 halaman, 0 gagal |
+| `guard_chat_belum_dibaca.mjs` | 5 pemeriksaan, 0 gagal |
+| `guard_chat_polling.mjs` / `_rt.mjs` | 8/8 dan 6/6 PASS |
+| `npx eslint src --max-warnings=0` | bersih |
+| `npx vite build` | sukses, CSS 1,32 kB (gzip 0,65 kB) |
+
+### Dua bug di guard yang ikut ditemukan
+
+1. Versi pertama memeriksa "kelas tanpa aturan CSS" dan melaporkan 5 halaman gagal
+   padahal `select-none` jelas berfungsi. Penyebab: di Chromium modern
+   `CSSStyleRule` **juga** punya `.cssRules` (CSS Nesting), sehingga logika
+   `r.cssRules ? [...r.cssRules] : [r]` melewati rule itu sendiri dan selalu
+   kosong. Diperbaiki: periksa `selectorText` dulu, telusuri `.cssRules` hanya bila
+   ada isinya.
+2. Pendekatan itu juga salah sasaran: `no-print` hanya ada di dalam `@media print`,
+   dan `*-sidebar-brand` adalah kelas mati yang sudah ada sejak sebelumnya. Guard
+   sekarang memeriksa **pola kelas utilitas Tailwind** — hal yang benar-benar akan
+   rusak bila CDN hilang.
+
+---
+
+## Gelombang Font Self-Hosted (2026-11-25)
+
+Font diambil runtime dari `fonts.googleapis.com` di empat tempat: dua `<link>` +
+dua `preconnect` di `index.html`, `@import` di Landing/Login/Register/Warga, dan
+injeksi `<link>` lewat `document.createElement` di `useDesign()` dashboard.
+
+### Yang ditemukan
+
+| Temuan | Angka |
+|---|---|
+| Material Symbols versi penuh yang diminta `index.html` | **4.026.236 byte** untuk ~3.500 ikon |
+| Ikon yang benar-benar dipakai aplikasi | **64** |
+| `Inter` yang diminta | dipakai **1 baris** di `DiagnosaKoneksi.jsx` |
+
+Jadi yang diunduh pengguna setiap kali membuka halaman: font 4 MB, padahal yang
+terpakai 66 KB.
+
+### Perubahan
+
+Berkas font diunduh sekali ke `bansos-frontend/public/fonts/`:
+
+| Berkas | Ukuran |
+|---|---:|
+| `plus-jakarta-sans-latin.woff2` | 27 KB (variable font 200–800) |
+| `plus-jakarta-sans-latin-ext.woff2` | 21 KB |
+| `material-symbols-subset.woff2` | 66 KB (64 ikon) |
+
+`src/fonts.css` memuat semua `@font-face` + `.material-symbols-outlined`, di-import
+`main.jsx`. Semua injeksi runtime dan `@import` dihapus; `index.html` bersih dari
+`preconnect`/`<link>` Google. `Inter` dihapus, satu pemakaiannya dialihkan ke
+Plus Jakarta Sans.
+
+**Total: 4 MB + 2 × CSS Google → 114 KB dari origin sendiri.**
+
+### Bukti
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `guard_font_self_hosted.mjs` (baru) | 18/18 PASS — 0 permintaan ke Google di 5 halaman, kedua font `loaded`, glyph ikon 24 px |
+| **Uji negatif** (font dipotong jadi 2 KB) | **13 kegagalan** — ikon jadi teks sampai 128 px. Guard terbukti bisa gagal. |
+| 10 guard visual lama | semua hijau |
+| `php artisan test` | 136 passed (3031 assertions) |
+| `npx vite build` | sukses, CSS 2,48 kB gzip 1,06 kB |
+
+### Tiga bug di guard yang ikut ditemukan
+
+1. **Daftar ikon tidak lengkap.** Versi pertama hanya mengumpulkan `name="…"`,
+   padahal ikon juga dipakai lewat `icon: '…'` di array menu. Akibatnya
+   `dashboard` selebar 162 px dan `manage_accounts` 270 px — teks, bukan ikon.
+   Daftar dikumpulkan ulang dari tiga pola → 64 ikon.
+2. **Font dimuat lazy.** `document.fonts` melaporkan `unloaded` bila tidak ada teks
+   yang memakainya, sehingga pengukuran jatuh ke font fallback. Guard kini
+   memanggil `document.fonts.load()` eksplisit sebelum mengukur.
+3. **Probe tanpa font-size.** Beberapa halaman meng-override
+   `.material-symbols-outlined` jadi 20 px sehingga probe mewarisi ukuran lain.
+   Probe kini menetapkan `font-size: 24px`, dan pembanding memakai rasio
+   lebar/font-size, bukan ambang px tetap.
+
+**Cara memperbarui subset ikon** didokumentasikan di `docs/uat/README.md` — penting,
+karena menambah ikon tanpa memperbarui subset akan menampilkan teks alih-alih ikon,
+dan teks di sekitarnya tetap normal sehingga mudah lolos dari pemeriksaan manual.
+
+---
+
+## Gelombang Migrasi Live (2026-11-26)
+
+Tujuh migrasi baru dijalankan ke `db_bansos_saw` (MariaDB 10.4.32). Sebelumnya
+database live masih di 13 migrasi lama — kode sudah memakai `pengaduan`,
+`pengajuan_riwayat`, `pesan_chat.dibaca_pada`, dan index status, sehingga live
+akan gagal pada endpoint tersebut.
+
+### Persiapan (semua diverifikasi, bukan diasumsikan)
+
+| Langkah | Hasil |
+|---|---|
+| Backup `mysqldump --single-transaction --routines --triggers` | `docs/archive/db_bansos_saw_backup_20261126_010427.sql` (108.562 byte) |
+| Dry-check duplikat `(id_pengajuan, id_kriteria)` | **0 baris** — unique constraint 000003 aman |
+| Prekondisi | `dibaca_pada` belum ada, `pengajuan_status_index` belum ada, `warga.password` ada (95 baris terisi) |
+
+### Eksekusi & verifikasi
+
+Semua 7 migrasi `DONE` dalam < 0,5 s. Data tidak berubah: warga 95, pengajuan 94,
+penilaian 940, users 6. Tabel `pengaduan`/`pengaduan_riwayat`/`pengajuan_riwayat`
+terbentuk dengan FK benar; tiga index baru terpasang; `warga.password` hilang.
+
+Uji API hidup:
+
+| Endpoint | Hasil |
+|---|---|
+| `GET /api/saw/hitung` | 90 warga diranking, skor 0,575–0,950, **31 nilai unik** (bukan fallback massal) |
+| Sebaran RT | 001: 35, 002: 27, 003: 28 |
+| `GET /api/saw/report/export?format=csv` | 200, 1.458 byte, header benar |
+| `GET /api/pengaduan` | 200 |
+| Isolasi chat | `GET /chat/31` (RT 001) 200 · `GET /chat/10` (RT 003) **403** |
+| `php artisan test` | 136 passed (3031 assertions) |
+
+### Rollback diuji di salinan terpisah
+
+`migrate` penuh lalu `migrate:rollback --step=7` pada SQLite scratch: ketiga tabel
+baru hilang, `dibaca_pada` hilang, dan `warga.password` **kembali**. Migrasi ini
+reversibel, bukan jalan satu arah.
+
+### Temuan data sampah (BUKAN akibat migrasi)
+
+4 warga (id 92–95) dengan `nama_lengkap` kosong, `rt='000'`, alamat kosong, punya
+pengajuan #91–#94 berstatus `disetujui` dengan `jawaban_mentah` **NULL**, plus 10
+baris `penilaian` masing-masing. Muncul di respons sebagai `dilewati[]` dengan alasan
+"nama warga kosong".
+
+Migrasi hanya mengubah struktur — tidak pernah menyentuh baris `warga`/`pengajuan`.
+Baris ini sudah ada sebelumnya. **Tidak dihapus**: penghapusan data pengguna di luar
+mandat, dan `RE_AUDIT_BANSOS_HUB_REPORT.md` mencatat rekonsiliasi 94 data live masih
+menunggu verifikasi RT. Perlu keputusan pemilik data; query dry-run ada di
+`FIX_IMPLEMENTATION_REPORT.md` §8e.
+
+Dampak: ranking 90 warga sah tetap benar, dan 4 baris itu kini **terlihat** di UI
+lewat banner `dilewati[]` alih-alih disembunyikan diam-diam.
+
+### Temuan kedua: data live bukan salinan seed demo
+
+Guard UAT chat gagal dengan *"tidak ada pengajuan untuk warga01"*. Setelah diperiksa:
+
+| Fakta | Nilai |
+|---|---|
+| `users.warga01` → `id_warga` | **1** (Budi Santoso, RT 001) |
+| Pengajuan pertama di live | `id_pengajuan 1` → **`id_warga 2`** |
+| Warga sah tanpa pengajuan | **1** — warga #1 / `warga01` |
+
+Pengajuan live dimulai dari `id_warga 2`, sedangkan akun demo menunjuk `id_warga 1`.
+Jadi `warga01` adalah satu-satunya warga sah yang belum pernah mengisi kuesioner.
+
+Bukan efek migrasi. Ketiga guard chat kini **melewati** dengan pesan eksplisit
+(exit 0) karena prasyaratnya data seed demo, bukan kondisi produk — sebelumnya
+dilaporkan sebagai kegagalan, yang menyesatkan.
+
+Chat tetap dibuktikan bekerja di live lewat API dengan akun RT: `POST /chat/31` →
+tersimpan, `GET /chat/31` → 1 pesan, `GET /chat/31/belum-dibaca` → `jumlah:0`
+(pesan sendiri tidak dihitung), `PUT /chat/31/baca` → sukses. Pesan uji lalu dihapus
+(`pesan_chat` kembali 0 baris).
+
+### Tindak lanjut: kuesioner `warga01` diisi
+
+Atas permintaan pemilik data, akun demo dilengkapi lewat **alur aplikasi**, bukan
+`INSERT` manual — supaya matriks dibangun `PenilaianAssembler` (SSOT):
+
+`POST /api/warga/pengajuan` sebagai `warga01` → pengajuan **#95** (`menunggu`) →
+`PUT /api/admin/pengajuan/95/status` sebagai `rt001` → `disetujui` → **10 baris
+penilaian** terbentuk (940 → 950). `jawaban_mentah` tersimpan 230 byte.
+
+Dampak terukur:
+
+| Sebelum | Sesudah |
+|---|---|
+| 90 warga diranking | **91** |
+| `kriteria_tanpa_variasi`: 3 kriteria | **0** |
+| 3 guard chat dilewati | **5/5 + 8/8 + 6/6 PASS** |
+
+Budi Santoso: skor `0,641667`, ranking global 85, ranking RT 35 — konsisten dengan
+profil paling rentan, dan membuktikan matriksnya berbeda dari warga lain (bukan
+fallback seragam).
+
+### Keadaan akhir live
+
+| Item | Nilai |
+|---|---|
+| Migrasi | **20/20 `Ran`** (batch 2 = 7 migrasi baru) |
+| warga / pengajuan / penilaian / users | 95 / 95 / 950 / 6 |
+| `pesan_chat` / `pengaduan` / `pengajuan_riwayat` | 0 / 0 / 0 (bersih, pesan uji dihapus) |
+| Guard UAT terhadap live | overflow 9/0, kontras 116 teks/0, ranking 3/0, RT kanonik 8/0, Tailwind 7/0, font 18/0, pengaduan 4/0, chat 5/0 + 8/0 + 6/0 — **semua hijau** |

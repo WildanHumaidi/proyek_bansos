@@ -8,6 +8,7 @@ use App\Models\Warga;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
+use Tests\Support\KriteriaFixture;
 use Tests\TestCase;
 
 /**
@@ -18,6 +19,31 @@ use Tests\TestCase;
 class IdentitasWargaTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Validasi jawaban server-side butuh vocabulary sub-kriteria.
+        KriteriaFixture::seedKriteria();
+    }
+
+    /** Payload jawaban lengkap dengan vocabulary valid (P1-03). */
+    protected function jawabanLengkap(): array
+    {
+        return [
+            'q1' => '1 KK',
+            'q2' => '4 Orang',
+            'q3' => 'SD',
+            'q4' => 'Tidak Ada',
+            'q5' => '400 - 700 Ribu',
+            'q6' => '< 400 Ribu',
+            'q7' => 'Sewa < 1 Juta',
+            'q8' => 'Sumur Milik Sendiri',
+            'q9' => 'Listrik 450 watt',
+            'q10' => 'Sepeda Motor 1 Buah, dalam Kondisi Baik',
+        ];
+    }
 
     public function test_dua_warga_dengan_nama_sama_tidak_saling_menimpa(): void
     {
@@ -52,7 +78,7 @@ class IdentitasWargaTest extends TestCase
         $this->postJson('/api/warga/pengajuan', [
             'alamat' => 'Alamat Diperbarui',
             'rt' => '002',
-            'jawaban_mentah' => ['q1' => '1 KK'],
+            'jawaban_mentah' => $this->jawabanLengkap(),
         ])->assertOk();
 
         // Hanya baris milik akun ini yang berubah.
@@ -337,7 +363,7 @@ class IdentitasWargaTest extends TestCase
         $this->postJson('/api/warga/pengajuan', [
             'alamat' => 'Jl. Pendaftar',
             'rt' => '001',
-            'jawaban_mentah' => ['q1' => '1 KK'],
+            'jawaban_mentah' => $this->jawabanLengkap(),
         ])->assertOk();
     }
 

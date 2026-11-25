@@ -1,6 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import RankingWarnings from '../components/RankingWarnings';
+import PengaduanPanel from '../components/PengaduanPanel';
+import { rtLabel, rtInt } from '../lib/rt';
+import { unduhLaporanSaw } from '../lib/report';
 
 const API = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000/api';
 const authH = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
@@ -8,28 +12,6 @@ const authH = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` 
 /* ─── Design Bootstrap ───────────────────────────────────────────────────── */
 function useDesign() {
   useEffect(() => {
-    if (!document.getElementById('tw-cdn')) {
-      const s = document.createElement('script');
-      s.id = 'tw-cdn';
-      s.src = 'https://cdn.tailwindcss.com?plugins=forms,container-queries';
-      document.head.appendChild(s);
-    }
-    if (!document.getElementById('gf-plus')) {
-      const l = document.createElement('link');
-      l.id = 'gf-plus';
-      l.rel = 'stylesheet';
-      l.href =
-        'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap';
-      document.head.appendChild(l);
-    }
-    if (!document.getElementById('mat-sym')) {
-      const l = document.createElement('link');
-      l.id = 'mat-sym';
-      l.rel = 'stylesheet';
-      l.href =
-        'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap';
-      document.head.appendChild(l);
-    }
     if (!document.getElementById('rt-print')) {
       const st = document.createElement('style');
       st.id = 'rt-print';
@@ -117,8 +99,8 @@ const statusCfg = (st) => {
   const s = String(st || '').toLowerCase();
   if (s === 'disetujui')
     return { label: 'DITERIMA', bg: '#dcfce7', color: '#15803d', dot: '#22c55e' };
-  if (s === 'ditolak') return { label: 'DITOLAK', bg: '#fee2e2', color: '#dc2626', dot: '#ef4444' };
-  return { label: 'PENDING', bg: '#fef9c3', color: '#ca8a04', dot: '#f59e0b' };
+  if (s === 'ditolak') return { label: 'DITOLAK', bg: '#fee2e2', color: '#b91c1c', dot: '#ef4444' };
+  return { label: 'PENDING', bg: '#fef9c3', color: '#a16207', dot: '#f59e0b' };
 };
 
 const Badge = ({ status }) => {
@@ -286,7 +268,9 @@ export default function RtDashboard() {
   const [wargaList, setWargaList] = useState([]);
   const [pengajuanList, setPengajuanList] = useState([]);
   const [rankingAll, setRankingAll] = useState([]);
-  const [rankingScope, setRankingScope] = useState('rt');
+  const [dilewati, setDilewati] = useState([]);
+  const [kriteriaTanpaVariasi, setKriteriaTanpaVariasi] = useState([]);
+  const [rankingError, setRankingError] = useState(null);
 
   /* Modal states */
   const [modalWarga, setModalWarga] = useState(false);
@@ -328,30 +312,40 @@ export default function RtDashboard() {
   const fetchData = useCallback(
     async (token, rt) => {
       setLoading(true);
-      const rtNum = Number(rt);
+      const rtNum = rtInt(rt);
       try {
         if (['beranda', 'warga', 'kuesioner'].includes(activeMenu)) {
           const r = await axios.get(`${API}/admin/users`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           setWargaList(
-            (r.data.data || []).filter((u) => u.role === 'warga' && Number(u.rt) === rtNum)
+            (r.data.data || []).filter((u) => u.role === 'warga' && rtInt(u.rt) === rtNum)
           );
         }
         if (['beranda', 'verifikasi'].includes(activeMenu)) {
           const r = await axios.get(`${API}/admin/pengajuan`, {
             headers: { Authorization: `Bearer ${token}` },
           });
-          setPengajuanList((r.data.data || []).filter((p) => Number(p.warga?.rt) === rtNum));
+          setPengajuanList((r.data.data || []).filter((p) => rtInt(p.warga?.rt) === rtNum));
         }
         if (['beranda', 'ranking'].includes(activeMenu)) {
+          // Backend sudah membatasi hasil ke RT ini (P0-06) dan mengirim
+          // ranking_rt (BUG-08). Tidak ada lagi filter/penomoran di klien.
           const r = await axios.get(`${API}/saw/hitung?t=${Date.now()}`, {
             headers: { Authorization: `Bearer ${token}` },
           });
-          setRankingAll((r.data.data || []).map((x, i) => ({ ...x, rank_global: i + 1 })));
+          setRankingAll(r.data.data || []);
+          setDilewati(r.data.dilewati || []);
+          setKriteriaTanpaVariasi(r.data.kriteria_tanpa_variasi || []);
+          setRankingError(null);
         }
       } catch (e) {
         console.error('Gagal memuat data RT:', e);
+        if (['beranda', 'ranking'].includes(activeMenu)) {
+          setRankingError(
+            e.response?.data?.message || 'Server tidak merespons. Muat ulang halaman atau jalankan kalkulasi lagi.'
+          );
+        }
       } finally {
         setLoading(false);
       }
@@ -371,7 +365,50 @@ export default function RtDashboard() {
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [pesanList]);
+  }, [pesanList.length]);
+
+  /* Polling percakapan di modal verifikasi. Sebelumnya pesan hanya dimuat sekali
+     saat modal dibuka, jadi balasan warga baru terlihat setelah modal ditutup dan
+     dibuka ulang. Polling hanya hidup selama modal terbuka dan tab terlihat. */
+  useEffect(() => {
+    const idPengajuan = selectedP?.id_pengajuan;
+    if (!modalVerif || !idPengajuan) return;
+
+    let berhenti = false;
+
+    const muatPesan = async () => {
+      if (berhenti || document.visibilityState !== 'visible') return;
+      try {
+        const r = await axios.get(`${API}/chat/${idPengajuan}`, { headers: authH() });
+        if (berhenti) return;
+
+        const dariServer = r.data.data || [];
+        setPesanList((lama) => {
+          const lokal = lama.filter((m) => m.temp_id);
+          const tidakBerubah =
+            lokal.length === 0 &&
+            lama.length === dariServer.length &&
+            dariServer.every((s, i) => s.id_pesan === lama[i].id_pesan);
+          return tidakBerubah ? lama : [...dariServer, ...lokal];
+        });
+      } catch (err) {
+        const status = err.response?.status;
+        if (status === 401 || status === 403 || status === 404) berhenti = true;
+      }
+    };
+
+    const timer = setInterval(muatPesan, 15000);
+    const saatTampil = () => {
+      if (document.visibilityState === 'visible') muatPesan();
+    };
+    document.addEventListener('visibilitychange', saatTampil);
+
+    return () => {
+      berhenti = true;
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', saatTampil);
+    };
+  }, [modalVerif, selectedP?.id_pengajuan]);
 
   /* ── Warga actions ── */
   const simpanWarga = async (e) => {
@@ -491,12 +528,13 @@ export default function RtDashboard() {
     try {
       await axios.post(
         `${API}/chat/${selectedP.id_pengajuan}`,
-        { isi_pesan: teks, pengirim_role: 'rt' },
+        { isi_pesan: teks },
         { headers: authH() }
       );
-      setPesanList((p) =>
-        p.map((m) => (m.temp_id === tempId ? { ...m, status_kirim: 'sent' } : m))
-      );
+      // Ambil ulang dari server: pesan lokal masih bertanda `temp_id`, sehingga
+      // kalau dibiarkan akan tampil ganda saat polling berikutnya.
+      const r = await axios.get(`${API}/chat/${selectedP.id_pengajuan}`, { headers: authH() });
+      setPesanList(r.data.data || []);
     } catch (err) {
       console.error('Gagal mengirim pesan chat:', err);
       setPesanList((p) =>
@@ -511,26 +549,26 @@ export default function RtDashboard() {
   };
 
   /* ── Computed ── */
-  const rtNum = Number(userData.rt);
-  const rankingRT = rankingAll.filter((r) => Number(r.rt) === rtNum);
-  const rankingView = rankingScope === 'rt' ? rankingRT : rankingAll;
+  const rankingRT = rankingAll;
+  const rankingView = rankingAll;
   const pendingCt = pengajuanList.filter((p) => !p.status || p.status === 'menunggu').length;
   const diterimaCt = pengajuanList.filter((p) => p.status === 'disetujui').length;
-  const rankTop = rankingRT.length > 0 ? Math.min(...rankingRT.map((r) => r.rank_global)) : null;
 
   const navItems = [
     { key: 'beranda', icon: 'dashboard', label: 'Beranda' },
-    { key: 'warga', icon: 'group', label: `Data Warga RT ${userData.rt}` },
+    { key: 'warga', icon: 'group', label: `Data Warga ${rtLabel(userData.rt)}` },
     { key: 'kuesioner', icon: 'assignment', label: 'Input Kuesioner' },
     { key: 'verifikasi', icon: 'fact_check', label: 'Verifikasi', badge: pendingCt },
+    { key: 'pengaduan', icon: 'campaign', label: 'Pengaduan' },
     { key: 'ranking', icon: 'leaderboard', label: 'Hasil Rekomendasi' },
   ];
 
   const pageTitle = {
     beranda: 'Monitor Wilayah',
-    warga: `Database Warga RT ${userData.rt}`,
+    warga: `Database Warga ${rtLabel(userData.rt)}`,
     kuesioner: 'Input & Edit Kuesioner',
     verifikasi: 'Verifikasi Berkas & Diskusi',
+    pengaduan: 'Pengaduan Warga',
     ranking: 'Hasil Keputusan SAW',
   }[activeMenu];
 
@@ -572,7 +610,7 @@ export default function RtDashboard() {
             gap: 10,
             padding: '12px 20px',
             borderRadius: 12,
-            background: toast.type === 'error' ? '#dc2626' : '#1A56DB',
+            background: toast.type === 'error' ? '#b91c1c' : '#1A56DB',
             color: '#fff',
             fontSize: 13,
             fontWeight: 600,
@@ -714,7 +752,7 @@ export default function RtDashboard() {
                 {userData.name}
               </div>
               <div style={{ fontSize: 11, color: '#60a5fa', fontWeight: 600 }}>
-                Ketua RT {userData.rt}
+                Ketua {rtLabel(userData.rt)}
               </div>
             </div>
           </div>
@@ -772,7 +810,7 @@ export default function RtDashboard() {
                 {badge > 0 && (
                   <span
                     style={{
-                      background: '#ef4444',
+                      background: '#dc2626',
                       color: '#fff',
                       fontSize: 10,
                       fontWeight: 700,
@@ -792,7 +830,7 @@ export default function RtDashboard() {
         {/* Bottom */}
         <div style={{ padding: '12px', borderTop: '1px solid #C6DCFF' }}>
           <button
-            onClick={() => window.print()}
+            onClick={() => unduhLaporanSaw('csv')}
             style={{
               width: '100%',
               display: 'flex',
@@ -882,7 +920,7 @@ export default function RtDashboard() {
             <h1 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: 0 }}>
               {pageTitle}
             </h1>
-            {loading && <p style={{ fontSize: 11, color: '#94a3b8', margin: 0 }}>Memuat data...</p>}
+            {loading && <p style={{ fontSize: 11, color: '#475569', margin: 0 }}>Memuat data...</p>}
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
             {activeMenu === 'warga' && (
@@ -907,7 +945,7 @@ export default function RtDashboard() {
             )}
             {activeMenu === 'ranking' && (
               <button
-                onClick={() => window.print()}
+                onClick={() => unduhLaporanSaw('csv')}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -922,7 +960,7 @@ export default function RtDashboard() {
                   cursor: 'pointer',
                 }}
               >
-                <MI name="print" size={16} /> Cetak Laporan
+                <MI name="download" size={16} /> Unduh Laporan
               </button>
             )}
           </div>
@@ -941,13 +979,13 @@ export default function RtDashboard() {
                     icon: 'group',
                     color: '#1d4ed8',
                     bg: '#eff6ff',
-                    sub: `Terdaftar di RT ${userData.rt}`,
+                    sub: `Terdaftar di ${rtLabel(userData.rt)}`,
                   },
                   {
                     label: 'Perlu Verifikasi',
                     value: pendingCt,
                     icon: 'pending_actions',
-                    color: '#ca8a04',
+                    color: '#a16207',
                     bg: '#fef9c3',
                     sub: 'Pengajuan pending',
                   },
@@ -955,21 +993,22 @@ export default function RtDashboard() {
                     label: 'Warga Disetujui',
                     value: diterimaCt,
                     icon: 'verified',
-                    color: '#059669',
+                    color: '#047857',
                     bg: '#ecfdf5',
                     sub: 'Sudah terverifikasi',
                   },
                   {
-                    label: 'Rank Global Terbaik',
-                    value: rankTop ? `#${rankTop}` : '-',
+                    label: 'Prioritas Utama',
+                    value: rankingRT[0]?.nama_warga?.split(' ')[0] || '-',
                     icon: 'emoji_events',
                     color: '#7c3aed',
                     bg: '#f5f3ff',
-                    sub: rankTop
-                      ? `${rankingRT[0]?.nama_warga?.split(' ')[0] || ''}...`
+                    sub: rankingRT[0]
+                      ? `Nilai V ${Number(rankingRT[0].skor_saw).toFixed(4)}`
                       : 'Belum ada data',
+                    small: true,
                   },
-                ].map(({ label, value, icon, color, bg, sub }) => (
+                ].map(({ label, value, icon, color, bg, sub, small }) => (
                   <div
                     key={label}
                     style={{
@@ -1006,7 +1045,7 @@ export default function RtDashboard() {
                         style={{
                           fontSize: 10,
                           fontWeight: 700,
-                          color: '#94a3b8',
+                          color: '#475569',
                           background: '#FAFCFF',
                           padding: '3px 8px',
                           borderRadius: 5,
@@ -1017,16 +1056,21 @@ export default function RtDashboard() {
                       </span>
                     </div>
                     <div>
-                      <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>{label}</div>
+                      <div style={{ fontSize: 12, color: '#475569', marginBottom: 2 }}>{label}</div>
                       <div
-                        style={{ fontSize: 30, fontWeight: 800, color: '#0f172a', lineHeight: 1 }}
+                        style={{
+                          fontSize: small ? 19 : 30,
+                          fontWeight: 800,
+                          color: '#0f172a',
+                          lineHeight: 1.15,
+                        }}
                       >
                         {value}
                       </div>
                       <div
                         style={{
                           fontSize: 11,
-                          color: '#94a3b8',
+                          color: '#475569',
                           marginTop: 4,
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
@@ -1063,7 +1107,7 @@ export default function RtDashboard() {
                       marginBottom: 8,
                     }}
                   >
-                    Pusat Kendali RT {userData.rt}
+                    Pusat Kendali {rtLabel(userData.rt)}
                   </div>
                   <h2
                     style={{
@@ -1134,7 +1178,7 @@ export default function RtDashboard() {
                       <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>
                         Pengajuan Masuk
                       </div>
-                      <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
+                      <div style={{ fontSize: 12, color: '#475569', marginTop: 2 }}>
                         {pengajuanList.length} total dari wilayah Anda
                       </div>
                     </div>
@@ -1162,7 +1206,7 @@ export default function RtDashboard() {
                               padding: '9px 16px',
                               fontSize: 11,
                               fontWeight: 700,
-                              color: '#64748b',
+                              color: '#475569',
                               textAlign: 'left',
                               textTransform: 'uppercase',
                               letterSpacing: '.06em',
@@ -1185,7 +1229,7 @@ export default function RtDashboard() {
                             <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>
                               {p.warga?.nama_lengkap || p.warga?.name || '-'}
                             </div>
-                            <div style={{ fontSize: 11, color: '#94a3b8' }}>
+                            <div style={{ fontSize: 11, color: '#475569' }}>
                               {fmtDate(p.created_at)}
                             </div>
                           </td>
@@ -1220,7 +1264,7 @@ export default function RtDashboard() {
                             style={{
                               padding: '32px',
                               textAlign: 'center',
-                              color: '#94a3b8',
+                              color: '#475569',
                               fontSize: 13,
                             }}
                           >
@@ -1260,7 +1304,7 @@ export default function RtDashboard() {
                         width: 22,
                         height: 22,
                         borderRadius: '50%',
-                        background: '#ef4444',
+                        background: '#dc2626',
                         color: '#fff',
                         fontSize: 11,
                         fontWeight: 700,
@@ -1320,7 +1364,7 @@ export default function RtDashboard() {
                               flexShrink: 0,
                             }}
                           >
-                            <MI name="gpp_maybe" fill size={18} style={{ color: '#dc2626' }} />
+                            <MI name="gpp_maybe" fill size={18} style={{ color: '#b91c1c' }} />
                           </div>
                           <div style={{ flex: 1, overflow: 'hidden' }}>
                             <div
@@ -1335,7 +1379,7 @@ export default function RtDashboard() {
                             >
                               {p.warga?.nama_lengkap || p.warga?.name || 'Warga'}
                             </div>
-                            <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
+                            <div style={{ fontSize: 11, color: '#475569', marginTop: 2 }}>
                               Menunggu persetujuan &bull; {fmtDate(p.created_at)}
                             </div>
                           </div>
@@ -1352,7 +1396,7 @@ export default function RtDashboard() {
                           gap: 8,
                         }}
                       >
-                        <MI name="check_circle" fill size={36} style={{ color: '#22c55e' }} />
+                        <MI name="check_circle" fill size={36} style={{ color: '#15803d' }} />
                         <span style={{ fontSize: 13, fontWeight: 600, color: '#475569' }}>
                           Semua telah diverifikasi
                         </span>
@@ -1383,6 +1427,13 @@ export default function RtDashboard() {
                 </div>
               </div>
 
+              {/* Status ranking: warga terlewat & kriteria konstan (BUG-09/BUG-05) */}
+              <RankingWarnings
+                dilewati={dilewati}
+                kriteriaTanpaVariasi={kriteriaTanpaVariasi}
+                error={rankingError}
+              />
+
               {/* Top 5 RT */}
               <div
                 style={{
@@ -1402,7 +1453,7 @@ export default function RtDashboard() {
                   }}
                 >
                   <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>
-                    Top 5 Peringkat RT {userData.rt}
+                    Top 5 Peringkat {rtLabel(userData.rt)}
                   </div>
                   <button
                     onClick={() => setActiveMenu('ranking')}
@@ -1421,14 +1472,14 @@ export default function RtDashboard() {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ background: '#F0F6FF', borderBottom: '1px solid #DBEAFE' }}>
-                      {['Peringkat Global', 'Nama Warga', 'Nilai (V)'].map((h) => (
+                      {['Peringkat RT', 'Nama Warga', 'Nilai (V)'].map((h) => (
                         <th
                           key={h}
                           style={{
                             padding: '10px 18px',
                             fontSize: 11,
                             fontWeight: 700,
-                            color: '#64748b',
+                            color: '#475569',
                             textAlign: 'left',
                             textTransform: 'uppercase',
                             letterSpacing: '.06em',
@@ -1453,8 +1504,8 @@ export default function RtDashboard() {
                               width: 30,
                               height: 30,
                               borderRadius: '50%',
-                              background: r.rank_global <= 3 ? '#0051d5' : '#f1f5f9',
-                              color: r.rank_global <= 3 ? '#fff' : '#64748b',
+                              background: r.ranking_rt <= 3 ? '#0051d5' : '#f1f5f9',
+                              color: r.ranking_rt <= 3 ? '#fff' : '#475569',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
@@ -1462,7 +1513,7 @@ export default function RtDashboard() {
                               fontWeight: 800,
                             }}
                           >
-                            {r.rank_global}
+                            {r.ranking_rt}
                           </div>
                         </td>
                         <td
@@ -1495,7 +1546,7 @@ export default function RtDashboard() {
                           style={{
                             padding: '32px',
                             textAlign: 'center',
-                            color: '#94a3b8',
+                            color: '#475569',
                             fontSize: 13,
                           }}
                         >
@@ -1527,9 +1578,9 @@ export default function RtDashboard() {
                 }}
               >
                 <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>
-                  Data Warga RT {userData.rt}
+                  Data Warga {rtLabel(userData.rt)}
                 </div>
-                <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 3 }}>
+                <div style={{ fontSize: 12, color: '#475569', marginTop: 3 }}>
                   {wargaList.length} warga terdaftar di wilayah Anda
                 </div>
               </div>
@@ -1544,7 +1595,7 @@ export default function RtDashboard() {
                             padding: '11px 18px',
                             fontSize: 11,
                             fontWeight: 700,
-                            color: '#64748b',
+                            color: '#475569',
                             textAlign: 'left',
                             textTransform: 'uppercase',
                             letterSpacing: '.06em',
@@ -1573,7 +1624,7 @@ export default function RtDashboard() {
                             padding: '13px 18px',
                             fontSize: 12,
                             fontWeight: 700,
-                            color: '#94a3b8',
+                            color: '#475569',
                           }}
                         >
                           {i + 1}
@@ -1585,7 +1636,7 @@ export default function RtDashboard() {
                           <div
                             style={{
                               fontSize: 11,
-                              color: '#94a3b8',
+                              color: '#475569',
                               marginTop: 2,
                               fontFamily: 'monospace',
                             }}
@@ -1597,7 +1648,7 @@ export default function RtDashboard() {
                           style={{
                             padding: '13px 18px',
                             fontSize: 12.5,
-                            color: '#64748b',
+                            color: '#475569',
                             maxWidth: 200,
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
@@ -1674,7 +1725,7 @@ export default function RtDashboard() {
                         style={{
                           padding: '48px',
                           textAlign: 'center',
-                          color: '#94a3b8',
+                          color: '#475569',
                           fontSize: 13,
                         }}
                       >
@@ -1707,7 +1758,7 @@ export default function RtDashboard() {
                 <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>
                   Manajemen Kuesioner
                 </div>
-                <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 3 }}>
+                <div style={{ fontSize: 12, color: '#475569', marginTop: 3 }}>
                   Pilih warga untuk mengisi atau mengedit data kuesioner
                 </div>
               </div>
@@ -1721,7 +1772,7 @@ export default function RtDashboard() {
                           padding: '11px 18px',
                           fontSize: 11,
                           fontWeight: 700,
-                          color: '#64748b',
+                          color: '#475569',
                           textAlign: 'left',
                           textTransform: 'uppercase',
                           letterSpacing: '.06em',
@@ -1754,7 +1805,7 @@ export default function RtDashboard() {
                             padding: '14px 18px',
                             fontSize: 12,
                             fontWeight: 700,
-                            color: '#94a3b8',
+                            color: '#475569',
                           }}
                         >
                           {i + 1}
@@ -1764,7 +1815,7 @@ export default function RtDashboard() {
                             {w.name}
                           </div>
                           {p && (
-                            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+                            <div style={{ fontSize: 11, color: '#475569', marginTop: 2 }}>
                               Status:{' '}
                               <span style={{ fontWeight: 600, color: statusCfg(p.status).color }}>
                                 {statusCfg(p.status).label}
@@ -1804,7 +1855,7 @@ export default function RtDashboard() {
                               </span>
                             </div>
                           ) : (
-                            <span style={{ fontSize: 12, color: '#94a3b8' }}>Belum ada data</span>
+                            <span style={{ fontSize: 12, color: '#475569' }}>Belum ada data</span>
                           )}
                         </td>
                         <td style={{ padding: '14px 18px' }}>
@@ -1839,7 +1890,7 @@ export default function RtDashboard() {
                         style={{
                           padding: '48px',
                           textAlign: 'center',
-                          color: '#94a3b8',
+                          color: '#475569',
                           fontSize: 13,
                         }}
                       >
@@ -1863,7 +1914,7 @@ export default function RtDashboard() {
               }}
             >
               <div className="print-header" style={{ display: 'none' }}>
-                <h2>LAPORAN VERIFIKASI — RT {userData.rt}</h2>
+                <h2>LAPORAN VERIFIKASI — {rtLabel(userData.rt)}</h2>
                 <p>
                   Dicetak: {new Date().toLocaleString('id-ID')} &nbsp;|&nbsp; Oleh: {userData.name}
                 </p>
@@ -1882,7 +1933,7 @@ export default function RtDashboard() {
                   <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>
                     Daftar Pengajuan Masuk
                   </div>
-                  <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 3 }}>
+                  <div style={{ fontSize: 12, color: '#475569', marginTop: 3 }}>
                     Klik "Tinjau" untuk membuka detail dan chat
                   </div>
                 </div>
@@ -1891,7 +1942,7 @@ export default function RtDashboard() {
                     display: 'flex',
                     gap: 8,
                     fontSize: 12,
-                    color: '#64748b',
+                    color: '#475569',
                     fontWeight: 600,
                   }}
                 >
@@ -1927,7 +1978,7 @@ export default function RtDashboard() {
                           padding: '11px 18px',
                           fontSize: 11,
                           fontWeight: 700,
-                          color: '#64748b',
+                          color: '#475569',
                           textAlign: 'left',
                           textTransform: 'uppercase',
                           letterSpacing: '.06em',
@@ -1951,7 +2002,7 @@ export default function RtDashboard() {
                           padding: '13px 18px',
                           fontSize: 12,
                           fontWeight: 700,
-                          color: '#94a3b8',
+                          color: '#475569',
                         }}
                       >
                         {i + 1}
@@ -1960,11 +2011,11 @@ export default function RtDashboard() {
                         <div style={{ fontSize: 13.5, fontWeight: 600, color: '#0f172a' }}>
                           {p.warga?.nama_lengkap || p.warga?.name || '-'}
                         </div>
-                        <div style={{ fontSize: 11, color: '#94a3b8' }}>
-                          RT {p.warga?.rt || userData.rt}
+                        <div style={{ fontSize: 11, color: '#475569' }}>
+                          {rtLabel(p.warga?.rt ?? userData.rt)}
                         </div>
                       </td>
-                      <td style={{ padding: '13px 18px', fontSize: 12.5, color: '#64748b' }}>
+                      <td style={{ padding: '13px 18px', fontSize: 12.5, color: '#475569' }}>
                         {fmtDate(p.created_at)}
                       </td>
                       <td style={{ padding: '13px 18px' }}>
@@ -1999,7 +2050,7 @@ export default function RtDashboard() {
                         style={{
                           padding: '48px',
                           textAlign: 'center',
-                          color: '#94a3b8',
+                          color: '#475569',
                           fontSize: 13,
                         }}
                       >
@@ -2012,44 +2063,44 @@ export default function RtDashboard() {
             </div>
           )}
 
+          {/* ════ PENGADUAN ════ */}
+          {activeMenu === 'pengaduan' && <PengaduanPanel role="rt" />}
+
           {/* ════ RANKING ════ */}
           {activeMenu === 'ranking' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
               <div className="print-header" style={{ display: 'none' }}>
-                <h2>HASIL REKOMENDASI SAW — RT {userData.rt}</h2>
+                <h2>HASIL REKOMENDASI SAW — {rtLabel(userData.rt)}</h2>
                 <p>
                   Dicetak: {new Date().toLocaleString('id-ID')} &nbsp;|&nbsp; Oleh: {userData.name}
                 </p>
               </div>
 
-              {/* Scope toggle */}
-              <div style={{ display: 'flex', gap: 8 }}>
-                {[
-                  { key: 'rt', icon: 'home', label: `Wilayah RT ${userData.rt}` },
-                  { key: 'global', icon: 'public', label: 'Seluruh Wilayah' },
-                ].map(({ key, icon, label }) => (
-                  <button
-                    key={key}
-                    onClick={() => setRankingScope(key)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 7,
-                      padding: '9px 18px',
-                      borderRadius: 10,
-                      border: `1.5px solid ${rankingScope === key ? '#0051d5' : '#e2e8f0'}`,
-                      background: rankingScope === key ? '#0051d5' : '#fff',
-                      color: rankingScope === key ? '#fff' : '#475569',
-                      fontSize: 13,
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      transition: '.15s',
-                    }}
-                  >
-                    <MI name={icon} size={16} /> {label}
-                  </button>
-                ))}
+              {/* Scope: backend hanya mengirim wilayah RT ini (P0-06) */}
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <span
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 7,
+                    padding: '9px 18px',
+                    borderRadius: 10,
+                    border: '1.5px solid #0051d5',
+                    background: '#0051d5',
+                    color: '#fff',
+                    fontSize: 13,
+                    fontWeight: 700,
+                  }}
+                >
+                  <MI name="home" size={16} /> Wilayah {rtLabel(userData.rt)}
+                </span>
               </div>
+
+              <RankingWarnings
+                dilewati={dilewati}
+                kriteriaTanpaVariasi={kriteriaTanpaVariasi}
+                error={rankingError}
+              />
 
               <div
                 style={{
@@ -2067,10 +2118,9 @@ export default function RtDashboard() {
                   }}
                 >
                   <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>
-                    Peringkat Prioritas Penerima Bansos —{' '}
-                    {rankingScope === 'rt' ? `RT ${userData.rt}` : 'Global'}
+                    Peringkat Prioritas Penerima Bansos — {rtLabel(userData.rt)}
                   </div>
-                  <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 3 }}>
+                  <div style={{ fontSize: 12, color: '#475569', marginTop: 3 }}>
                     Nilai tertinggi = prioritas utama penerima
                   </div>
                 </div>
@@ -2084,7 +2134,7 @@ export default function RtDashboard() {
                             padding: '11px 18px',
                             fontSize: 11,
                             fontWeight: 700,
-                            color: '#64748b',
+                            color: '#475569',
                             textAlign: 'left',
                             textTransform: 'uppercase',
                             letterSpacing: '.06em',
@@ -2109,8 +2159,8 @@ export default function RtDashboard() {
                               width: 32,
                               height: 32,
                               borderRadius: '50%',
-                              background: r.rank_global <= 3 ? '#0051d5' : '#f1f5f9',
-                              color: r.rank_global <= 3 ? '#fff' : '#64748b',
+                              background: r.ranking_rt <= 3 ? '#0051d5' : '#f1f5f9',
+                              color: r.ranking_rt <= 3 ? '#fff' : '#475569',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
@@ -2118,7 +2168,7 @@ export default function RtDashboard() {
                               fontWeight: 800,
                             }}
                           >
-                            {r.rank_global}
+                            {r.ranking_rt}
                           </div>
                         </td>
                         <td
@@ -2144,7 +2194,7 @@ export default function RtDashboard() {
                               color: '#1d4ed8',
                             }}
                           >
-                            RT {r.rt}
+                            {rtLabel(r.rt)}
                           </span>
                         </td>
                         <td
@@ -2152,7 +2202,7 @@ export default function RtDashboard() {
                             padding: '13px 18px',
                             fontSize: 15,
                             fontWeight: 800,
-                            color: r.rank_global <= 3 ? '#0051d5' : '#334155',
+                            color: r.ranking_rt <= 3 ? '#0051d5' : '#334155',
                             fontFamily: 'monospace',
                           }}
                         >
@@ -2167,7 +2217,7 @@ export default function RtDashboard() {
                           style={{
                             padding: '48px',
                             textAlign: 'center',
-                            color: '#94a3b8',
+                            color: '#475569',
                             fontSize: 13,
                           }}
                         >
@@ -2187,7 +2237,7 @@ export default function RtDashboard() {
                     alignItems: 'center',
                   }}
                 >
-                  <span style={{ fontSize: 12, color: '#64748b' }}>
+                  <span style={{ fontSize: 12, color: '#475569' }}>
                     Menampilkan {rankingView.length} data
                   </span>
                 </div>
@@ -2222,8 +2272,8 @@ export default function RtDashboard() {
                 <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a' }}>
                   Tambah Warga Baru
                 </div>
-                <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
-                  Warga akan otomatis masuk ke RT {userData.rt}
+                <div style={{ fontSize: 12, color: '#475569', marginTop: 2 }}>
+                  Warga akan otomatis masuk ke {rtLabel(userData.rt)}
                 </div>
               </div>
               <button
@@ -2240,7 +2290,7 @@ export default function RtDashboard() {
                   justifyContent: 'center',
                 }}
               >
-                <MI name="close" size={18} style={{ color: '#64748b' }} />
+                <MI name="close" size={18} style={{ color: '#475569' }} />
               </button>
             </div>
             <form
@@ -2369,7 +2419,7 @@ export default function RtDashboard() {
                 <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a' }}>
                   Kuesioner: {targetWarga.name}
                 </div>
-                <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
+                <div style={{ fontSize: 12, color: '#475569', marginTop: 2 }}>
                   {Object.values(formJawaban).filter(Boolean).length}/10 pertanyaan terjawab
                 </div>
               </div>
@@ -2387,7 +2437,7 @@ export default function RtDashboard() {
                   justifyContent: 'center',
                 }}
               >
-                <MI name="close" size={18} style={{ color: '#64748b' }} />
+                <MI name="close" size={18} style={{ color: '#475569' }} />
               </button>
             </div>
             <div
@@ -2423,7 +2473,7 @@ export default function RtDashboard() {
                           fontSize: 11,
                           fontWeight: 700,
                           background: formJawaban[key] ? '#0051d5' : '#e2e8f0',
-                          color: formJawaban[key] ? '#fff' : '#94a3b8',
+                          color: formJawaban[key] ? '#fff' : '#475569',
                           transition: '.15s',
                         }}
                       >
@@ -2433,7 +2483,7 @@ export default function RtDashboard() {
                         {label}
                       </span>
                       {formJawaban[key] && (
-                        <MI name="check_circle" fill size={16} style={{ color: '#22c55e' }} />
+                        <MI name="check_circle" fill size={16} style={{ color: '#15803d' }} />
                       )}
                     </div>
                     <div
@@ -2510,7 +2560,7 @@ export default function RtDashboard() {
                 alignItems: 'center',
               }}
             >
-              <div style={{ fontSize: 13, color: '#64748b' }}>
+              <div style={{ fontSize: 13, color: '#475569' }}>
                 Terjawab:{' '}
                 <strong
                   style={{
@@ -2596,8 +2646,8 @@ export default function RtDashboard() {
                 <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a' }}>
                   {selectedP.warga?.nama_lengkap || selectedP.warga?.name || '-'}
                 </div>
-                <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 3 }}>
-                  RT {selectedP.warga?.rt || userData.rt} &bull; Masuk{' '}
+                <div style={{ fontSize: 12, color: '#475569', marginTop: 3 }}>
+                  {rtLabel(selectedP.warga?.rt ?? userData.rt)} &bull; Masuk{' '}
                   {fmtDate(selectedP.created_at)} &bull; <Badge status={selectedP.status} />
                 </div>
               </div>
@@ -2672,7 +2722,7 @@ export default function RtDashboard() {
                     justifyContent: 'center',
                   }}
                 >
-                  <MI name="close" size={17} style={{ color: '#64748b' }} />
+                  <MI name="close" size={17} style={{ color: '#475569' }} />
                 </button>
               </div>
 
@@ -2717,8 +2767,8 @@ export default function RtDashboard() {
                     cursor: 'pointer',
                     fontSize: 13,
                     fontWeight: 700,
-                    background: selectedP.status === 'ditolak' ? '#dc2626' : '#fee2e2',
-                    color: selectedP.status === 'ditolak' ? '#fff' : '#dc2626',
+                    background: selectedP.status === 'ditolak' ? '#b91c1c' : '#fee2e2',
+                    color: selectedP.status === 'ditolak' ? '#fff' : '#b91c1c',
                     transition: '.15s',
                     display: 'flex',
                     alignItems: 'center',
@@ -2743,7 +2793,7 @@ export default function RtDashboard() {
                 }}
               >
                 {pesanList.length === 0 ? (
-                  <div style={{ margin: 'auto', textAlign: 'center', color: '#94a3b8' }}>
+                  <div style={{ margin: 'auto', textAlign: 'center', color: '#475569' }}>
                     <MI
                       name="chat_bubble_outline"
                       size={32}
@@ -2764,7 +2814,7 @@ export default function RtDashboard() {
                         style={{
                           fontSize: 10,
                           fontWeight: 700,
-                          color: '#94a3b8',
+                          color: '#475569',
                           marginBottom: 3,
                           textAlign: m.pengirim_role === 'rt' ? 'right' : 'left',
                         }}
@@ -2869,7 +2919,7 @@ export default function RtDashboard() {
                     name="send"
                     fill
                     size={17}
-                    style={{ color: pesanBaru.trim() ? '#fff' : '#94a3b8' }}
+                    style={{ color: pesanBaru.trim() ? '#fff' : '#475569' }}
                   />
                 </button>
               </form>

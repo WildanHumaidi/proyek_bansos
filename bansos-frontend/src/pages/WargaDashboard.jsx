@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import PengaduanPanel from '../components/PengaduanPanel';
+import { rtKode, rtLabel } from '../lib/rt';
 
 const API = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000/api';
 
@@ -129,8 +131,6 @@ const fmtDate = (s) =>
 
 /* ─── Design Bootstrap ───────────────────────────────────────────────────── */
 const CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-  @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { font-family: 'Plus Jakarta Sans', sans-serif; background: #F0F6FF; color: #0f172a; -webkit-font-smoothing: antialiased; }
   ::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-thumb { background: #C6DCFF; border-radius: 6px; }
@@ -250,6 +250,7 @@ export default function WargaDashboard() {
   const [submitLoading, setSubmitLoading] = useState(false);
   const [activeNav, setActiveNav] = useState('beranda');
   const [pesanList, setPesanList] = useState([]);
+  const [pesanBelumDibaca, setPesanBelumDibaca] = useState(0);
   const [pesanBaru, setPesanBaru] = useState('');
   const [formDiri, setFormDiri] = useState(() => {
     try {
@@ -276,6 +277,14 @@ export default function WargaDashboard() {
               headers: h,
             });
             setPesanList(chat.data.data || []);
+
+            // Jumlah pesan dari RT yang belum dibaca — dihitung server, bukan
+            // dari panjang array (yang ikut menghitung pesan sendiri).
+            const belum = await axios.get(
+              `${API}/chat/${res.data.data.id_pengajuan}/belum-dibaca`,
+              { headers: h }
+            );
+            setPesanBelumDibaca(belum.data.jumlah || 0);
           } catch (chatErr) {
             console.error('Gagal memuat pesan:', chatErr);
           }
@@ -305,7 +314,87 @@ export default function WargaDashboard() {
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [pesanList]);
+  }, [pesanList.length]);
+
+  /* Saat tab diskusi dibuka, pesan dianggap sudah dibaca — badge kembali ke nol.
+     Status disimpan server (pesan_chat.dibaca_pada), jadi tidak hilang saat reload. */
+  useEffect(() => {
+    if (activeNav !== 'diskusi' || !statusBansos?.id_pengajuan || pesanBelumDibaca === 0) return;
+
+    const token = localStorage.getItem('token');
+    const timer = setTimeout(async () => {
+      try {
+        await axios.put(
+          `${API}/chat/${statusBansos.id_pengajuan}/baca`,
+          {},
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setPesanBelumDibaca(0);
+      } catch (err) {
+        console.error('Gagal menandai pesan dibaca:', err);
+      }
+    }, 600); // beri jeda singkat agar pesan sempat terbaca di layar
+
+    return () => clearTimeout(timer);
+  }, [activeNav, statusBansos, pesanBelumDibaca]);
+
+  /* Polling percakapan. Sebelumnya pesan hanya dimuat sekali saat halaman dibuka,
+     jadi balasan RT baru terlihat setelah reload manual. Polling berhenti saat tab
+     tidak aktif agar tidak membebani server, dan tidak menghapus pesan yang masih
+     dalam proses kirim (belum ada di server). */
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const idPengajuan = statusBansos?.id_pengajuan;
+    if (!token || !idPengajuan) return;
+
+    const h = { Authorization: `Bearer ${token}` };
+    let berhenti = false;
+
+    const muatPesan = async () => {
+      if (berhenti || document.visibilityState !== 'visible') return;
+      try {
+        const [chat, belum] = await Promise.all([
+          axios.get(`${API}/chat/${idPengajuan}`, { headers: h }),
+          axios.get(`${API}/chat/${idPengajuan}/belum-dibaca`, { headers: h }),
+        ]);
+        if (berhenti) return;
+
+        const dariServer = chat.data.data || [];
+        setPesanList((lama) => {
+          const lokal = lama.filter((m) => m.temp_id);
+          const tidakBerubah =
+            lokal.length === 0 &&
+            lama.length === dariServer.length &&
+            dariServer.every((s, i) => s.id_pesan === lama[i].id_pesan);
+          return tidakBerubah ? lama : [...dariServer, ...lokal];
+        });
+
+        const jumlah = belum.data.jumlah || 0;
+        if (activeNav === 'diskusi' && jumlah > 0) {
+          // Sedang di tab diskusi → langsung tandai dibaca, jangan tampilkan badge.
+          await axios.put(`${API}/chat/${idPengajuan}/baca`, {}, { headers: h });
+          setPesanBelumDibaca(0);
+        } else {
+          setPesanBelumDibaca(jumlah);
+        }
+      } catch (err) {
+        const status = err.response?.status;
+        if (status === 401 || status === 403 || status === 404) berhenti = true;
+      }
+    };
+
+    const timer = setInterval(muatPesan, 15000);
+    const saatTampil = () => {
+      if (document.visibilityState === 'visible') muatPesan();
+    };
+    document.addEventListener('visibilitychange', saatTampil);
+
+    return () => {
+      berhenti = true;
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', saatTampil);
+    };
+  }, [statusBansos?.id_pengajuan, activeNav]);
 
   const handleSubmit = async (e) => {
     e?.preventDefault();
@@ -361,9 +450,12 @@ export default function WargaDashboard() {
         { isi_pesan: teks },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      setPesanList((p) =>
-        p.map((m) => (m.temp_id === tempId ? { ...m, status_kirim: 'sent' } : m))
-      );
+      // Ambil ulang dari server: pesan lokal masih bertanda `temp_id`, sehingga
+      // kalau dibiarkan akan tampil ganda saat polling berikutnya.
+      const r = await axios.get(`${API}/chat/${statusBansos.id_pengajuan}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setPesanList(r.data.data || []);
     } catch (err) {
       console.error('Gagal mengirim pesan chat:', err);
       setPesanList((p) =>
@@ -383,6 +475,7 @@ export default function WargaDashboard() {
     { key: 'beranda', label: 'Beranda', icon: 'home' },
     { key: 'kuesioner', label: 'Kuesioner', icon: 'edit_document' },
     { key: 'status', label: 'Status', icon: 'pending_actions' },
+    { key: 'pengaduan', label: 'Pengaduan', icon: 'campaign' },
     { key: 'diskusi', label: 'Diskusi', icon: 'forum' },
   ];
 
@@ -520,7 +613,7 @@ export default function WargaDashboard() {
                 onClick={() => setActiveNav(key)}
               >
                 {label}
-                {key === 'diskusi' && pesanList.length > 0 && (
+                {key === 'diskusi' && pesanBelumDibaca > 0 && (
                   <span
                     style={{
                       marginLeft: 6,
@@ -532,7 +625,7 @@ export default function WargaDashboard() {
                       padding: '1px 5px',
                     }}
                   >
-                    {pesanList.length}
+                    {pesanBelumDibaca}
                   </span>
                 )}
               </button>
@@ -576,7 +669,7 @@ export default function WargaDashboard() {
                   {userData?.name}
                 </div>
                 <div className="sub" style={{ fontSize: 10.5, color: '#1A56DB', fontWeight: 600 }}>
-                  Warga · RT {userData?.rt || '—'}
+                  Warga · {rtLabel(userData?.rt)}
                 </div>
               </div>
             </div>
@@ -979,7 +1072,7 @@ export default function WargaDashboard() {
                     }}
                   >
                     <MI name="forum" fill size={20} style={{ color: '#047857' }} />
-                    {pesanList.length > 0 && (
+                    {pesanBelumDibaca > 0 && (
                       <div
                         style={{
                           position: 'absolute',
@@ -1002,6 +1095,11 @@ export default function WargaDashboard() {
                 <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a' }}>
                   {pesanList.length} Pesan
                 </div>
+                {pesanBelumDibaca > 0 && (
+                  <div style={{ fontSize: 11.5, fontWeight: 700, color: '#b91c1c', marginTop: 2 }}>
+                    {pesanBelumDibaca} belum dibaca
+                  </div>
+                )}
                 <div style={{ fontSize: 11, color: '#1A56DB', marginTop: 4, fontWeight: 600 }}>
                   Buka ruang diskusi
                 </div>
@@ -1027,7 +1125,7 @@ export default function WargaDashboard() {
                 </div>
                 <div style={{ fontSize: 12, color: '#374151', marginBottom: 4 }}>Wilayah Anda</div>
                 <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a' }}>
-                  RT {userData?.rt || '—'} / RW 08
+                  {rtLabel(userData?.rt)} / RW 08
                 </div>
                 <div style={{ fontSize: 11, color: '#526078', marginTop: 4 }}>
                   Data dapat diperbarui oleh RT
@@ -1271,9 +1369,9 @@ export default function WargaDashboard() {
                         <option value="" disabled>
                           Pilih RT
                         </option>
-                        <option value="1">RT 01</option>
-                        <option value="2">RT 02</option>
-                        <option value="3">RT 03</option>
+                        <option value={rtKode(1)}>RT 01</option>
+                        <option value={rtKode(2)}>RT 02</option>
+                        <option value={rtKode(3)}>RT 03</option>
                       </select>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 8 }}>
@@ -1544,7 +1642,7 @@ export default function WargaDashboard() {
                       { label: 'Nomor Pengajuan', value: `#${statusBansos.id_pengajuan || '—'}` },
                       { label: 'Tanggal Dikirim', value: fmtDate(statusBansos.created_at) },
                       { label: 'Status Terkini', value: sw.label },
-                      { label: 'Wilayah', value: `RT ${userData?.rt || '—'} / RW 08` },
+                      { label: 'Wilayah', value: `${rtLabel(userData?.rt)} / RW 08` },
                     ].map(({ label, value }) => (
                       <div
                         key={label}
@@ -1584,6 +1682,19 @@ export default function WargaDashboard() {
                 </button>
               </>
             )}
+          </div>
+        )}
+
+        {/* ── PENGADUAN ── */}
+        {activeNav === 'pengaduan' && (
+          <div
+            style={{
+              animation: 'fadeUp .25s ease',
+              maxWidth: 720,
+              margin: '0 auto',
+            }}
+          >
+            <PengaduanPanel role="warga" />
           </div>
         )}
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\PesanChat;
 use App\Models\Pengajuan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -88,5 +89,52 @@ class ChatController extends Controller
         ]);
 
         return response()->json(['success' => true, 'message' => 'Pesan terkirim']);
+    }
+
+    /**
+     * GET /api/chat/{id}/belum-dibaca
+     *
+     * Jumlah pesan dari lawan bicara yang belum dibaca oleh pengguna ini.
+     *
+     * Status baca disimpan di `pesan_chat.dibaca_pada` (migrasi
+     * 2026_11_25_000006). Sebelumnya tidak ada status apa pun, sehingga UI harus
+     * menghitung "ada pesan baru" dari panjang array — cara yang salah karena
+     * ikut menghitung pesan sendiri dan tidak pernah kembali ke nol.
+     */
+    public function belumDibaca(Request $request, $id_pengajuan)
+    {
+        $this->authorizeAccess($request, $id_pengajuan);
+
+        $role = $request->user()->role;
+
+        $jumlah = PesanChat::where('id_pengajuan', $id_pengajuan)
+            ->whereNull('dibaca_pada')
+            ->where('pengirim_role', '!=', $role)
+            ->count();
+
+        return response()->json(['success' => true, 'jumlah' => $jumlah]);
+    }
+
+    /**
+     * PUT /api/chat/{id}/baca
+     *
+     * Tandai seluruh pesan dari lawan bicara sebagai sudah dibaca.
+     */
+    public function tandaiDibaca(Request $request, $id_pengajuan)
+    {
+        $this->authorizeAccess($request, $id_pengajuan);
+
+        $role = $request->user()->role;
+
+        $terpengaruh = PesanChat::where('id_pengajuan', $id_pengajuan)
+            ->whereNull('dibaca_pada')
+            ->where('pengirim_role', '!=', $role)
+            ->update(['dibaca_pada' => now()]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Pesan ditandai sudah dibaca.',
+            'jumlah' => $terpengaruh,
+        ]);
     }
 }

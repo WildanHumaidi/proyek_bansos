@@ -13,7 +13,11 @@ class PesanChat extends Model
 
     protected $primaryKey = 'id_pesan';
 
-    protected $fillable = ['id_pengajuan', 'pengirim_role', 'isi_pesan'];
+    protected $fillable = ['id_pengajuan', 'pengirim_role', 'isi_pesan', 'dibaca_pada'];
+
+    protected $casts = [
+        'dibaca_pada' => 'datetime',
+    ];
 
     public function pengajuan()
     {
