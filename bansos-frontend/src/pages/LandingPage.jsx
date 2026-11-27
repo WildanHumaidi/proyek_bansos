@@ -64,9 +64,6 @@ const CSS = `
   .ld-krit-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid #DBEAFE; }
   .ld-krit-no { flex: 0 0 auto; width: 26px; height: 26px; border-radius: 7px; background: #EBF3FF; color: #0b3fa8; font-size: 11.5px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
   .ld-krit-name { flex: 1 1 auto; font-size: 13.5px; font-weight: 600; color: #0f172a; line-height: 1.4; min-width: 0; }
-  .ld-tipe { flex: 0 0 auto; font-size: 10.5px; font-weight: 800; letter-spacing: .04em; padding: 3px 8px; border-radius: 5px; }
-  .ld-tipe-benefit { background: #dcfce7; color: #166534; }
-  .ld-tipe-cost { background: #E0E7FF; color: #3730A3; }
   .ld-krit-note { display: flex; gap: 10px; align-items: flex-start; margin-top: 22px; padding: 15px 17px; background: #F0F6FF; border: 1px solid #a9c7f0; border-radius: 10px; font-size: 13px; line-height: 1.7; color: #0f172a; }
 
   /* ── Alur langkah ── */
@@ -155,19 +152,22 @@ const MI = ({ name, fill = false, size = 20, className, style: s = {} }) => (
   </span>
 );
 
-/* Sepuluh kriteria asli dari tabel `kriteria` (bobot masing-masing 10%).
-   `tipe` menentukan arah penilaian SAW, jadi labelnya ditampilkan apa adanya. */
+/* Sepuluh kriteria asli dari tabel `kriteria`.
+   Arah penilaian (benefit/cost) SENGAJA tidak ditampilkan di halaman publik:
+   kalau warga tahu kriteria mana yang makin besar makin untung, mereka bisa
+   menjawab ngasal supaya skornya maksimal. Arah itu tetap terlihat oleh staf
+   di menu Kelola Kriteria, yang memang perlu tahu. */
 const KRITERIA = [
-  { nama: 'Jumlah KK dalam satu rumah', tipe: 'benefit' },
-  { nama: 'Jumlah anggota keluarga dalam satu rumah', tipe: 'benefit' },
-  { nama: 'Pendidikan kepala keluarga', tipe: 'cost' },
-  { nama: 'Jumlah anggota keluarga masih sekolah', tipe: 'benefit' },
-  { nama: 'Pengeluaran satu jiwa per bulan', tipe: 'cost' },
-  { nama: 'Penghasilan satu jiwa per bulan', tipe: 'cost' },
-  { nama: 'Status kepemilikan rumah', tipe: 'cost' },
-  { nama: 'Sumber air bersih', tipe: 'cost' },
-  { nama: 'Penerangan rumah', tipe: 'cost' },
-  { nama: 'Transportasi yang digunakan', tipe: 'cost' },
+  'Jumlah KK dalam satu rumah',
+  'Jumlah anggota keluarga dalam satu rumah',
+  'Pendidikan kepala keluarga',
+  'Jumlah anggota keluarga masih sekolah',
+  'Pengeluaran satu jiwa per bulan',
+  'Penghasilan satu jiwa per bulan',
+  'Status kepemilikan rumah',
+  'Sumber air bersih',
+  'Penerangan rumah',
+  'Transportasi yang digunakan',
 ];
 
 const ALUR = [
@@ -317,12 +317,9 @@ export default function LandingPage() {
 
           <div className="ld-krit">
             {KRITERIA.map((k, i) => (
-              <div className="ld-krit-row" key={k.nama}>
+              <div className="ld-krit-row" key={k}>
                 <span className="ld-krit-no">{String(i + 1).padStart(2, '0')}</span>
-                <span className="ld-krit-name">{k.nama}</span>
-                <span className={k.tipe === 'benefit' ? 'ld-tipe ld-tipe-benefit' : 'ld-tipe ld-tipe-cost'}>
-                  {k.tipe === 'benefit' ? 'BENEFIT' : 'COST'}
-                </span>
+                <span className="ld-krit-name">{k}</span>
               </div>
             ))}
           </div>
@@ -330,9 +327,10 @@ export default function LandingPage() {
           <div className="ld-krit-note">
             <MI name="fact_check" size={18} style={{ color: '#0b3fa8', flexShrink: 0, marginTop: 1 }} />
             <span>
-              <strong>Benefit</strong> berarti makin besar nilainya makin diprioritaskan, misalnya
-              jumlah anggota keluarga. <strong>Cost</strong> berarti makin kecil nilainya makin
-              diprioritaskan, misalnya penghasilan. Perhitungannya memakai metode SAW.
+              Sistem membandingkan jawaban Anda dengan warga lain di wilayah yang sama, memakai
+              metode SAW. Karena itu <strong>isi sesuai kondisi sebenarnya</strong>: jawaban yang
+              dilebih-lebihkan akan tetap dibandingkan dengan tetangga sekitar, dan Ketua RT
+              memeriksa kebenarannya sebelum disetujui.
             </span>
           </div>
         </div>
