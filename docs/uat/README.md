@@ -98,6 +98,13 @@ jadi kegagalan ini mudah lolos kalau tidak diperiksa.
 
 > Ukuran referensi: 67 ikon = **70 KB**. Versi penuh = **4 MB** (~3.500 ikon).
 
+> **Subset harus dibuat ulang setiap kali komponen baru memakai ikon baru.** Kasus
+> nyata: `TombolExport.jsx` memakai `picture_as_pdf` dan `table_view`, tetapi subset
+> tidak pernah dibuat ulang, sehingga di produksi tombol PDF tampil sebagai tulisan
+> "picture_as_pdf" selebar 336 px dan tombol Excel 240 px. `guard_ikon_subset.mjs`
+> menangkapnya (laporan "3 nama tanpa glyph"); pemeriksaan manual cepat: lebar
+> glyph harus 24 px, bukan ratusan.
+
 > **Prasyarat data untuk guard chat.** Tiga guard chat (`guard_chat_belum_dibaca`,
 > `guard_chat_polling`, `guard_chat_polling_rt`) memakai akun demo `warga01` dan
 > membutuhkan **warga itu punya pengajuan**. Di database live `warga01` menunjuk

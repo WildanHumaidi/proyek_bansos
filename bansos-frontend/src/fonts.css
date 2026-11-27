@@ -10,10 +10,10 @@
  *
  *   plus-jakarta-sans-latin.woff2      27 KB  — variable font, semua weight
  *   plus-jakarta-sans-latin-ext.woff2  21 KB  — nama dengan diakritik
- *   material-symbols-subset.woff2      65 KB  — 64 ikon yang dipakai (dari 4 MB!)
+ *   material-symbols-subset.woff2      70 KB  — 67 ikon yang dipakai (dari 4 MB!)
  *
  * Material Symbols penuh berukuran 4 MB karena memuat ~3.500 ikon. Dengan
- * parameter `icon_names` Google mengirim hanya ikon yang disebut, jadi 65 KB.
+ * parameter `icon_names` Google mengirim hanya ikon yang disebut, jadi 70 KB.
  *
  * Ikon yang disertakan harus LENGKAP: glyph yang tidak ada di subset akan tampil
  * sebagai teks (mis. tulisan "dashboard" selebar 162 px), bukan ikon — dan teks
