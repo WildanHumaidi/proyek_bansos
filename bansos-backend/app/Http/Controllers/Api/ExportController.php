@@ -289,7 +289,7 @@ class ExportController extends Controller
             default => 'Lingkup: seluruh wilayah RW 08',
         };
 
-        return $dasar.' — '.$cakupan;
+        return $dasar.' ('.$cakupan.')';
     }
 
     private function labelRt(?string $rt): string
