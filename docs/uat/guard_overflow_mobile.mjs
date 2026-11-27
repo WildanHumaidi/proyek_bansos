@@ -83,7 +83,7 @@ await login('rt001', 'rt123');
 await check('rt:beranda');
 await login('rw08', 'rw123');
 await check('rw:beranda');
-await login('admin', 'admin123');
+await login('admin', 'admin');
 await check('admin:beranda');
 
 await browser.close();

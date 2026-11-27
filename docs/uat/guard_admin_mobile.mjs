@@ -36,7 +36,7 @@ const cek = (label, ok, detail = '') => {
 };
 
 const r = await page.request.post(`${API}/login`, {
-  data: { username: process.env.ADMIN_USER || 'admin', password: process.env.ADMIN_PASS || 'admin123' },
+  data: { username: process.env.ADMIN_USER || 'admin', password: process.env.ADMIN_PASS || 'admin' },
   headers: { Accept: 'application/json' },
 });
 const s = await r.json();

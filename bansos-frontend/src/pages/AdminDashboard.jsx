@@ -1437,6 +1437,25 @@ export default function AdminDashboard() {
             </div>
           </div>
 
+          {/* Konteks: wilayah kerja dan jumlah data yang sedang dibuka. Dulu area
+              ini kosong 944px dari 1188px, jadi mata tidak punya tempat berhenti
+              antara judul dan tombol aksi. Isinya nyata, bukan hiasan. */}
+          <div className="admin-header-konteks">
+            <span className="admin-konteks-chip">
+              <MI name="location_city" size={14} /> RW 08
+            </span>
+            <span className="admin-konteks-teks">
+              {activeMenu === 'pengajuan' && `${pengajuanList.length} kuesioner`}
+              {activeMenu === 'matriks' && `${pengajuanList.filter((p) => p.status === 'disetujui').length} matriks`}
+              {activeMenu === 'ranking' && `${rankingData.length} warga diperingkat`}
+              {activeMenu === 'users' && `${userList.length} akun`}
+              {activeMenu === 'kriteria' && `${kriteriaData.length} kriteria`}
+              {activeMenu === 'log' && 'riwayat aktivitas'}
+              {activeMenu === 'pengaduan' && 'pengaduan warga'}
+              {activeMenu === 'beranda' && 'ringkasan sistem'}
+            </span>
+          </div>
+
           <div
             className="admin-header-actions"
             style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}
@@ -1510,7 +1529,8 @@ export default function AdminDashboard() {
                     icon: 'group',
                     color: '#0b3fa8',
                     bg: '#dbeafe',
-                    sub: 'Admin, RW, RT, Warga',
+                    sub: `${userList.filter((u) => u.role === 'warga').length} warga, ${userList.filter((u) => u.role !== 'warga').length} staf`,
+                    aksi: null,
                   },
                   {
                     label: 'Total Kuesioner',
@@ -1518,7 +1538,8 @@ export default function AdminDashboard() {
                     icon: 'fact_check',
                     color: '#5b21b6',
                     bg: '#f3e8ff',
-                    sub: 'Semua status',
+                    sub: `${countPending + countDiterima + countDitolak} tercatat, semua status`,
+                    aksi: 'pengajuan',
                   },
                   {
                     label: 'Warga Disetujui',
@@ -1526,7 +1547,8 @@ export default function AdminDashboard() {
                     icon: 'verified',
                     color: '#065f46',
                     bg: '#dcfce7',
-                    sub: 'Siap kalkulasi SAW',
+                    sub: countDiterima > 0 ? 'Siap dikalkulasi SAW' : 'Belum ada yang disetujui',
+                    aksi: 'ranking',
                   },
                   {
                     label: 'Menunggu Verifikasi',
@@ -1534,59 +1556,62 @@ export default function AdminDashboard() {
                     icon: 'pending_actions',
                     color: '#92400e',
                     bg: '#fef9c3',
-                    sub: 'Perlu tindakan',
+                    sub: countPending > 0 ? `${countPending} perlu ditinjau` : 'Tidak ada antrean',
+                    aksi: 'pengajuan',
                   },
-                ].map(({ label, value, icon, color, bg, sub }) => (
-                  <div
+                ].map(({ label, value, icon, color, bg, sub, aksi }) => (
+                  <button
                     key={label}
+                    type="button"
+                    onClick={aksi ? () => setActiveMenu(aksi) : undefined}
+                    disabled={!aksi}
+                    title={aksi ? `Buka ${label}` : undefined}
+                    className={aksi ? 'stat-card stat-card-aksi' : 'stat-card'}
                     style={{
                       background: '#fff',
                       borderRadius: 14,
-                      padding: '20px 22px',
+                      padding: '18px 20px',
                       border: '1px solid #DBEAFE',
+                      textAlign: 'left',
+                      font: 'inherit',
+                      color: 'inherit',
+                      cursor: aksi ? 'pointer' : 'default',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      minWidth: 0,
                     }}
                   >
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        marginBottom: 14,
-                      }}
-                    >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 12 }}>
                       <div
                         style={{
-                          width: 42,
-                          height: 42,
-                          borderRadius: 11,
+                          width: 38,
+                          height: 38,
+                          borderRadius: 10,
                           background: bg,
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
+                          flexShrink: 0,
                         }}
                       >
-                        <MI name={icon} fill size={21} style={{ color }} />
+                        <MI name={icon} fill size={19} style={{ color }} />
                       </div>
-                      <span
-                        style={{
-                          fontSize: 11,
-                          fontWeight: 800,
-                          color: '#0f172a',
-                          background: '#FFFFFF',
-                          padding: '3px 8px',
-                          borderRadius: 5,
-                          border: '1px solid #cbd5e1',
-                        }}
-                      >
-                        Live
-                      </span>
+                      {/* Panah hanya muncul saat kartu benar-benar membuka halaman,
+                          jadi tidak ada lagi label "Live" berulang tanpa arti. */}
+                      {aksi && (
+                        <MI
+                          name="arrow_forward"
+                          size={15}
+                          style={{ color: '#0b3fa8', marginLeft: 'auto', opacity: 0.75 }}
+                        />
+                      )}
                     </div>
-                    <div style={{ fontSize: 12, color: '#334155', marginBottom: 2 }}>{label}</div>
-                    <div style={{ fontSize: 32, fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>
+                    <div style={{ fontSize: 12, color: '#334155', marginBottom: 3 }}>{label}</div>
+                    <div style={{ fontSize: 31, fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>
                       {value}
                     </div>
-                    <div style={{ fontSize: 11, color: '#334155', marginTop: 5 }}>{sub}</div>
-                  </div>
+                    <div style={{ fontSize: 11, color: '#334155', marginTop: 5, lineHeight: 1.45 }}>{sub}</div>
+                  </button>
                 ))}
               </div>
 
@@ -1648,16 +1673,23 @@ export default function AdminDashboard() {
                       alignItems: 'center',
                       gap: 8,
                       padding: '12px 22px',
-                      background: '#fff',
-                      color: '#0f172a',
+                      background: 'transparent',
+                      color: '#fff',
+                      border: '1.5px solid rgba(255,255,255,.6)',
                       borderRadius: 10,
                       fontSize: 13.5,
                       fontWeight: 800,
                       cursor: 'pointer',
                       transition: '.15s',
                     }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = '#f0f9ff')}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = '#fff')}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'rgba(255,255,255,.14)';
+                      e.currentTarget.style.borderColor = '#fff';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent';
+                      e.currentTarget.style.borderColor = 'rgba(255,255,255,.6)';
+                    }}
                   >
                     <MI name="upload_file" size={18} /> Import CSV/XLSX
                     <input
@@ -1676,9 +1708,12 @@ export default function AdminDashboard() {
                       alignItems: 'center',
                       gap: 8,
                       padding: '12px 22px',
-                      background: '#065f46',
-                      color: '#fff',
-                      border: 'none',
+                      /* Hijau #065f46 di atas banner biru adalah satu-satunya hijau
+                         pekat di halaman dan bertabrakan dengan identitas biru.
+                         Aksi utama memakai putih solid; Import jadi outline. */
+                      background: '#fff',
+                      color: '#0b3fa8',
+                      border: '1.5px solid #fff',
                       borderRadius: 10,
                       fontSize: 13.5,
                       fontWeight: 800,

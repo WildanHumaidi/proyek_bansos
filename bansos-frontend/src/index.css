@@ -184,6 +184,34 @@ code {
   .mob-table td[data-label="Aksi"] button { font-size: 13px !important; }
 }
 
+/* ── Konteks di header dashboard ────────────────────────────────────────────
+   Mengisi ruang antara judul dan tombol aksi dengan informasi yang benar-benar
+   dipakai saat kerja: wilayah dan jumlah data yang sedang dibuka. */
+.admin-header-konteks {
+  display: flex; align-items: center; gap: 10px; margin-left: auto; margin-right: 4px;
+  min-width: 0;
+}
+.admin-konteks-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 10px; border-radius: 7px;
+  background: #EBF3FF; color: #0b3fa8;
+  font-size: 11.5px; font-weight: 800; white-space: nowrap;
+}
+.admin-konteks-teks {
+  font-size: 12px; font-weight: 600; color: #334155; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+@media (max-width: 1100px) { .admin-header-konteks { display: none; } }
+
+/* ── Kartu statistik beranda ────────────────────────────────────────────────
+   Kartu yang membuka halaman lain harus terlihat bisa diklik: hover mengangkat
+   sedikit, fokus keyboard punya cincin. Kartu tanpa aksi tetap datar supaya
+   tidak menjanjikan perilaku yang tidak ada. */
+.stat-card { transition: border-color .15s, box-shadow .15s, transform .15s; }
+.stat-card-aksi:hover { border-color: #0b3fa8 !important; box-shadow: 0 4px 14px rgba(11,63,168,.12); transform: translateY(-1px); }
+.stat-card:focus-visible { outline: 3px solid #0b3fa8; outline-offset: 2px; }
+.stat-card:disabled { opacity: 1; }
+
 /* ── Tabel lebar di dalam kolom flex ────────────────────────────────────────
    Kartu tabel adalah anak dari `display:flex; flex-direction:column`. Anak flex
    punya `min-width:auto`, jadi kartu tidak pernah menyusut di bawah lebar
