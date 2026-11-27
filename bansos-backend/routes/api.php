@@ -18,7 +18,10 @@ use Illuminate\Support\Facades\Route;
 */
 
 // ── PUBLIK ────────────────────────────────────────────────────────────────
-Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
+// Throttle route sengaja longgar (60/menit): semua klien datang dari satu IP
+// edge provider, jadi batas ketat di sini akan mengunci semua orang sekaligus.
+// Pembatasan tebakan password dilakukan per akun di AuthController::login (5/menit).
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:60,1');
 Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:10,1');
 
 // ── WAJIB LOGIN ───────────────────────────────────────────────────────────

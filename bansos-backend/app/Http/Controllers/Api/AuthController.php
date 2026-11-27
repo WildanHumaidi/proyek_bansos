@@ -10,6 +10,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -79,12 +81,28 @@ class AuthController extends Controller
                 'password' => 'required|string',
             ]);
 
+            // Pembatas per akun. Semua klien masuk lewat edge provider dengan satu
+            // IP, jadi throttle berbasis IP saja bisa dikunci satu penyerang untuk
+            // semua orang. Kunci per username membatasi tebakan tanpa efek itu.
+            $kunci = 'login:'.Str::lower((string) $request->username);
+
+            if (RateLimiter::tooManyAttempts($kunci, 5)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Terlalu banyak percobaan masuk untuk akun ini. Coba lagi dalam 1 menit.',
+                ], 429);
+            }
+
             if (! Auth::attempt($request->only('username', 'password'))) {
+                RateLimiter::hit($kunci, 60);
+
                 return response()->json([
                     'success' => false,
                     'message' => 'Username atau Password salah!',
                 ], 401);
             }
+
+            RateLimiter::clear($kunci);
 
             $user = User::where('username', $request->username)->firstOrFail();
             $token = $user->createToken('auth_token')->plainTextToken;

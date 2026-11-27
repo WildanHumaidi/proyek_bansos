@@ -87,6 +87,29 @@ gunzip -c /var/backups/bansos-db/bansos-YYYYmmdd-HHMMSSZ.sql.gz \
   | mysql -u root bansos
 ```
 
+## Keamanan
+
+Ringkasan kontrol yang aktif setelah audit, semua sudah diuji dari internet:
+
+- SSH: hanya public key (`PasswordAuthentication no`, `PermitRootLogin
+  prohibit-password`, `MaxAuthTries 3`). Drop-in yang menang urutan adalah
+  `/etc/ssh/sshd_config.d/00-hardening.conf` — file bawaan provider
+  `00-vpsmurah.conf` masih berisi `yes`, tapi dibaca setelahnya sehingga kalah.
+- fail2ban aktif, jail `sshd` (4 percobaan gagal / 10 menit → ban 1 jam).
+- Nginx: TLS 1.2/1.3 saja, HSTS, CSP, X-Frame-Options, nosniff, Referrer-Policy.
+  `location ~ \.php$ { return 404; }` dan `deny all` untuk file titik wajib ada.
+- Login: throttle 60/menit per IP edge (longgar, karena semua klien berbagi satu
+  IP) ditambah batas 5 percobaan/menit **per akun** di `AuthController::login`.
+  Tanpa batas per akun, satu penyerang bisa mengunci login semua orang.
+- `.env` 640 `root:www-data`; dump backup 600 root di `/var/backups`.
+- Repo publik tidak lagi memuat data warga: dump SQL, laporan PDF, dan CSV asli
+  sudah dihapus dari seluruh history (rewrite + force push). Salinan asli ada di
+  `E:\Backup\bansos-pii-20261127` **di luar** repo.
+
+Konsekuensi yang perlu diketahui: karena edge provider tidak meneruskan
+`X-Forwarded-For`, semua permintaan tercatat dari `10.10.0.1` dan log aplikasi
+tidak bisa menunjukkan IP asli pengguna.
+
 ## Rollback
 
 ```
