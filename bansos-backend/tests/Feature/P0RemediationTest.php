@@ -162,8 +162,8 @@ class P0RemediationTest extends TestCase
 
         (new CsvImporter)->impor($this->csvAsli());
 
-        $pengajuan = Pengajuan::whereHas('warga', fn ($q) => $q->whereRaw('LOWER(TRIM(nama_lengkap)) = ?', ['dwi purnomo']))
-            ->firstOrFail();
+        // Rumah tangga pertama dari fixture CSV (isinya data contoh, bukan data warga asli).
+        $pengajuan = Pengajuan::orderBy('id_pengajuan')->firstOrFail();
 
         $this->assertEquals('menunggu', $pengajuan->status);
         $this->assertSame(10, Penilaian::where('id_pengajuan', $pengajuan->id_pengajuan)->count());

@@ -23,7 +23,7 @@ class AuthController extends Controller
             $request->validate([
                 'nama_lengkap' => 'required|string|max:255',
                 'username' => 'required|string|unique:users',
-                'password' => 'required|min:6',
+                'password' => 'required|min:8',
                 'rt' => ['required', RtFormatter::rule()],
                 'alamat' => 'required|string',
             ]);

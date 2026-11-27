@@ -115,6 +115,15 @@ class PengaduanController extends Controller
         $pengaduan = Pengaduan::with('warga')->findOrFail($id);
         $user = $request->user();
 
+        // Hanya petugas yang boleh menindaklanjuti pengaduan. Tanpa gerbang ini
+        // akun warga bisa mengubah status/tanggapan pengaduan siapa pun.
+        if (! in_array($user->role, ['rt', 'rw', 'admin'], true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hanya petugas RT/RW/Admin yang dapat menindaklanjuti pengaduan.',
+            ], 403);
+        }
+
         if ($user->role === 'rt') {
             $rt = RtFormatter::intValue($user->rt);
             if (! $pengaduan->warga || RtFormatter::intValue($pengaduan->warga->rt) !== $rt) {
