@@ -849,7 +849,7 @@ export default function WargaDashboard() {
                   style={{
                     fontSize: 11,
                     fontWeight: 700,
-                    color: 'rgba(255,255,255,.55)',
+                    color: 'rgba(255,255,255,.9)',
                     textTransform: 'uppercase',
                     letterSpacing: '.08em',
                     marginBottom: 16,
@@ -876,7 +876,7 @@ export default function WargaDashboard() {
                       </span>
                     </div>
                     <div
-                      style={{ fontSize: 11.5, color: 'rgba(255,255,255,.6)', lineHeight: 1.65 }}
+                      style={{ fontSize: 11.5, color: 'rgba(255,255,255,.85)', lineHeight: 1.65 }}
                     >
                       {sw.step === 2 &&
                         'Pengajuan Anda disetujui. Tunggu instruksi pencairan dari RT.'}
@@ -889,7 +889,7 @@ export default function WargaDashboard() {
                     <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', marginBottom: 6 }}>
                       Belum Ada Data
                     </div>
-                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,.55)' }}>
+                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,.85)' }}>
                       Isi kuesioner untuk memulai proses pengajuan.
                     </div>
                   </div>

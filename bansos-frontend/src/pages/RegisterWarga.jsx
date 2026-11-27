@@ -183,7 +183,7 @@ export default function RegisterWarga() {
           style={{
             width: 380,
             flexShrink: 0,
-            background: 'linear-gradient(155deg, #0C2D6B 0%, #0b3fa8 60%, #3B82F6 100%)',
+            background: 'linear-gradient(155deg, #0C2D6B 0%, #0b3fa8 60%, #1D4ED8 100%)',
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
@@ -240,7 +240,7 @@ export default function RegisterWarga() {
                 style={{
                   fontSize: 10,
                   fontWeight: 700,
-                  color: 'rgba(255,255,255,.35)',
+                  color: 'rgba(255,255,255,.9)',
                   textTransform: 'uppercase',
                   letterSpacing: '.1em',
                 }}
@@ -269,7 +269,7 @@ export default function RegisterWarga() {
             <p
               style={{
                 fontSize: 14,
-                color: 'rgba(255,255,255,.55)',
+                color: 'rgba(255,255,255,.85)',
                 lineHeight: 1.75,
                 marginBottom: 32,
               }}
@@ -315,7 +315,7 @@ export default function RegisterWarga() {
                     <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', marginBottom: 2 }}>
                       {title}
                     </div>
-                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,.4)' }}>{desc}</div>
+                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,.85)' }}>{desc}</div>
                   </div>
                 </div>
               ))}
@@ -330,12 +330,12 @@ export default function RegisterWarga() {
               gap: 7,
               fontSize: 13,
               fontWeight: 600,
-              color: 'rgba(255,255,255,.5)',
+              color: 'rgba(255,255,255,.9)',
               textDecoration: 'none',
               transition: '.15s',
             }}
             onMouseEnter={(e) => (e.currentTarget.style.color = '#bfdbfe')}
-            onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,.5)')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,.9)')}
           >
             <MI name="arrow_back" size={16} /> Kembali ke halaman masuk
           </Link>

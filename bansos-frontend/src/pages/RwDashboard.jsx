@@ -758,19 +758,6 @@ export default function RwDashboard() {
                       >
                         <MI name={icon} fill size={21} style={{ color }} />
                       </div>
-                      <span
-                        style={{
-                          fontSize: 11,
-                          fontWeight: 800,
-                          color: '#0f172a',
-                          background: '#FFFFFF',
-                          padding: '3px 8px',
-                          borderRadius: 5,
-                          border: '1px solid #cbd5e1',
-                        }}
-                      >
-                        Live
-                      </span>
                     </div>
                     <div style={{ fontSize: 12, color: '#334155', marginBottom: 2 }}>{label}</div>
                     <div style={{ fontSize: 32, fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>

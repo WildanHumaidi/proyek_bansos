@@ -109,7 +109,7 @@ export default function Login() {
         <div
           className="auth-brand"
           style={{
-            background: 'linear-gradient(155deg, #0C2D6B 0%, #0b3fa8 60%, #3B82F6 100%)',
+            background: 'linear-gradient(155deg, #0C2D6B 0%, #0b3fa8 60%, #1D4ED8 100%)',
             padding: '48px 56px',
             position: 'relative',
             overflow: 'hidden',
@@ -177,7 +177,7 @@ export default function Login() {
                 style={{
                   fontSize: 10,
                   fontWeight: 700,
-                  color: 'rgba(255,255,255,.4)',
+                  color: 'rgba(255,255,255,.9)',
                   textTransform: 'uppercase',
                   letterSpacing: '.1em',
                 }}
@@ -226,7 +226,7 @@ export default function Login() {
             <p
               style={{
                 fontSize: 15,
-                color: 'rgba(255,255,255,.6)',
+                color: 'rgba(255,255,255,.85)',
                 lineHeight: 1.75,
                 maxWidth: 380,
               }}
@@ -264,7 +264,7 @@ export default function Login() {
                       flexShrink: 0,
                     }}
                   />
-                  <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,.75)' }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,.9)' }}>
                     {f}
                   </span>
                 </div>
@@ -273,7 +273,7 @@ export default function Login() {
           </div>
 
           {/* Footer kiri */}
-          <div className="auth-foot" style={{ fontSize: 11, color: 'rgba(255,255,255,.3)', fontWeight: 500 }}>
+          <div className="auth-foot" style={{ fontSize: 11, color: 'rgba(255,255,255,.9)', fontWeight: 500 }}>
             &copy; {new Date().getFullYear()} BansosHub &mdash; Sistem Manajemen Bantuan Sosial
           </div>
         </div>

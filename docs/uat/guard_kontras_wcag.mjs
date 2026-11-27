@@ -84,8 +84,17 @@ const login = async (user, pass) => {
   await page.waitForTimeout(450);
   await page.fill('input[placeholder*="username"]', user);
   await page.fill('input[type="password"]', pass);
+  const sebelum = new URL(page.url()).pathname;
   await page.click('button[type="submit"]');
-  await page.waitForTimeout(1900);
+  // Tunggu URL benar-benar berpindah DULU. Tanpa ini, penantian "Memuat hilang"
+  // langsung lolos karena halaman /login tidak memuat kata itu, lalu audit
+  // mengukur spinner loading dan melaporkan "1 teks, 0 gagal" — lolos palsu
+  // untuk halaman yang belum tampil sama sekali.
+  await page.waitForFunction((awal) => location.pathname !== awal, sebelum, { timeout: 10000 }).catch(() => {});
+  await page
+    .waitForFunction(() => !document.body.innerText.includes('Memuat'), { timeout: 10000 })
+    .catch(() => {});
+  await page.waitForTimeout(1200);
 };
 
 const report = [];
@@ -142,6 +151,26 @@ const fontSize = await page.evaluate(() => {
   return c;
 });
 console.log('\n== distribusi ukuran font di <main> (kuesioner) ==', JSON.stringify(fontSize));
+
+/* Sidebar staf (RT/RW/Admin).
+ *
+ * Celah yang ditutup: AUDIT() menyapu seluruh <body>, tetapi guard ini dulu
+ * hanya login sebagai warga — yang tidak punya sidebar. Akibatnya chip pengguna
+ * di sidebar RT ("Ketua RT 01", #bfdbfe di atas #D6E9FF, rasio 1.15) tidak
+ * pernah terukur, padahal praktis tidak terbaca. Sekarang tiap peran staf
+ * dibuka dan sidebarnya ikut dinilai. */
+for (const [user, pass, lbl] of [
+  ['rt001', 'rt123', 'rt:sidebar'],
+  ['rw08', 'rw123', 'rw:sidebar'],
+  ['admin', 'admin123', 'admin:sidebar'],
+]) {
+  await login(user, pass);
+  if (new URL(page.url()).pathname === '/login') {
+    console.log(`\n== ${lbl} == LEWATI (kredensial demo tidak berlaku di ${page.url()})`);
+    continue;
+  }
+  await auditPage(lbl);
+}
 
 await browser.close();
 const allFails = report.reduce((a, r) => a + r.fails.length, 0);

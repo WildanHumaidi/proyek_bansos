@@ -773,7 +773,7 @@ export default function RtDashboard() {
               >
                 {userData.name}
               </div>
-              <div style={{ fontSize: 11, color: '#bfdbfe', fontWeight: 600 }}>
+              <div style={{ fontSize: 11, color: '#0b3fa8', fontWeight: 600 }}>
                 Ketua {rtLabel(userData.rt)}
               </div>
             </div>
@@ -1075,19 +1075,6 @@ export default function RtDashboard() {
                       >
                         <MI name={icon} fill size={21} style={{ color }} />
                       </div>
-                      <span
-                        style={{
-                          fontSize: 11,
-                          fontWeight: 800,
-                          color: '#0f172a',
-                          background: '#FFFFFF',
-                          padding: '3px 8px',
-                          borderRadius: 5,
-                          border: '1px solid #cbd5e1',
-                        }}
-                      >
-                        Live
-                      </span>
                     </div>
                     <div>
                       <div style={{ fontSize: 12, color: '#334155', marginBottom: 2 }}>{label}</div>

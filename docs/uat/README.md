@@ -26,6 +26,7 @@ CHROME_PATH="C:\Users\<user>\AppData\Local\ms-playwright\chromium-1243\chrome-wi
 | `guard_overflow_mobile.mjs` | Tidak ada scroll horizontal di 360px pada 9 halaman lintas peran (login, register, warga beranda/kuesioner/status/diskusi, RT, RW, admin) | `0 overflow` |
 | `guard_sidebar_mobile.mjs` | Sidebar RT/RW/Admin sembunyi di HP, terbuka lewat tombol hamburger, ada penggelap, ketuk luar menutup | semua cek `PASS` |
 | `guard_kontras_wcag.mjs` | Kontras teks (WCAG AA 4.5 / 3.0 utk teks besar) + target sentuh >=40px di halaman **Beranda** | `0 gagal kontras`, `0 target < 40px` |
+| `guard_kontras_gradient.mjs` | Kontras teks di atas **latar gradien** — celah yang dilewati `guard_kontras_wcag.mjs`. Warna gradien dihitung analitis di titik tengah tiap teks (termasuk lapisan ber-alpha seperti badge), di 12 halaman lintas peran + 2 halaman publik di 360px | `0 gagal kontras`, exit code 0 |
 | `guard_kontras_ranking.mjs` | Kontras + target sentuh + overflow di halaman **Ranking** RT/RW/Admin | semua `PASS`, exit code 0 |
 | `guard_pengaduan.mjs` | Panel pengaduan di 4 peran: kontras, target sentuh, overflow, dan **isolasi wilayah** (RT 001 tidak boleh melihat pengaduan RT 003) | semua `PASS`, exit code 0 |
 | `guard_rt_kanonik.mjs` | Label RT di seluruh dashboard harus `RT 01` (dua digit); nilai `<select>` RT yang dikirim ke API harus tiga digit (`001`) | semua `PASS`, exit code 0 |
@@ -125,6 +126,7 @@ jadi kegagalan ini mudah lolos kalau tidak diperiksa.
 cd docs/uat
 CHROME_PATH="<path chrome>" node guard_overflow_mobile.mjs
 CHROME_PATH="<path chrome>" node guard_kontras_wcag.mjs
+CHROME_PATH="<path chrome>" node guard_kontras_gradient.mjs
 CHROME_PATH="<path chrome>" node guard_kontras_ranking.mjs
 CHROME_PATH="<path chrome>" node guard_pengaduan.mjs
 CHROME_PATH="<path chrome>" node guard_rt_kanonik.mjs
@@ -144,3 +146,12 @@ luar folder frontend, arahkan `SRC_DIR="<repo>/bansos-frontend/src"`.
 Catatan: `guard_kontras_wcag.mjs` melewatkan elemen berlatar gradien karena
 kontrasnya tidak bisa dihitung andal dari computed style; bagian itu diperiksa manual
 lewat screenshot di `docs/screenshots/uat_*.png`.
+
+> **Latar gradien punya guard sendiri.** `guard_kontras_gradient.mjs` menghitung
+> warna gradien secara analitis (proyeksi titik teks ke garis gradien), jadi teks
+> putih ber-alpha di panel merek /login dan /register serta hero dashboard tetap
+> terukur. Dua jebakan yang sudah ditutup di dalamnya: Chromium menormalkan
+> `#hex` menjadi `rgb()` di `backgroundImage` (parser yang hanya menerima hex
+> melaporkan "0 teks diperiksa" alias lolos palsu), dan dashboard warga butuh
+> ~3 detik sebelum hero-nya muncul (jeda tetap membuat audit mengukur spinner
+> loading dan melaporkan "1 teks, 0 gagal").
