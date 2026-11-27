@@ -97,8 +97,8 @@ export default function RegisterWarga() {
       setError('Konfirmasi kata sandi tidak cocok.');
       return;
     }
-    if (form.password.length < 6) {
-      setError('Kata sandi minimal 6 karakter.');
+    if (form.password.length < 8) {
+      setError('Kata sandi minimal 8 karakter.');
       return;
     }
     setLoading(true);
@@ -369,7 +369,7 @@ export default function RegisterWarga() {
               </h2>
               <p style={{ fontSize: 14.5, color: '#334155', lineHeight: 1.65 }}>
                 Isi kolom bertanda <span style={{ color: '#b91c1c', fontWeight: 700 }}>*</span>{' '}
-                <strong>wajib diisi</strong>. Kata sandi minimal 6 karakter. Sudah punya akun?{' '}
+                <strong>wajib diisi</strong>. Kata sandi minimal 8 karakter. Sudah punya akun?{' '}
                 <Link to="/login" style={{ color: '#0b3fa8', fontWeight: 700 }}>
                   Masuk di sini
                 </Link>
@@ -537,7 +537,8 @@ export default function RegisterWarga() {
                       className="inp inp-icon"
                       type={showPw ? 'text' : 'password'}
                       required
-                      placeholder="Min. 6 karakter"
+                      autoComplete="new-password"
+                      placeholder="Minimal 8 karakter"
                       value={form.password}
                       onChange={(e) => set('password', e.target.value)}
                       style={{ paddingRight: 42 }}
@@ -586,6 +587,7 @@ export default function RegisterWarga() {
                       className="inp inp-icon"
                       type={showPw2 ? 'text' : 'password'}
                       required
+                      autoComplete="new-password"
                       placeholder="Ulangi kata sandi"
                       value={form.password_confirmation}
                       onChange={(e) => set('password_confirmation', e.target.value)}

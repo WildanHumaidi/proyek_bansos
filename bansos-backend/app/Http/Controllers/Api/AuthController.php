@@ -28,6 +28,15 @@ class AuthController extends Controller
                 'password' => 'required|min:8',
                 'rt' => ['required', RtFormatter::rule()],
                 'alamat' => 'required|string',
+            ], [
+                'nama_lengkap.required' => 'Nama lengkap wajib diisi.',
+                'username.required' => 'Username wajib diisi.',
+                'username.unique' => 'Username sudah dipakai. Pilih yang lain.',
+                'password.required' => 'Kata sandi wajib diisi.',
+                'password.min' => 'Kata sandi minimal 8 karakter.',
+                'password.confirmed' => 'Konfirmasi kata sandi tidak cocok.',
+                'rt.required' => 'Wilayah RT wajib dipilih.',
+                'alamat.required' => 'Alamat domisili wajib diisi.',
             ]);
 
             $rt = RtFormatter::formatRt($request->rt);
