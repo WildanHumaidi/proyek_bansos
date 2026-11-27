@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import RankingWarnings from '../components/RankingWarnings';
 import PengaduanPanel from '../components/PengaduanPanel';
+import TombolExport from '../components/TombolExport';
 import { rtLabel, rtInt } from '../lib/rt';
 import { unduhLaporanSaw } from '../lib/report';
 import { pasangLabelTabel } from '../lib/mobTable';
@@ -994,24 +995,7 @@ export default function RtDashboard() {
               </button>
             )}
             {activeMenu === 'ranking' && (
-              <button
-                onClick={() => unduhLaporanSaw('csv')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 7,
-                  padding: '8px 16px',
-                  background: '#FAFCFF',
-                  color: '#334155',
-                  border: '1px solid #DBEAFE',
-                  borderRadius: 9,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                }}
-              >
-                <MI name="download" size={16} /> Unduh Laporan
-              </button>
+              <TombolExport jenis="saw" label="hasil perangkingan SAW" onInfo={showToast} />
             )}
           </div>
         </header>
@@ -1209,12 +1193,15 @@ export default function RtDashboard() {
               <div className="mob-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
                 {/* Pengajuan terbaru */}
                 <div
+                  className="tabel-scroll"
+
                   style={{
                     background: '#fff',
                     borderRadius: 14,
                     border: '1px solid #DBEAFE',
-                    overflow: 'hidden',
+
                   }}
+
                 >
                   <div
                     style={{
@@ -1487,11 +1474,11 @@ export default function RtDashboard() {
 
               {/* Top 5 RT */}
               <div
+                className="tabel-scroll"
                 style={{
                   background: '#fff',
                   borderRadius: 14,
                   border: '1px solid #DBEAFE',
-                  overflow: 'hidden',
                 }}
               >
                 <div
@@ -1614,26 +1601,37 @@ export default function RtDashboard() {
           {/* ════ DATA WARGA ════ */}
           {activeMenu === 'warga' && (
             <div
+              className="tabel-scroll"
+
               style={{
                 background: '#fff',
                 borderRadius: 14,
                 border: '1px solid #DBEAFE',
-                overflow: 'hidden',
+
               }}
+
             >
               <div
                 style={{
                   padding: '16px 22px',
                   borderBottom: '1px solid #f1f5f9',
                   background: '#FAFCFF',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: 12,
+                  flexWrap: 'wrap',
                 }}
               >
-                <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>
-                  Data Warga {rtLabel(userData.rt)}
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>
+                    Data Warga {rtLabel(userData.rt)}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#334155', marginTop: 3 }}>
+                    {wargaList.length} warga terdaftar di wilayah Anda
+                  </div>
                 </div>
-                <div style={{ fontSize: 12, color: '#334155', marginTop: 3 }}>
-                  {wargaList.length} warga terdaftar di wilayah Anda
-                </div>
+                <TombolExport jenis="warga" label="data warga" onInfo={showToast} />
               </div>
               <table className="mob-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
@@ -1791,12 +1789,15 @@ export default function RtDashboard() {
           {/* ════ KUESIONER ════ */}
           {activeMenu === 'kuesioner' && (
             <div
+              className="tabel-scroll"
+
               style={{
                 background: '#fff',
                 borderRadius: 14,
                 border: '1px solid #DBEAFE',
-                overflow: 'hidden',
+
               }}
+
             >
               <div
                 style={{
@@ -1956,12 +1957,15 @@ export default function RtDashboard() {
           {/* ════ VERIFIKASI ════ */}
           {activeMenu === 'verifikasi' && (
             <div
+              className="tabel-scroll"
+
               style={{
                 background: '#fff',
                 borderRadius: 14,
                 border: '1px solid #DBEAFE',
-                overflow: 'hidden',
+
               }}
+
             >
               <div className="print-header" style={{ display: 'none' }}>
                 <h2>LAPORAN VERIFIKASI — {rtLabel(userData.rt)}</h2>
@@ -2153,11 +2157,11 @@ export default function RtDashboard() {
               />
 
               <div
+                className="tabel-scroll"
                 style={{
                   background: '#fff',
                   borderRadius: 14,
                   border: '1px solid #DBEAFE',
-                  overflow: 'hidden',
                 }}
               >
                 <div
@@ -2165,14 +2169,22 @@ export default function RtDashboard() {
                     padding: '18px 22px',
                     borderBottom: '1px solid #f1f5f9',
                     background: '#FAFCFF',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: 12,
+                    flexWrap: 'wrap',
                   }}
                 >
-                  <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>
-                    Peringkat Prioritas Penerima Bansos — {rtLabel(userData.rt)}
+                  <div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>
+                      Peringkat Prioritas Penerima Bansos — {rtLabel(userData.rt)}
+                    </div>
+                    <div style={{ fontSize: 12, color: '#334155', marginTop: 3 }}>
+                      Nilai tertinggi = prioritas utama penerima
+                    </div>
                   </div>
-                  <div style={{ fontSize: 12, color: '#334155', marginTop: 3 }}>
-                    Nilai tertinggi = prioritas utama penerima
-                  </div>
+                  <TombolExport jenis="saw" label="hasil perangkingan SAW" onInfo={showToast} />
                 </div>
                 <table className="mob-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>

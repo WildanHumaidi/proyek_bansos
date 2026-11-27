@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AdminRtController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ChatController;
+use App\Http\Controllers\Api\ExportController;
 use App\Http\Controllers\Api\KriteriaController;
 use App\Http\Controllers\Api\LogController;
 use App\Http\Controllers\Api\PengaduanController;
@@ -69,7 +70,16 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/saw/report/export', [SawController::class, 'exportReport'])->middleware('throttle:saw');
     });
 
-    // ── Admin & RW — Dataset Global ───────────────────────────────────────
+    // ── Export PDF / Excel (data mengikuti scope role yang sama) ──────────
+    Route::middleware('role:admin,rw,rt')->group(function () {
+        Route::get('/export/pengajuan', [ExportController::class, 'pengajuan'])->middleware('throttle:export');
+        Route::get('/export/warga', [ExportController::class, 'warga'])->middleware('throttle:export');
+        Route::get('/export/saw', [ExportController::class, 'saw'])->middleware('throttle:export');
+    });
+
+    Route::middleware('role:admin,rw')->group(function () {
+        Route::get('/export/users', [ExportController::class, 'users'])->middleware('throttle:export');
+    });
     Route::middleware('role:admin,rw')->group(function () {
         Route::get('/saw/dataset', [SawController::class, 'getDataset']);
     });

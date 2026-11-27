@@ -7,13 +7,12 @@ use App\Models\Warga;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Impor CSV warga + kuesioner — jalur tunggal (SSOT).
+ * Import CSV/XLSX warga + kuesioner — jalur tunggal (SSOT).
  *
- * Dipakai oleh endpoint `POST /api/admin/pengajuan/import` DAN seeder
- * `ImportWargaSeeder`. Sebelumnya dua implementasi dengan perilaku berbeda:
- * seeder memakai LIKE substring + fallback skor minimum (BUG-01) dan
- * updateOrCreate by nama (BUG-03), endpoint memakai status 'disetujui'
- * langsung (BUG-04) dan parse posisi kolom tanpa validasi header (BUG-17).
+ * Dipakai oleh endpoint `POST /api/admin/pengajuan/import` (CSV maupun XLSX)
+ * DAN seeder `ImportWargaSeeder`. Parsing CSV ada di sini; XLSX diubah menjadi
+ * baris dengan bentuk yang sama (lihat XlsxImporter) lalu keduanya diproses
+ * oleh `prosesBarisData()` — satu jalur, satu kebijakan baris.
  *
  * Kebijakan baris:
  *  - nama kosong      → ditolak, dicatat nomor barisnya (BUG-11).
@@ -53,31 +52,33 @@ class CsvImporter
      */
     public function impor(string $isiCsv, bool $buatAkun = false): array
     {
-        $this->laporan = [];
-        $this->buatAkun = $buatAkun;
-
         if (trim($isiCsv) === '') {
-            return [
-                'banyak_import' => 0,
-                'banyak_gagal' => 0,
-                'banyak_skip' => 0,
-                'banyak_akun' => 0,
-                'baris' => [],
-                'error_header' => 'File CSV kosong.',
-            ];
+            return $this->hasilKosong('File CSV kosong.');
         }
 
         try {
             $barisData = $this->parse($isiCsv);
         } catch (CsvHeaderException $e) {
-            return [
-                'banyak_import' => 0,
-                'banyak_gagal' => 0,
-                'banyak_skip' => 0,
-                'banyak_akun' => 0,
-                'baris' => [],
-                'error_header' => $e->getMessage(),
-            ];
+            return $this->hasilKosong($e->getMessage());
+        }
+
+        return $this->prosesBarisData($barisData, $buatAkun);
+    }
+
+    /**
+     * Proses baris hasil parsing (CSV dan XLSX memakai jalur yang SAMA).
+     *
+     * @param  array<int, array{nama:string, alamat:string, rt:string, jawaban:array<int,string>}>  $barisData
+     * @return array{banyak_import:int, banyak_gagal:int, banyak_skip:int,
+     *               banyak_akun:int, baris:array<int,array>, error_header:?string}
+     */
+    public function prosesBarisData(array $barisData, bool $buatAkun = false): array
+    {
+        $this->laporan = [];
+        $this->buatAkun = $buatAkun;
+
+        if ($barisData === []) {
+            return $this->hasilKosong('File tidak berisi baris data.');
         }
 
         DB::beginTransaction();
@@ -200,6 +201,40 @@ class CsvImporter
             throw new CsvHeaderException('CSV tidak memiliki baris header.');
         }
 
+        $peta = $this->petakanHeader(array_map(fn ($h) => (string) $h, $header));
+
+        $barisData = [];
+        $nomorBaris = 1; // baris fisik mulai dari 1 = header
+
+        while (($sel = fgetcsv($stream, 0, $delimiter)) !== false) {
+            $nomorBaris++;
+
+            // Baris kosong murni (semua sel kosong) dilewati diam-diam.
+            if ($sel === null || trim(implode('', $sel)) === '') {
+                continue;
+            }
+
+            $barisData[$nomorBaris] = $this->barisDariSel(array_map(fn ($v) => (string) $v, $sel), $peta);
+        }
+
+        fclose($stream);
+
+        return $barisData;
+    }
+
+    /**
+     * Validasi header dan tentukan indeks kolom inti + kolom jawaban.
+     *
+     * Dipakai bersama oleh parser CSV dan XLSX supaya kedua format menerima
+     * header yang sama dan menolak bentuk yang sama.
+     *
+     * @param  array<int, string>  $header
+     * @return array{nama:int, alamat:int, rt:int, jawaban:array<int,int>}
+     *
+     * @throws CsvHeaderException
+     */
+    public function petakanHeader(array $header): array
+    {
         $headerNormalized = array_map(
             fn ($h) => JawabanMapper::normalisasi(str_replace(':', '', (string) $h)),
             $header
@@ -210,13 +245,13 @@ class CsvImporter
         $indexRt = array_search('rt', $headerNormalized, true);
 
         if ($indexNama === false) {
-            throw new CsvHeaderException('Header CSV tidak memiliki kolom "NAMA".');
+            throw new CsvHeaderException('Header tidak memiliki kolom "NAMA".');
         }
         if ($indexAlamat === false) {
-            throw new CsvHeaderException('Header CSV tidak memiliki kolom "ALAMAT".');
+            throw new CsvHeaderException('Header tidak memiliki kolom "ALAMAT".');
         }
         if ($indexRt === false) {
-            throw new CsvHeaderException('Header CSV tidak memiliki kolom "RT".');
+            throw new CsvHeaderException('Header tidak memiliki kolom "RT".');
         }
 
         // Kolom jawaban = seluruh kolom selain inti (nama/alamat/rt) dan
@@ -237,43 +272,40 @@ class CsvImporter
 
         if (count($indeksJawaban) !== 10) {
             throw new CsvHeaderException(
-                'CSV wajib memuat tepat 10 kolom jawaban (q1–q10). Ditemukan '.count($indeksJawaban).' kolom jawaban.'
+                'File wajib memuat tepat 10 kolom jawaban (q1–q10). Ditemukan '.count($indeksJawaban).' kolom jawaban.'
             );
         }
 
-        $barisData = [];
-        $nomorBaris = 1; // baris fisik mulai dari 1 = header
+        return [
+            'nama' => $indexNama,
+            'alamat' => $indexAlamat,
+            'rt' => $indexRt,
+            'jawaban' => $indeksJawaban,
+        ];
+    }
 
-        while (($sel = fgetcsv($stream, 0, $delimiter)) !== false) {
-            $nomorBaris++;
+    /**
+     * Ubah satu baris sel menjadi baris kanonik memakai peta header.
+     *
+     * @param  array<int, string>  $sel
+     * @param  array{nama:int, alamat:int, rt:int, jawaban:array<int,int>}  $peta
+     * @return array{nama:string, alamat:string, rt:string, jawaban:array<int,string>}
+     */
+    public function barisDariSel(array $sel, array $peta): array
+    {
+        $ambil = fn (int $idx) => isset($sel[$idx]) ? trim((string) $sel[$idx]) : '';
 
-            // Baris kosong murni (semua sel kosong) dilewati diam-diam.
-            if ($sel === null || trim(implode('', $sel)) === '') {
-                continue;
-            }
-
-            $ambil = fn (int $idx) => isset($sel[$idx]) ? trim((string) $sel[$idx]) : '';
-
-            $nama = $ambil($indexNama);
-            $alamat = $ambil($indexAlamat);
-            $rt = $ambil($indexRt);
-
-            $jawaban = [];
-            foreach ($indeksJawaban as $idx) {
-                $jawaban[] = $ambil($idx);
-            }
-
-            $barisData[$nomorBaris] = [
-                'nama' => $nama,
-                'alamat' => $alamat,
-                'rt' => $rt,
-                'jawaban' => $jawaban,
-            ];
+        $jawaban = [];
+        foreach ($peta['jawaban'] as $idx) {
+            $jawaban[] = $ambil($idx);
         }
 
-        fclose($stream);
-
-        return $barisData;
+        return [
+            'nama' => $ambil($peta['nama']),
+            'alamat' => $ambil($peta['alamat']),
+            'rt' => $ambil($peta['rt']),
+            'jawaban' => $jawaban,
+        ];
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -388,6 +420,20 @@ class CsvImporter
     private function akunKosong(): array
     {
         return ['username' => null, 'password_awal' => null, 'akun_baru' => false];
+    }
+
+    /** @return array{banyak_import:int, banyak_gagal:int, banyak_skip:int,
+     *                banyak_akun:int, baris:array<int,array>, error_header:string} */
+    private function hasilKosong(string $pesan): array
+    {
+        return [
+            'banyak_import' => 0,
+            'banyak_gagal' => 0,
+            'banyak_skip' => 0,
+            'banyak_akun' => 0,
+            'baris' => [],
+            'error_header' => $pesan,
+        ];
     }
 }
 

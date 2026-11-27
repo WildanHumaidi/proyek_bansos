@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import RankingWarnings from '../components/RankingWarnings';
 import PengaduanPanel from '../components/PengaduanPanel';
+import TombolExport from '../components/TombolExport';
 import { rtLabel } from '../lib/rt';
 import { unduhLaporanSaw } from '../lib/report';
 import { pasangLabelTabel } from '../lib/mobTable';
@@ -1436,7 +1437,10 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          <div className="admin-header-actions" style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <div
+            className="admin-header-actions"
+            style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}
+          >
             {['pengajuan', 'matriks', 'ranking', 'log'].includes(activeMenu) && (
               <BtnGhost onClick={() => window.print()}>
                 <MI name="print" size={15} /> Cetak
@@ -1461,10 +1465,10 @@ export default function AdminDashboard() {
                 onMouseLeave={(e) => (e.currentTarget.style.background = '#5b21b6')}
               >
                 <MI name="upload_file" size={15} />
-                {loading ? 'Memproses...' : 'Import CSV'}
+                {loading ? 'Memproses...' : 'Import CSV/XLSX'}
                 <input
                   type="file"
-                  accept=".csv"
+                  accept=".csv,.txt,.xlsx"
                   style={{ display: 'none' }}
                   onChange={handleImportCSV}
                   disabled={loading}
@@ -1655,10 +1659,10 @@ export default function AdminDashboard() {
                     onMouseEnter={(e) => (e.currentTarget.style.background = '#f0f9ff')}
                     onMouseLeave={(e) => (e.currentTarget.style.background = '#fff')}
                   >
-                    <MI name="upload_file" size={18} /> Import CSV
+                    <MI name="upload_file" size={18} /> Import CSV/XLSX
                     <input
                       type="file"
-                      accept=".csv"
+                      accept=".csv,.txt,.xlsx"
                       style={{ display: 'none' }}
                       onChange={handleImportCSV}
                       disabled={loading}
@@ -1691,12 +1695,15 @@ export default function AdminDashboard() {
               <div className="mob-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
                 {/* Top 5 Ranking */}
                 <div
+                  className="tabel-scroll"
+
                   style={{
                     background: '#fff',
                     borderRadius: 14,
                     border: '1px solid #DBEAFE',
-                    overflow: 'hidden',
+
                   }}
+
                 >
                   <div
                     className="mob-card-head"
@@ -1983,11 +1990,11 @@ export default function AdminDashboard() {
                 )}
 
               <div
+                className="tabel-scroll"
                 style={{
                   background: '#fff',
                   borderRadius: 14,
                   border: '1px solid #DBEAFE',
-                  overflow: 'auto',
                 }}
               >
                 <div
@@ -1998,6 +2005,8 @@ export default function AdminDashboard() {
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
+                    gap: 12,
+                    flexWrap: 'wrap',
                   }}
                 >
                   <div>
@@ -2012,9 +2021,15 @@ export default function AdminDashboard() {
                         : 'Data kuesioner dari seluruh wilayah RT'}
                     </div>
                   </div>
+                {activeMenu === 'pengajuan' && (
+                  <TombolExport jenis="pengajuan" label="data pengajuan" onInfo={showToast} />
+                )}
                 {activeMenu === 'matriks' && (
-                  <div className="mob-scroll-hint">
-                    <MI name="info" size={15} /> Geser tabel ke samping untuk melihat semua kriteria.
+                  <div className="matriks-aksi">
+                    <div className="mob-scroll-hint">
+                      <MI name="info" size={15} /> Geser tabel ke samping untuk melihat semua kriteria.
+                    </div>
+                    <TombolExport jenis="saw" label="matriks & ranking SAW" onInfo={showToast} />
                   </div>
                 )}
                 </div>
@@ -2252,17 +2267,19 @@ export default function AdminDashboard() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: 10,
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <MI name="info" fill size={18} style={{ color: '#0b3fa8' }} />
-                  <span style={{ fontSize: 13, color: '#334155' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: '1 1 auto' }}>
+                  <MI name="info" fill size={18} style={{ color: '#0b3fa8', flexShrink: 0 }} />
+                  <span style={{ fontSize: 13, color: '#334155', minWidth: 0 }}>
                     Total <strong style={{ color: '#0f172a' }}>{rankingData.length}</strong> warga
                     terhitung berdasarkan bobot dan nilai sub-kriteria aktif. Nilai V dihitung
                     menggunakan metode SAW di sisi server (PHP).
                   </span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, flexWrap: 'wrap', maxWidth: '100%' }}>
                   <BtnPrimary
                     onClick={jalankanSAW}
                     disabled={loading}
@@ -2271,9 +2288,7 @@ export default function AdminDashboard() {
                     <MI name="refresh" size={15} />
                     {loading ? 'Menghitung...' : 'Hitung Ulang'}
                   </BtnPrimary>
-                  <BtnGhost onClick={() => unduhLaporanSaw('csv')} style={{ minHeight: 40 }}>
-                    <MI name="download" size={15} /> Unduh
-                  </BtnGhost>
+                  <TombolExport jenis="saw" label="hasil perangkingan SAW" onInfo={showToast} />
                 </div>
               </div>
 
@@ -2285,11 +2300,11 @@ export default function AdminDashboard() {
               />
 
               <div
+                className="tabel-scroll"
                 style={{
                   background: '#fff',
                   borderRadius: 14,
                   border: '1px solid #DBEAFE',
-                  overflow: 'hidden',
                 }}
               >
                 <table className="mob-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -2639,12 +2654,15 @@ export default function AdminDashboard() {
               {/* Sub-kriteria panel */}
               {selectedKriteria && (
                 <div
+                  className="tabel-scroll"
+
                   style={{
                     background: '#fff',
                     borderRadius: 14,
                     border: '1px solid #bfdbfe',
-                    overflow: 'hidden',
+
                   }}
+
                 >
                   <div
                     className="mob-card-head"
@@ -2841,14 +2859,15 @@ export default function AdminDashboard() {
                 >
                   {filteredUsers.length} akun
                 </span>
+                <TombolExport jenis="users" label="daftar akun" onInfo={showToast} />
               </div>
 
               <div
+                className="tabel-scroll"
                 style={{
                   background: '#fff',
                   borderRadius: 14,
                   border: '1px solid #DBEAFE',
-                  overflow: 'hidden',
                 }}
               >
                 <table className="mob-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -3048,12 +3067,15 @@ export default function AdminDashboard() {
           {/* ══════ ACTIVITY LOG ══════ */}
           {activeMenu === 'log' && (
             <div
+              className="tabel-scroll"
+
               style={{
                 background: '#fff',
                 borderRadius: 14,
                 border: '1px solid #DBEAFE',
-                overflow: 'hidden',
+
               }}
+
             >
               <div className="print-header" style={{ display: 'none' }}>
                 <h2 style={{ fontSize: 14, fontWeight: 700 }}>ACTIVITY LOG SISTEM</h2>

@@ -52,6 +52,10 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('chat', function (Request $request) {
             return Limit::perMinute(30)->by($this->kunciPengguna($request));
         });
+
+        RateLimiter::for('export', function (Request $request) {
+            return Limit::perMinute(20)->by($this->kunciPengguna($request));
+        });
     }
 
     /** Kunci pembatas: id pengguna bila login, jika tidak alamat IP. */

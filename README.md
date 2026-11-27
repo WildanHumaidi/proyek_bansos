@@ -48,7 +48,7 @@ Penyaluran bantuan sosial di tingkat kewilayahan sering menghadapi kendala verif
 ### 2. Ketua RW
 - **Monitoring Makro Wilayah**: Pemantauan agregat data warga dan pengajuan dari seluruh RT di bawah lingkup RW.
 - **Kalkulasi & Analisis SAW**: Eksekusi perankingan global dengan visualisasi skor preferensi tertinggi hingga terendah.
-- **Ekspor Laporan**: Unduh laporan perankingan sebagai berkas CSV/TSV dari server (`GET /api/saw/report/export`), dengan nilai dan cakupan yang identik dengan yang tampil di layar.
+- **Ekspor PDF & Excel**: Setiap tabel data di dashboard Admin/RW/RT punya tombol `PDF` dan `Excel` (`GET /api/export/{pengajuan,warga,users,saw}`). Berkas dibuat di server (DomPDF + PhpSpreadsheet) dengan judul, cakupan wilayah, dan waktu cetak; isinya sama persis dengan yang tampil karena memakai scope role yang sama. Daftar akun dapat diunduh tanpa hash password. Laporan CSV/TSV lama tetap tersedia di `GET /api/saw/report/export`.
 - **Pengawasan Pengaduan**: Melihat pengaduan dari seluruh RT dan mengambil alih penanganan bila RT tidak tersedia.
 
 ### 3. Ketua RT
@@ -172,7 +172,7 @@ Database seeder menyediakan akun bawaan untuk tiap hak akses:
 Seluruh fungsionalitas dan konsistensi kode dijamin oleh rangkaian pengujian otomatis dan linter:
 
 ```bash
-# Backend Automated Tests (145 tests, 3109 assertions)
+# Backend Automated Tests (157 tests, 3156 assertions)
 cd bansos-backend
 php artisan test
 
@@ -209,6 +209,7 @@ TokenGuard auth bypass, 15 high) dan 17 advisory frontend (12 high, termasuk axi
 | `tests/Unit/RtFormatterTest.php` | 6 test — kontrak kanonikalisasi RT (`formatRt`, `intValue`, `sama`, rule validasi termasuk penolakan RT 0) |
 | `tests/Feature/JurnalKelompokTest.php` | 26 test — delapan kelompok pengujian jurnal (autentikasi, registrasi, kuesioner, verifikasi RT, SAW + matriks, import CSV, manajemen akun, cetak laporan) |
 | `tests/Feature/P3HygieneTest.php` | 8 test — kolom `warga.password` dihapus, status baca chat (isolasi lintas pengguna), rate limit `saw` & `chat` |
+| `tests/Feature/ExportDanImportXlsxTest.php` | 11 test — export PDF/XLSX (berkas benar-benar `%PDF`/`PK`, scope RT tidak bocor, hash password tidak ikut), format salah 422, import XLSX membuat warga+pengajuan+akun, header salah 422, satu baris gagal rollback |
 | `tests/Feature/ChatPollingTest.php` | 4 test — `GET` tidak menandai terbaca, urutan pesan deterministik, pesan baru terlihat pada polling berikutnya, isolasi lintas warga |
 
 ### UAT guard (UI mobile)
@@ -283,7 +284,7 @@ proyek_bansos/
       impor berstatus `menunggu`, scope ranking per RT + `ranking_rt` server-side,
       banner `dilewati`, export laporan CSV server-side, sub-sistem pengaduan.
       Rincian & bukti: `FIX_IMPLEMENTATION_REPORT.md`.
-- [ ] Ekspor laporan ke format Excel XLSX native untuk kebutuhan arsip kelurahan.
+- [x] Ekspor laporan ke format Excel XLSX native dan PDF untuk kebutuhan arsip kelurahan (lihat **Ekspor PDF & Excel**).
 - [ ] Notifikasi status pengajuan via WhatsApp Gateway / Email.
 - [ ] Modul penentuan kuota dinamis penerima bansos per RT berdasarkan pagu anggaran.
 

@@ -13,6 +13,7 @@ use App\Services\CsvImporter;
 use App\Services\JawabanTidakDikenalException;
 use App\Services\PenilaianAssembler;
 use App\Services\RtFormatter;
+use App\Services\XlsxImporter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -580,12 +581,38 @@ class AdminRtController extends Controller
 
         try {
             $request->validate([
-                'file' => 'required|file|mimes:csv,txt|max:5120',
+                'file' => 'required|file|mimes:csv,txt,xlsx|max:5120',
+            ], [
+                'file.mimes' => 'Format file harus CSV, TXT, atau XLSX.',
+                'file.max' => 'Ukuran file maksimal 5 MB.',
             ]);
 
-            $isi = file_get_contents($request->file('file')->getRealPath());
+            $file = $request->file('file');
+            $ekstensi = strtolower($file->getClientOriginalExtension());
 
-            $hasil = (new CsvImporter)->impor($isi, buatAkun: true);
+            if ($ekstensi === 'xlsx') {
+                $barisData = (new XlsxImporter)->parse($file->getRealPath());
+
+                if ($barisData === []) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Import gagal: file XLSX tidak berisi baris data.',
+                        'detail' => [
+                            'banyak_import' => 0,
+                            'banyak_gagal' => 0,
+                            'banyak_skip' => 0,
+                            'banyak_akun' => 0,
+                            'baris' => [],
+                            'error_header' => 'File XLSX tidak berisi baris data.',
+                        ],
+                    ], 422);
+                }
+
+                $hasil = (new CsvImporter)->prosesBarisData($barisData, buatAkun: true);
+            } else {
+                $isi = file_get_contents($file->getRealPath());
+                $hasil = (new CsvImporter)->impor($isi, buatAkun: true);
+            }
 
             if ($hasil['error_header']) {
                 return response()->json([
@@ -624,6 +651,19 @@ class AdminRtController extends Controller
             ], $hasil['banyak_gagal'] === 0 ? 200 : 422);
         } catch (ValidationException $e) {
             throw $e;
+        } catch (CsvHeaderException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Import gagal: '.$e->getMessage(),
+                'detail' => [
+                    'banyak_import' => 0,
+                    'banyak_gagal' => 0,
+                    'banyak_skip' => 0,
+                    'banyak_akun' => 0,
+                    'baris' => [],
+                    'error_header' => $e->getMessage(),
+                ],
+            ], 422);
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,

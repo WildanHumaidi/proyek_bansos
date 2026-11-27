@@ -183,3 +183,17 @@ code {
   .mob-table td[data-label="Aksi"] > * { width: 100%; justify-content: center; min-height: 44px; }
   .mob-table td[data-label="Aksi"] button { font-size: 13px !important; }
 }
+
+/* ── Tabel lebar di dalam kolom flex ────────────────────────────────────────
+   Kartu tabel adalah anak dari `display:flex; flex-direction:column`. Anak flex
+   punya `min-width:auto`, jadi kartu tidak pernah menyusut di bawah lebar
+   tabelnya dan `overflow:auto` tidak pernah aktif. Akibatnya tabel 1.388px
+   menembus viewport 1.440px (terukur: right 1.669px). `min-width:0` membuat
+   kartu mau menyusut, scroll horizontal lalu terjadi DI DALAM kartu, bukan di
+   halaman. */
+.tabel-scroll {
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}

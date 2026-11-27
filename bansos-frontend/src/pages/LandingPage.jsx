@@ -9,11 +9,20 @@ const CSS = `
 
   .ld-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 11px 22px; border-radius: 10px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; transition: .15s; text-decoration: none; }
   .ld-btn-primary { background: #0b3fa8; color: #fff; border: 1.5px solid #0b3fa8; }
-  .ld-btn-primary:hover { background: #0b3fa8; border-color: #0b3fa8; }
+  .ld-btn-primary:hover { background: #062b6e; border-color: #062b6e; }
   .ld-btn-ghost { background: transparent; color: #fff; border: 1.5px solid rgba(255,255,255,.55); }
   .ld-btn-ghost:hover { background: rgba(255,255,255,.1); border-color: #fff; }
   .ld-btn-light { background: #fff; color: #0b3fa8; border: 1.5px solid #a9c7f0; }
   .ld-btn-light:hover { background: #EBF3FF; }
+
+  /* Fokus keyboard harus terlihat di setiap tombol (WCAG 2.4.7). */
+  .ld-btn:focus-visible { outline: 3px solid #0b3fa8; outline-offset: 2px; }
+  .ld-hero .ld-btn-light:focus-visible { outline-color: #fff; }
+
+  /* Kartu manfaat: satu kartu pertama lebih lebar karena berisi penjelasan
+     paling penting (kriteria penilaian). Ritme 2 kolom, bukan 3 kolom seragam. */
+  .ld-feats { display: grid; grid-template-columns: 1.25fr 1fr; gap: 16px; }
+  .ld-feats > article:first-child { grid-row: span 2; }
 
   .ld-faq summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 14.5px; color: #0f172a; padding: 14px 16px; }
   .ld-faq summary::-webkit-details-marker { display: none; }
@@ -80,7 +89,7 @@ const FAQS = [
   },
   {
     q: 'Bagaimana jika lupa kata sandi?',
-    a: 'Minta bantuan Ketua RT — beliau dapat mengatur ulang kata sandi Anda.',
+    a: 'Minta bantuan Ketua RT. Beliau dapat mengatur ulang kata sandi Anda.',
   },
 ];
 
@@ -184,23 +193,6 @@ export default function LandingPage() {
         }}
       >
         <div style={{ animation: 'ldFadeUp .35s ease' }}>
-          <span
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 7,
-              fontSize: 12,
-              fontWeight: 700,
-              color: '#0b3fa8',
-              background: '#EBF3FF',
-              border: '1px solid #a9c7f0',
-              padding: '6px 12px',
-              borderRadius: 999,
-              marginBottom: 18,
-            }}
-          >
-            <MI name="verified_user" size={15} fill /> Bantuan Sosial, Tepat Sasaran
-          </span>
           <h1
             style={{
               fontSize: 34,
@@ -217,7 +209,7 @@ export default function LandingPage() {
           </h1>
           <p style={{ fontSize: 15.5, color: '#334155', lineHeight: 1.75, marginBottom: 26, maxWidth: 520 }}>
             Warga RW 08 bisa mendaftar lewat HP, mengisi 10 pertanyaan sederhana, lalu memantau
-            sendiri hasil penilaiannya — tanpa harus berulang kali bertanya ke Ketua RT.
+            sendiri hasil penilaiannya tanpa harus berulang kali bertanya ke Ketua RT.
           </p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <button className="ld-btn ld-btn-primary" onClick={goRegister}>
@@ -236,7 +228,9 @@ export default function LandingPage() {
         <div
           className="ld-hero-side"
           style={{
-            background: 'linear-gradient(155deg, #0C2D6B 0%, #0b3fa8 60%, #3B82F6 100%)',
+            /* Stop terakhir sengaja #1D4ED8, bukan #3B82F6: #3B82F6 hanya 3.68:1
+               terhadap teks putih dan gagal WCAG AA (butuh 4.5:1). #1D4ED8 = 6.7:1. */
+            background: 'linear-gradient(155deg, #0C2D6B 0%, #0b3fa8 60%, #1D4ED8 100%)',
             borderRadius: 18,
             padding: '32px 30px',
             minHeight: 280,
@@ -285,7 +279,7 @@ export default function LandingPage() {
               </div>
               <div>
                 <div style={{ fontSize: 13.5, fontWeight: 700, marginBottom: 2 }}>{s.title}</div>
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', lineHeight: 1.55 }}>{s.desc}</div>
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,.92)', lineHeight: 1.55 }}>{s.desc}</div>
               </div>
             </div>
           ))}
@@ -296,38 +290,49 @@ export default function LandingPage() {
       <section className="ld-container" style={{ maxWidth: 1100, margin: '0 auto', padding: '44px 24px 8px' }}>
         <h2 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>Kenapa lewat BansosHub?</h2>
         <p style={{ fontSize: 14, color: '#334155', marginBottom: 24 }}>Sistem yang dipakai petugas di wilayah Anda.</p>
-        <div className="ld-feats" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16 }}>
+        <div className="ld-feats">
           {[
-            { icon: 'fact_check', color: '#0b3fa8', bg: '#dbeafe', t: 'Penilaian Objektif', d: '10 kriteria terukur — penghasilan, pengeluaran, rumah, dan lainnya. Bukan subjektif.' },
+            {
+              icon: 'fact_check',
+              color: '#0b3fa8',
+              bg: '#dbeafe',
+              t: 'Penilaian Objektif',
+              d: 'Sepuluh kriteria terukur: penghasilan, pengeluaran, jumlah anggota keluarga, pendidikan, status rumah, sumber air, penerangan, dan transportasi. Setiap jawaban dipetakan ke sub-kriteria, lalu dihitung dengan metode SAW. Tidak ada penilaian berdasarkan kesan petugas.',
+              utama: true,
+            },
             { icon: 'verified_user', color: '#065f46', bg: '#dcfce7', t: 'Verifikasi Berjenjang', d: 'Ketua RT memeriksa, Ketua RW mengawasi, Admin mengelola data.' },
             { icon: 'devices', color: '#155e75', bg: '#cffafe', t: 'Bisa dari HP', d: 'Cukup pakai HP apa pun. Kalau kesulitan, Ketua RT siap membantu.' },
           ].map((f) => (
-            <div
+            <article
               key={f.t}
               style={{
                 background: '#fff',
                 border: '1px solid #DBEAFE',
                 borderRadius: 14,
-                padding: '22px 24px',
+                padding: f.utama ? '26px 26px' : '20px 22px',
+                display: f.utama ? 'flex' : 'block',
+                flexDirection: 'column',
+                gap: f.utama ? 10 : 0,
               }}
             >
               <div
                 style={{
-                  width: 42,
-                  height: 42,
+                  width: f.utama ? 46 : 38,
+                  height: f.utama ? 46 : 38,
                   borderRadius: 11,
                   background: f.bg,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  marginBottom: 14,
+                  marginBottom: f.utama ? 4 : 12,
+                  flexShrink: 0,
                 }}
               >
-                <MI name={f.icon} fill size={21} style={{ color: f.color }} />
+                <MI name={f.icon} fill size={f.utama ? 23 : 19} style={{ color: f.color }} />
               </div>
-              <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>{f.t}</div>
-              <div style={{ fontSize: 13.5, color: '#334155', lineHeight: 1.65 }}>{f.d}</div>
-            </div>
+              <div style={{ fontSize: f.utama ? 16.5 : 14.5, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>{f.t}</div>
+              <div style={{ fontSize: f.utama ? 14 : 13.5, color: '#334155', lineHeight: 1.7 }}>{f.d}</div>
+            </article>
           ))}
         </div>
       </section>
@@ -350,7 +355,7 @@ export default function LandingPage() {
             <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 8, display: 'flex', gap: 9, alignItems: 'center' }}>
               <MI name="how_to_reg" size={20} fill /> Siapa yang Bisa Mendaftar?
             </div>
-            <div style={{ fontSize: 13.5, color: 'rgba(255,255,255,.8)', lineHeight: 1.7 }}>
+            <div style={{ fontSize: 13.5, color: 'rgba(255,255,255,.94)', lineHeight: 1.7 }}>
               Warga berdomisili di wilayah RW 08 yang belum memiliki akun. Pendaftaran gratis dan
               bisa dilakukan sendiri atau dibantu Ketua RT.
             </div>
@@ -390,7 +395,7 @@ export default function LandingPage() {
         }}
       >
         <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.7 }}>
-          BansosHub — Sistem Pendukung Keputusan Bantuan Sosial (Metode SAW) · RW 08
+          BansosHub · Sistem Pendukung Keputusan Bantuan Sosial (Metode SAW) · RW 08
           <br />
           <span style={{ fontSize: 12.5 }}>
             Butuh bantuan? Hubungi Ketua RT di wilayah Anda.

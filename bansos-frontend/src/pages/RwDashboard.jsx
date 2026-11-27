@@ -3,8 +3,8 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import RankingWarnings from '../components/RankingWarnings';
 import PengaduanPanel from '../components/PengaduanPanel';
+import TombolExport from '../components/TombolExport';
 import { rtInt, rtLabel } from '../lib/rt';
-import { unduhLaporanSaw } from '../lib/report';
 import { pasangLabelTabel } from '../lib/mobTable';
 
 const API = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000/api';
@@ -632,7 +632,10 @@ export default function RwDashboard() {
             </h1>
             {loading && <p style={{ fontSize: 11, color: '#334155', margin: 0 }}>Memuat data...</p>}
           </div>
-          <div className="rw-header-actions" style={{ display: 'flex', gap: 10 }}>
+          <div
+            className="rw-header-actions"
+            style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}
+          >
             {['ranking', 'warga'].includes(activeMenu) && (
               <button
                 onClick={() => window.print()}
@@ -654,24 +657,7 @@ export default function RwDashboard() {
               </button>
             )}
             {activeMenu === 'ranking' && (
-              <button
-                onClick={() => unduhLaporanSaw('csv')}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 7,
-                  padding: '9px 18px',
-                  background: '#fff',
-                  color: '#334155',
-                  border: '1.5px solid #a9c7f0',
-                  borderRadius: 9,
-                  fontSize: 13,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                }}
-              >
-                <MI name="download" size={15} /> Unduh
-              </button>
+              <TombolExport jenis="saw" label="hasil perangkingan SAW" onInfo={showToast} />
             )}
             {activeMenu === 'ranking' && (
               <button
@@ -886,11 +872,11 @@ export default function RwDashboard() {
                 error={rankingError}
               />
               <div
+                className="tabel-scroll"
                 style={{
                   background: '#fff',
                   borderRadius: 14,
                   border: '1px solid #DBEAFE',
-                  overflow: 'hidden',
                 }}
               >
                 <div
@@ -1112,11 +1098,11 @@ export default function RwDashboard() {
               </div>
 
               <div
+                className="tabel-scroll"
                 style={{
                   background: '#fff',
                   borderRadius: 14,
                   border: '1px solid #DBEAFE',
-                  overflow: 'hidden',
                 }}
               >
                 <div
@@ -1124,14 +1110,22 @@ export default function RwDashboard() {
                     padding: '16px 22px',
                     borderBottom: '1px solid #f1f5f9',
                     background: '#FAFCFF',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: 12,
+                    flexWrap: 'wrap',
                   }}
                 >
-                  <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>
-                    Database Warga RW
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>
+                      Database Warga RW
+                    </div>
+                    <div style={{ fontSize: 12, color: '#334155', marginTop: 2 }}>
+                      {wargaList.length} warga terdaftar dari seluruh RT
+                    </div>
                   </div>
-                  <div style={{ fontSize: 12, color: '#334155', marginTop: 2 }}>
-                    {wargaList.length} warga terdaftar dari seluruh RT
-                  </div>
+                  <TombolExport jenis="warga" label="data warga" onInfo={showToast} />
                 </div>
                 <table className="mob-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
@@ -1335,11 +1329,11 @@ export default function RwDashboard() {
               </div>
 
               <div
+                className="tabel-scroll"
                 style={{
                   background: '#fff',
                   borderRadius: 14,
                   border: '1px solid #DBEAFE',
-                  overflow: 'hidden',
                 }}
               >
                 <div
@@ -1347,14 +1341,22 @@ export default function RwDashboard() {
                     padding: '16px 22px',
                     borderBottom: '1px solid #f1f5f9',
                     background: '#FAFCFF',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: 12,
+                    flexWrap: 'wrap',
                   }}
                 >
-                  <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>
-                    Peringkat Prioritas Penerima Bansos
+                  <div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>
+                      Peringkat Prioritas Penerima Bansos
+                    </div>
+                    <div style={{ fontSize: 12, color: '#334155', marginTop: 2 }}>
+                      Nilai tertinggi = prioritas utama penerima
+                    </div>
                   </div>
-                  <div style={{ fontSize: 12, color: '#334155', marginTop: 2 }}>
-                    Nilai tertinggi = prioritas utama penerima
-                  </div>
+                  <TombolExport jenis="saw" label="hasil perangkingan SAW" onInfo={showToast} />
                 </div>
                 <table className="mob-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
