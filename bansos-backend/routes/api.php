@@ -26,6 +26,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // --- Auth Umum ---
     Route::post('/logout', [AuthController::class, 'logout']);
+    Route::post('/ganti-password', [AuthController::class, 'gantiPassword'])->middleware('throttle:10,1');
 
     // ── Pengaduan (Warga / RT / RW / Admin) ────────────────────────────────
     Route::get('/pengaduan', [PengaduanController::class, 'index']);
@@ -58,6 +59,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // ── Staff (Admin, RW, RT) — Monitoring & SPK ──────────────────────────
     Route::middleware('role:admin,rw,rt')->group(function () {
         Route::get('/admin/users', [AdminRtController::class, 'getUsers']);
+        Route::get('/rt/warga', [AdminRtController::class, 'getWargaWilayah']);
         Route::get('/kriteria', [KriteriaController::class, 'index']);
         Route::get('/kriteria/{id}/subkriteria', [KriteriaController::class, 'getSubKriteria']);
         Route::get('/saw/hitung', [SawController::class, 'hitungRanking'])->middleware('throttle:saw');

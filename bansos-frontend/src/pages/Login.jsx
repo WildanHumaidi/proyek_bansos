@@ -22,11 +22,11 @@ const GLOBAL_CSS = `
   }
   .inp {
     width: 100%; padding: 12px 14px 12px 42px;
-    border-radius: 10px; border: 1.5px solid #C6DCFF;
+    border-radius: 10px; border: 1.5px solid #a9c7f0;
     background: #f8fafc; font-family: 'Plus Jakarta Sans', sans-serif;
     font-size: 14px; color: #0f172a; outline: none; transition: .15s;
   }
-  .inp:focus { border-color: #1A56DB; background: #fff; box-shadow: 0 0 0 3px rgba(0,81,213,.08); }
+  .inp:focus { border-color: #0b3fa8; background: #fff; box-shadow: 0 0 0 3px rgba(0,81,213,.08); }
   .inp-pw { padding-right: 44px; }
   @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
   .auth-grid { min-height: 100vh; display: grid; grid-template-columns: 1fr 1fr; overflow-x: hidden; }
@@ -36,7 +36,10 @@ const GLOBAL_CSS = `
   @media (max-width: 900px) {
     .auth-grid { grid-template-columns: 1fr; }
     .auth-brand { flex-direction: row; align-items: center; padding: 16px 20px !important; }
-    .auth-brand > div:nth-child(2), .auth-brand > div:nth-child(3) { display: none; }
+    /* Yang disembunyikan adalah blok deskripsi + footer, bukan lingkaran dekorasi.
+       nth-child dulu mengenai tiga div dekorasi absolut sehingga deskripsi
+       panjang tetap tampil dan mendesak panel jadi berantakan. */
+    .auth-hero, .auth-foot { display: none !important; }
     .auth-form { padding: 36px 20px !important; align-items: flex-start; }
   }
 `;
@@ -106,7 +109,7 @@ export default function Login() {
         <div
           className="auth-brand"
           style={{
-            background: 'linear-gradient(155deg, #0C2D6B 0%, #1A56DB 60%, #3B82F6 100%)',
+            background: 'linear-gradient(155deg, #0C2D6B 0%, #0b3fa8 60%, #3B82F6 100%)',
             padding: '48px 56px',
             position: 'relative',
             overflow: 'hidden',
@@ -185,7 +188,7 @@ export default function Login() {
           </div>
 
           {/* Konten tengah */}
-          <div>
+          <div className="auth-hero">
             <div
               style={{
                 fontSize: 11,
@@ -270,7 +273,7 @@ export default function Login() {
           </div>
 
           {/* Footer kiri */}
-          <div style={{ fontSize: 11, color: 'rgba(255,255,255,.3)', fontWeight: 500 }}>
+          <div className="auth-foot" style={{ fontSize: 11, color: 'rgba(255,255,255,.3)', fontWeight: 500 }}>
             &copy; {new Date().getFullYear()} BansosHub &mdash; Sistem Manajemen Bantuan Sosial
           </div>
         </div>
@@ -284,6 +287,27 @@ export default function Login() {
           }}
         >
           <div style={{ width: '100%', maxWidth: 400, animation: 'fadeUp .3s ease' }}>
+            {/* Jalan kembali ke landing page — halaman masuk bisa dibuka langsung
+                dari bookmark/link, jadi butuh jalan pulang tanpa tombol browser. */}
+            <Link
+              to="/"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 7,
+                fontSize: 13,
+                fontWeight: 600,
+                color: '#334155',
+                textDecoration: 'none',
+                marginBottom: 20,
+                transition: '.15s',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = '#0b3fa8')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = '#334155')}
+            >
+              <MI name="arrow_back" size={16} /> Kembali ke beranda
+            </Link>
+
             {/* Heading */}
             <div style={{ marginBottom: 36 }}>
               <h2
@@ -297,7 +321,7 @@ export default function Login() {
               >
                 Masuk ke Sistem
               </h2>
-              <p style={{ fontSize: 14.5, color: '#526078', lineHeight: 1.6 }}>
+              <p style={{ fontSize: 14.5, color: '#334155', lineHeight: 1.6 }}>
                 Masukkan kredensial Anda untuk mengakses portal sesuai peran yang ditetapkan.
               </p>
             </div>
@@ -320,9 +344,9 @@ export default function Login() {
                   name="error"
                   fill
                   size={18}
-                  style={{ color: '#dc2626', flexShrink: 0, marginTop: 1 }}
+                  style={{ color: '#b91c1c', flexShrink: 0, marginTop: 1 }}
                 />
-                <span style={{ fontSize: 13.5, color: '#dc2626', lineHeight: 1.5 }}>{error}</span>
+                <span style={{ fontSize: 13.5, color: '#b91c1c', lineHeight: 1.5 }}>{error}</span>
               </div>
             )}
 
@@ -338,7 +362,7 @@ export default function Login() {
                     display: 'block',
                     fontSize: 12,
                     fontWeight: 700,
-                    color: '#475569',
+                    color: '#334155',
                     textTransform: 'uppercase',
                     letterSpacing: '.07em',
                     marginBottom: 8,
@@ -355,7 +379,7 @@ export default function Login() {
                       left: 13,
                       top: '50%',
                       transform: 'translateY(-50%)',
-                      color: '#526078',
+                      color: '#334155',
                     }}
                   />
                   <input
@@ -377,7 +401,7 @@ export default function Login() {
                     display: 'block',
                     fontSize: 12,
                     fontWeight: 700,
-                    color: '#475569',
+                    color: '#334155',
                     textTransform: 'uppercase',
                     letterSpacing: '.07em',
                     marginBottom: 8,
@@ -394,7 +418,7 @@ export default function Login() {
                       left: 13,
                       top: '50%',
                       transform: 'translateY(-50%)',
-                      color: '#526078',
+                      color: '#334155',
                     }}
                   />
                   <input
@@ -425,7 +449,7 @@ export default function Login() {
                     <MI
                       name={showPw ? 'visibility' : 'visibility_off'}
                       size={18}
-                      style={{ color: '#526078' }}
+                      style={{ color: '#334155' }}
                     />
                   </button>
                 </div>
@@ -438,7 +462,7 @@ export default function Login() {
                 style={{
                   width: '100%',
                   padding: '13px',
-                  background: loading ? '#93c5fd' : '#1A56DB',
+                  background: loading ? '#93c5fd' : '#0b3fa8',
                   color: '#fff',
                   border: 'none',
                   borderRadius: 10,
@@ -453,10 +477,10 @@ export default function Login() {
                   marginTop: 4,
                 }}
                 onMouseEnter={(e) => {
-                  if (!loading) e.currentTarget.style.background = '#1649C4';
+                  if (!loading) e.currentTarget.style.background = '#0b3fa8';
                 }}
                 onMouseLeave={(e) => {
-                  if (!loading) e.currentTarget.style.background = '#1A56DB';
+                  if (!loading) e.currentTarget.style.background = '#0b3fa8';
                 }}
               >
                 {loading ? (
@@ -475,14 +499,14 @@ export default function Login() {
                 style={{
                   marginTop: 4,
                   fontSize: 12.5,
-                  color: '#526078',
+                  color: '#334155',
                   lineHeight: 1.6,
                   display: 'flex',
                   alignItems: 'flex-start',
                   gap: 7,
                 }}
               >
-                <MI name="help" size={15} style={{ color: '#526078', flexShrink: 0, marginTop: 1 }} />
+                <MI name="help" size={15} style={{ color: '#334155', flexShrink: 0, marginTop: 1 }} />
                 <span>
                   Lupa kata sandi? Hubungi Ketua RT di wilayah Anda — beliau bisa mengatur ulang
                   kata sandi Anda.
@@ -492,9 +516,9 @@ export default function Login() {
 
             {/* Divider */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, margin: '28px 0' }}>
-              <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
-              <span style={{ fontSize: 12, color: '#526078', fontWeight: 600 }}>ATAU</span>
-              <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+              <div style={{ flex: 1, height: 1, background: '#cbd5e1' }} />
+              <span style={{ fontSize: 12, color: '#334155', fontWeight: 600 }}>ATAU</span>
+              <div style={{ flex: 1, height: 1, background: '#cbd5e1' }} />
             </div>
 
             {/* Register link */}
@@ -507,7 +531,7 @@ export default function Login() {
                 gap: 8,
                 padding: '12px',
                 borderRadius: 10,
-                border: '1.5px solid #e2e8f0',
+                border: '1.5px solid #cbd5e1',
                 color: '#0f172a',
                 fontSize: 14,
                 fontWeight: 600,
@@ -515,11 +539,11 @@ export default function Login() {
                 transition: '.15s',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = '#0051d5';
-                e.currentTarget.style.color = '#0051d5';
+                e.currentTarget.style.borderColor = '#0b3fa8';
+                e.currentTarget.style.color = '#0b3fa8';
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = '#e2e8f0';
+                e.currentTarget.style.borderColor = '#cbd5e1';
                 e.currentTarget.style.color = '#0f172a';
               }}
             >
@@ -541,7 +565,7 @@ export default function Login() {
                 style={{
                   fontSize: 11,
                   fontWeight: 700,
-                  color: '#526078',
+                  color: '#334155',
                   textTransform: 'uppercase',
                   letterSpacing: '.08em',
                   marginBottom: 10,
@@ -551,10 +575,10 @@ export default function Login() {
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                 {[
-                  { role: 'Admin', icon: 'admin_panel_settings', color: '#0051d5', bg: '#eff6ff' },
-                  { role: 'Ketua RW', icon: 'account_balance', color: '#7c3aed', bg: '#f5f3ff' },
+                  { role: 'Admin', icon: 'admin_panel_settings', color: '#0b3fa8', bg: '#eff6ff' },
+                  { role: 'Ketua RW', icon: 'account_balance', color: '#5b21b6', bg: '#f5f3ff' },
                   { role: 'Ketua RT', icon: 'home_work', color: '#155e75', bg: '#ecfeff' },
-                  { role: 'Warga', icon: 'person', color: '#047857', bg: '#f0fdf4' },
+                  { role: 'Warga', icon: 'person', color: '#065f46', bg: '#f0fdf4' },
                 ].map(({ role, icon, color, bg }) => (
                   <div
                     key={role}

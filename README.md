@@ -43,6 +43,7 @@ Penyaluran bantuan sosial di tingkat kewilayahan sering menghadapi kendala verif
 - **Import Data Massal**: Pengunggahan kuesioner warga via file CSV dengan validasi header, pelaporan per baris, dan status hasil **selalu `menunggu`** — bukan disetujui otomatis. Satu baris gagal membatalkan seluruh impor (atomik).
 - **Audit Logging**: Pencatatan aktivitas sistem penting (perubahan status, kalkulasi ranking) ke tabel `activity_logs`.
 - **Utilitas Perbaikan Data**: `/api/admin/fix-data` berjalan **dry-run** secara default; perubahan hanya terjadi dengan `mode=apply` eksplisit.
+- **Pemulihan Jawaban Legacy**: `php artisan pengajuan:pulihkan-jawaban [--dry-run]` mengisi `jawaban_mentah` pengajuan lama dari matriks penilaian (label sub-kriteria), sehingga layar Input Kuesioner menampilkan 10/10 — bukan 0/10.
 
 ### 2. Ketua RW
 - **Monitoring Makro Wilayah**: Pemantauan agregat data warga dan pengajuan dari seluruh RT di bawah lingkup RW.
@@ -66,6 +67,9 @@ Penyaluran bantuan sosial di tingkat kewilayahan sering menghadapi kendala verif
 - **Konsultasi Interaktif**: Mengirim dan menerima pesan tanggapan dari Ketua RT.
 
 > **Pengaduan lintas peran:** warga membuat → RT wilayahnya menindaklanjuti (terima/tolak + tanggapan) → RW & admin melihat seluruh RT dan dapat mengambil alih. Setiap perubahan status tercatat di `pengaduan_riwayat`.
+
+### 5. Semua Peran — Keamanan Akun
+- **Ganti Password Mandiri**: halaman `/ganti-password` (tautan tersedia di dashboard Warga, RT, RW, dan Admin). Password lama wajib benar, password baru minimal 8 karakter + konfirmasi, dan tidak boleh sama dengan password lama. Setelah berhasil, semua token perangkat lain dicabut; perangkat yang sedang dipakai tetap login.
 
 ---
 
@@ -155,7 +159,10 @@ Database seeder menyediakan akun bawaan untuk tiap hak akses:
 > **tidak boleh dijalankan di production**: password demo di tabel atas hanya untuk
 > pengembangan lokal. Pada database produksi yang diisi lewat import CSV, akun warga
 > dibuat dari data warga nyata dan ditautkan lewat kolom `users.id_warga` — bukan
-> dicocokkan berdasarkan nama. Akun yang belum tertaut akan ditolak (409) saat
+> dicocokkan berdasarkan nama. Konvensi kredensial: **username = nama depan**
+> (kembar diberi satu huruf, mis. `budia`) dan **password awal = nama depan +
+> `123`**; daftarnya bisa diunduh dari modal import atau dibuat massal dengan
+> `php artisan warga:buat-akun`. Akun yang belum tertaut akan ditolak (409) saat
 > mengajukan; admin dapat menautkannya lewat `PUT /api/admin/users/{id}/taut-warga`.
 
 ---
@@ -165,7 +172,7 @@ Database seeder menyediakan akun bawaan untuk tiap hak akses:
 Seluruh fungsionalitas dan konsistensi kode dijamin oleh rangkaian pengujian otomatis dan linter:
 
 ```bash
-# Backend Automated Tests (136 tests, 3031 assertions)
+# Backend Automated Tests (145 tests, 3109 assertions)
 cd bansos-backend
 php artisan test
 

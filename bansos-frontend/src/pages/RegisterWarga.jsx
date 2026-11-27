@@ -22,19 +22,21 @@ const GLOBAL_CSS = `
   }
   .inp {
     width: 100%; padding: 11px 14px;
-    border-radius: 10px; border: 1.5px solid #e2e8f0;
+    border-radius: 10px; border: 1.5px solid #cbd5e1;
     background: #f8fafc; font-family: 'Plus Jakarta Sans', sans-serif;
     font-size: 14px; color: #0f172a; outline: none; transition: .15s;
     -webkit-appearance: none;
   }
-  .inp:focus { border-color: #0051d5; background: #fff; box-shadow: 0 0 0 3px rgba(0,81,213,.08); }
+  .inp:focus { border-color: #0b3fa8; background: #fff; box-shadow: 0 0 0 3px rgba(0,81,213,.08); }
   .inp-icon { padding-left: 42px; }
   @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
   .reg-brand { width: 380px; flex-shrink: 0; }
   @media (max-width: 900px) {
     .reg-wrap { flex-direction: column !important; }
-    .reg-brand { width: 100% !important; flex-direction: row; align-items: center; padding: 16px 20px !important; }
-    .reg-brand > div:nth-child(2) { display: none; }
+    /* flex-direction wajib !important: inline style di elemennya masih memaksa column. */
+    .reg-brand { width: 100% !important; flex-direction: row !important; align-items: center; justify-content: space-between; padding: 16px 20px !important; }
+    /* Deskripsi + langkah 1-2-3 terlalu panjang untuk HP; sisakan bar merek saja. */
+    .reg-hero { display: none !important; }
     .reg-form-wrap { padding: 32px 20px !important; align-items: flex-start !important; }
   }
 `;
@@ -61,13 +63,13 @@ const Label = ({ children, required: req }) => (
       display: 'block',
       fontSize: 12,
       fontWeight: 700,
-      color: '#475569',
+      color: '#334155',
       textTransform: 'uppercase',
       letterSpacing: '.07em',
       marginBottom: 7,
     }}
   >
-    {children} {req && <span style={{ color: '#dc2626' }}>*</span>}
+    {children} {req && <span style={{ color: '#b91c1c' }}>*</span>}
   </label>
 );
 
@@ -145,20 +147,20 @@ export default function RegisterWarga() {
                 margin: '0 auto 20px',
               }}
             >
-              <MI name="check_circle" fill size={36} style={{ color: '#16a34a' }} />
+              <MI name="check_circle" fill size={36} style={{ color: '#065f46' }} />
             </div>
             <h2 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>
               Pendaftaran Berhasil
             </h2>
-            <p style={{ fontSize: 14, color: '#526078', marginBottom: 6 }}>
+            <p style={{ fontSize: 14, color: '#334155', marginBottom: 6 }}>
               Akun Anda telah dibuat. Mengalihkan ke halaman masuk...
             </p>
             <div
               style={{
                 width: 32,
                 height: 32,
-                border: '3px solid #e2e8f0',
-                borderTopColor: '#0051d5',
+                border: '3px solid #cbd5e1',
+                borderTopColor: '#0b3fa8',
                 borderRadius: '50%',
                 margin: '16px auto 0',
                 animation: 'spin .8s linear infinite',
@@ -181,7 +183,7 @@ export default function RegisterWarga() {
           style={{
             width: 380,
             flexShrink: 0,
-            background: 'linear-gradient(155deg, #0C2D6B 0%, #1A56DB 60%, #3B82F6 100%)',
+            background: 'linear-gradient(155deg, #0C2D6B 0%, #0b3fa8 60%, #3B82F6 100%)',
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
@@ -228,7 +230,7 @@ export default function RegisterWarga() {
                 justifyContent: 'center',
               }}
             >
-              <MI name="hub" fill size={22} style={{ color: '#1e40af' }} />
+              <MI name="hub" fill size={22} style={{ color: '#062b6e' }} />
             </div>
             <div>
               <div style={{ fontSize: 17, fontWeight: 800, color: '#fff', letterSpacing: '-.3px' }}>
@@ -249,7 +251,7 @@ export default function RegisterWarga() {
           </div>
 
           {/* Konten */}
-          <div>
+          <div className="reg-hero">
             <h2
               style={{
                 fontSize: 28,
@@ -304,7 +306,7 @@ export default function RegisterWarga() {
                       flexShrink: 0,
                       fontSize: 11,
                       fontWeight: 800,
-                      color: '#1e40af',
+                      color: '#062b6e',
                     }}
                   >
                     {step}
@@ -332,7 +334,7 @@ export default function RegisterWarga() {
               textDecoration: 'none',
               transition: '.15s',
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = '#60a5fa')}
+            onMouseEnter={(e) => (e.currentTarget.style.color = '#bfdbfe')}
             onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,.5)')}
           >
             <MI name="arrow_back" size={16} /> Kembali ke halaman masuk
@@ -365,10 +367,10 @@ export default function RegisterWarga() {
               >
                 Buat Akun Baru
               </h2>
-              <p style={{ fontSize: 14.5, color: '#526078', lineHeight: 1.65 }}>
+              <p style={{ fontSize: 14.5, color: '#334155', lineHeight: 1.65 }}>
                 Isi kolom bertanda <span style={{ color: '#b91c1c', fontWeight: 700 }}>*</span>{' '}
                 <strong>wajib diisi</strong>. Kata sandi minimal 6 karakter. Sudah punya akun?{' '}
-                <Link to="/login" style={{ color: '#1A56DB', fontWeight: 700 }}>
+                <Link to="/login" style={{ color: '#0b3fa8', fontWeight: 700 }}>
                   Masuk di sini
                 </Link>
               </p>
@@ -391,9 +393,9 @@ export default function RegisterWarga() {
                   name="error"
                   fill
                   size={17}
-                  style={{ color: '#dc2626', flexShrink: 0, marginTop: 1 }}
+                  style={{ color: '#b91c1c', flexShrink: 0, marginTop: 1 }}
                 />
-                <span style={{ fontSize: 13.5, color: '#dc2626', lineHeight: 1.5 }}>{error}</span>
+                <span style={{ fontSize: 13.5, color: '#b91c1c', lineHeight: 1.5 }}>{error}</span>
               </div>
             )}
 
@@ -415,7 +417,7 @@ export default function RegisterWarga() {
                         left: 13,
                         top: '50%',
                         transform: 'translateY(-50%)',
-                        color: '#526078',
+                        color: '#334155',
                       }}
                     />
                     <input
@@ -442,7 +444,7 @@ export default function RegisterWarga() {
                         left: 13,
                         top: '50%',
                         transform: 'translateY(-50%)',
-                        color: '#526078',
+                        color: '#334155',
                       }}
                     />
                     <input
@@ -469,7 +471,7 @@ export default function RegisterWarga() {
                         left: 13,
                         top: '50%',
                         transform: 'translateY(-50%)',
-                        color: '#526078',
+                        color: '#334155',
                         zIndex: 1,
                       }}
                     />
@@ -495,7 +497,7 @@ export default function RegisterWarga() {
                         right: 13,
                         top: '50%',
                         transform: 'translateY(-50%)',
-                        color: '#526078',
+                        color: '#334155',
                         pointerEvents: 'none',
                       }}
                     />
@@ -528,7 +530,7 @@ export default function RegisterWarga() {
                         left: 13,
                         top: '50%',
                         transform: 'translateY(-50%)',
-                        color: '#526078',
+                        color: '#334155',
                       }}
                     />
                     <input
@@ -559,7 +561,7 @@ export default function RegisterWarga() {
                       <MI
                         name={showPw ? 'visibility' : 'visibility_off'}
                         size={16}
-                        style={{ color: '#526078' }}
+                        style={{ color: '#334155' }}
                       />
                     </button>
                   </div>
@@ -577,7 +579,7 @@ export default function RegisterWarga() {
                         left: 13,
                         top: '50%',
                         transform: 'translateY(-50%)',
-                        color: '#526078',
+                        color: '#334155',
                       }}
                     />
                     <input
@@ -614,12 +616,12 @@ export default function RegisterWarga() {
                       <MI
                         name={showPw2 ? 'visibility' : 'visibility_off'}
                         size={16}
-                        style={{ color: '#526078' }}
+                        style={{ color: '#334155' }}
                       />
                     </button>
                   </div>
                   {form.password_confirmation && form.password !== form.password_confirmation && (
-                    <p style={{ fontSize: 11.5, color: '#dc2626', marginTop: 5, fontWeight: 600 }}>
+                    <p style={{ fontSize: 11.5, color: '#b91c1c', marginTop: 5, fontWeight: 600 }}>
                       Kata sandi tidak cocok.
                     </p>
                   )}
@@ -644,7 +646,7 @@ export default function RegisterWarga() {
                   size={16}
                   style={{ color: '#155e75', flexShrink: 0, marginTop: 1 }}
                 />
-                <p style={{ fontSize: 12.5, color: '#0369a1', lineHeight: 1.6 }}>
+                <p style={{ fontSize: 12.5, color: '#0b3fa8', lineHeight: 1.6 }}>
                   Akun Anda langsung aktif setelah pendaftaran. Login menggunakan username yang Anda
                   buat untuk mengakses portal warga.
                 </p>
@@ -657,7 +659,7 @@ export default function RegisterWarga() {
                 style={{
                   width: '100%',
                   padding: '13px',
-                  background: loading ? '#93c5fd' : '#0051d5',
+                  background: loading ? '#93c5fd' : '#0b3fa8',
                   color: '#fff',
                   border: 'none',
                   borderRadius: 10,
@@ -672,10 +674,10 @@ export default function RegisterWarga() {
                   marginTop: 4,
                 }}
                 onMouseEnter={(e) => {
-                  if (!loading) e.currentTarget.style.background = '#1649C4';
+                  if (!loading) e.currentTarget.style.background = '#0b3fa8';
                 }}
                 onMouseLeave={(e) => {
-                  if (!loading) e.currentTarget.style.background = '#1A56DB';
+                  if (!loading) e.currentTarget.style.background = '#0b3fa8';
                 }}
               >
                 {loading ? (
@@ -689,11 +691,11 @@ export default function RegisterWarga() {
                 )}
               </button>
 
-              <p style={{ textAlign: 'center', fontSize: 13.5, color: '#526078' }}>
+              <p style={{ textAlign: 'center', fontSize: 13.5, color: '#334155' }}>
                 Sudah punya akun?{' '}
                 <Link
                   to="/login"
-                  style={{ color: '#1A56DB', fontWeight: 700, textDecoration: 'none' }}
+                  style={{ color: '#0b3fa8', fontWeight: 700, textDecoration: 'none' }}
                 >
                   Masuk di sini
                 </Link>

@@ -34,7 +34,18 @@ CHROME_PATH="C:\Users\<user>\AppData\Local\ms-playwright\chromium-1243\chrome-wi
 | `guard_chat_polling_rt.mjs` | Balasan warga muncul di modal verifikasi RT tanpa menutup-buka modal; RT tetap bisa mengirim pesan setelah polling berjalan | 6 pemeriksaan, exit code 0 |
 | `guard_tanpa_tailwind_cdn.mjs` | Tidak ada lagi permintaan ke `cdn.tailwindcss.com`; tidak ada kelas berpola utilitas Tailwind di DOM; `select-none` tetap berlaku dari `src/index.css` | 7 pemeriksaan, exit code 0 |
 | `guard_font_self_hosted.mjs` | Tidak ada permintaan ke `fonts.googleapis.com`/`fonts.gstatic.com`; Plus Jakarta Sans & Material Symbols benar-benar `loaded`; glyph ikon tergambar (bukan teks melebar) di 5 halaman | 18 pemeriksaan, exit code 0 |
+| `guard_ikon_subset.mjs` | **Setiap** nama ikon di `src/` — termasuk yang dinamis seperti `name={showPw ? 'visibility' : 'visibility_off'}` — punya glyph di subset font; `/`, `/login`, `/register` bersih dari ikon yang tampil sebagai teks; tombol mata berganti ikon di kedua keadaan | 10 pemeriksaan, exit code 0 |
+| `guard_rt_mobile.mjs` | Dashboard RT di HP (320/360/390px): setiap tab punya tombol yang **di dalam** layar (dulu kolom Aksi ada di x=422 sehingga Ketua RT tak bisa memverifikasi), tidak ada sel tabel terpotong, tidak ada scroll horizontal, tombol aksi minimal 40px | 24 pemeriksaan, exit code 0 |
+| `guard_admin_mobile.mjs` | Dashboard Admin di HP (320/360/390px): 8 tab bersih dari scroll horizontal & teks terpotong; header Cetak/Import/Hitung/Tambah Akun turun ke baris kedua; tabel jadi kartu (thead hilang) kecuali Matriks SAW yang tetap tabel lebar dengan penggeseran di dalam kartu + petunjuk; semua target sentuh ≥40px | 38 pemeriksaan × 3 lebar, exit code 0 |
+| `guard_rw_mobile.mjs` | Dashboard RW di HP (320/360/390px): tabel Beranda/Database Warga/Perangkingan berubah jadi kartu, tombol Cetak/Unduh/Hitung Ulang turun ke baris kedua (dulu tombol Hitung di x=373), tidak ada teks terpotong/scroll horizontal, semua target ≥40px | 48 pemeriksaan (16 × 3 lebar), exit code 0 |
 | `guard_scroll_font_race.mjs` | Halaman login tidak melebar saat font web masih dimuat (FOIT race) | `scrollW=360` di semua titik waktu |
+
+> **Tabel di HP = kartu.** Tabel data dashboard (`.mob-table`) berubah jadi daftar
+> kartu di bawah 900px: satu `<tr>` satu kartu, tiap sel membawa label kolomnya lewat
+> `data-label` yang diisi `src/lib/mobTable.js` (`pasangLabelTabel`). Aturan CSS-nya
+> ada di `src/index.css`, semuanya di dalam media query sehingga desktop tidak
+> berubah. Tanpa ini tabel desktop terpotong dan kolom Aksi (Tinjau / edit / hapus)
+> berada di luar layar.
 
 > Halaman ranking dipisah ke skripnya sendiri karena `guard_kontras_wcag.mjs` hanya
 > menyapu Beranda — celah itulah yang dulu membiarkan 96 teks di bawah ambang WCAG
@@ -56,8 +67,15 @@ jadi kegagalan ini mudah lolos kalau tidak diperiksa.
    { grep -rho 'name="[a-z_0-9]*"' src/ --include=*.jsx | sed 's/name="//;s/"//'
      grep -rho "icon: '[a-z_0-9]*'"  src/ --include=*.jsx | sed "s/icon: '//;s/'//"
      grep -rho 'icon="[a-z_0-9]*"'   src/ --include=*.jsx | sed 's/icon="//;s/"//'
+     grep -rho 'name={[^}]*}'        src/ --include=*.jsx | grep -o "'[a-z_][a-z_0-9]*'" | tr -d "'"
    } | sort -u | paste -sd, -
    ```
+
+   Baris terakhir wajib: nama ikon yang dipilih lewat ekspresi (mis.
+   `name={showPw ? 'visibility' : 'visibility_off'}`) **tidak** tertangkap pola
+   `name="..."`. Karena terlewat, `visibility_off` dan `visibility` absen dari subset
+   selama beberapa waktu — tombol mata di `/login` dan `/register` tampil sebagai
+   tulisan sepanjang 80 px.
 
 2. Ambil CSS + berkas font dari Google dengan parameter `icon_names`:
 
@@ -70,11 +88,15 @@ jadi kegagalan ini mudah lolos kalau tidak diperiksa.
      "$(grep -o 'https://fonts.gstatic.com[^)]*' ms.css | head -1)"
    ```
 
-3. Jalankan `guard_font_self_hosted.mjs`. Guard ini **terbukti bisa gagal**: dengan
-   font sengaja dipotong jadi 2 KB, ia melaporkan 13 kegagalan (ikon dilaporkan
-   sebagai teks melebar sampai 128 px). Kalau semua hijau, subset lengkap.
+3. Jalankan `guard_ikon_subset.mjs` **dan** `guard_font_self_hosted.mjs`. Yang pertama
+   memeriksa seluruh nama ikon di sumber satu per satu (termasuk halaman publik yang
+   tidak disapu guard font), yang kedua memeriksa jaringan & halaman setelah login.
+   Keduanya **terbukti bisa gagal**: dengan subset lama, `guard_ikon_subset.mjs`
+   melaporkan 3 nama tanpa glyph (`add`, `assignment_add`, `visibility_off`) dan
+   `guard_font_self_hosted.mjs` melaporkan ikon melebar saat font dipotong 2 KB.
+   Kalau semua hijau, subset lengkap.
 
-> Ukuran referensi: 64 ikon = **66 KB**. Versi penuh = **4 MB** (~3.500 ikon).
+> Ukuran referensi: 67 ikon = **70 KB**. Versi penuh = **4 MB** (~3.500 ikon).
 
 > **Prasyarat data untuk guard chat.** Tiga guard chat (`guard_chat_belum_dibaca`,
 > `guard_chat_polling`, `guard_chat_polling_rt`) memakai akun demo `warga01` dan
@@ -104,7 +126,13 @@ CHROME_PATH="<path chrome>" node guard_chat_polling.mjs
 CHROME_PATH="<path chrome>" node guard_chat_polling_rt.mjs
 CHROME_PATH="<path chrome>" node guard_tanpa_tailwind_cdn.mjs
 CHROME_PATH="<path chrome>" node guard_font_self_hosted.mjs
+CHROME_PATH="<path chrome>" node guard_ikon_subset.mjs
+CHROME_PATH="<path chrome>" node guard_rt_mobile.mjs
+CHROME_PATH="<path chrome>" UJI_LEBAR=320 node guard_rt_mobile.mjs
 ```
+
+`guard_ikon_subset.mjs` membaca nama ikon dari `src/`; kalau dijalankan dari
+luar folder frontend, arahkan `SRC_DIR="<repo>/bansos-frontend/src"`.
 
 Catatan: `guard_kontras_wcag.mjs` melewatkan elemen berlatar gradien karena
 kontrasnya tidak bisa dihitung andal dari computed style; bagian itu diperiksa manual

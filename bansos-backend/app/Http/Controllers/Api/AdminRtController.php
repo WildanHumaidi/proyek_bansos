@@ -70,6 +70,66 @@ class AdminRtController extends Controller
     }
 
     /**
+     * GET /api/rt/warga — daftar WARGA wilayah (bukan akun).
+     *
+     * Database Warga dulu membaca /admin/users sehingga hanya menampilkan warga
+     * yang sudah punya akun (2 orang), padahal wilayah RT 01 punya 37 warga
+     * terdata. Daftar ini memakai tabel `warga` sebagai sumber, lalu menempelkan
+     * akun (kalau ada) dan pengajuan terakhirnya.
+     */
+    public function getWargaWilayah(Request $request)
+    {
+        try {
+            $user = $request->user();
+
+            $query = DB::table('warga')
+                ->leftJoin('users', 'users.id_warga', '=', 'warga.id_warga')
+                ->select([
+                    'warga.id_warga',
+                    'warga.nama_lengkap',
+                    'warga.alamat',
+                    'warga.rt',
+                    'users.id as id_user',
+                    'users.username',
+                ]);
+
+            if ($user->role === 'rt') {
+                $rtNum = RtFormatter::intValue($user->rt);
+                $query->whereRaw('CAST(warga.rt AS UNSIGNED) = ?', [$rtNum]);
+            }
+
+            $daftar = $query->orderBy('warga.nama_lengkap')->get();
+
+            // Pengajuan terakhir per warga; urut naik lalu keyBy menyisakan yang terbaru.
+            $pengajuan = DB::table('pengajuan')
+                ->select('id_pengajuan', 'id_warga', 'status', 'created_at')
+                ->whereIn('id_warga', $daftar->pluck('id_warga')->all() ?: [0])
+                ->orderBy('created_at')
+                ->get()
+                ->keyBy('id_warga');
+
+            $data = $daftar->map(function ($w) use ($pengajuan) {
+                $p = $pengajuan->get($w->id_warga);
+
+                return [
+                    'id' => $w->id_user ?? 'warga-'.$w->id_warga,
+                    'id_warga' => (int) $w->id_warga,
+                    'name' => $w->nama_lengkap,
+                    'username' => $w->username,
+                    'alamat' => $w->alamat,
+                    'rt' => $w->rt,
+                    'id_pengajuan' => $p->id_pengajuan ?? null,
+                    'status' => $p->status ?? null,
+                ];
+            });
+
+            return response()->json(['success' => true, 'data' => $data]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
      * POST /api/admin/users — buat akun.
      *
      * P1-02: saat akun warga dibuat, baris `warga` juga dibuat dan users.id_warga
@@ -506,8 +566,13 @@ class AdminRtController extends Controller
      * POST /api/admin/pengajuan/import
      *
      * Memakai CsvImporter (SSOT): header divalidasi, baris yang gagal
-     * menyebabkAN rollback seluruh impor, status selalu 'menunggu',
+     * menyebabkan rollback seluruh impor, status selalu 'menunggu',
      * identitas tidak pernah ditimpa diam-diam.
+     *
+     * Setiap warga hasil impor langsung dibuatkan akun login (role warga,
+     * tertaut id_warga): username = nama depan, password awal = nama depan +
+     * "123". Password hanya muncul sekali di laporan response ini — RT/RW
+     * tinggal meneruskan ke warganya.
      */
     public function importCsv(Request $request)
     {
@@ -520,7 +585,7 @@ class AdminRtController extends Controller
 
             $isi = file_get_contents($request->file('file')->getRealPath());
 
-            $hasil = (new CsvImporter)->impor($isi);
+            $hasil = (new CsvImporter)->impor($isi, buatAkun: true);
 
             if ($hasil['error_header']) {
                 return response()->json([
@@ -534,21 +599,27 @@ class AdminRtController extends Controller
                 auth()->user()->name ?? 'sistem',
                 auth()->user()->role ?? 'admin',
                 sprintf(
-                    'Import CSV: %d dibuat, %d dilewati (duplikat), %d gagal',
+                    'Import CSV: %d dibuat, %d dilewati (duplikat), %d gagal, %d akun warga dibuat',
                     $hasil['banyak_import'],
                     $hasil['banyak_skip'],
-                    $hasil['banyak_gagal']
+                    $hasil['banyak_gagal'],
+                    $hasil['banyak_akun']
                 )
             );
 
             return response()->json([
                 'success' => $hasil['banyak_gagal'] === 0,
                 'message' => $hasil['banyak_gagal'] === 0
-                    ? sprintf('Berhasil! %d data warga tersimpan (status: menunggu verifikasi).', $hasil['banyak_import'])
+                    ? sprintf(
+                        'Berhasil! %d data warga tersimpan (status: menunggu verifikasi), %d akun login dibuat.',
+                        $hasil['banyak_import'],
+                        $hasil['banyak_akun']
+                    )
                     : sprintf('Import dibatalkan: %d baris gagal.', $hasil['banyak_gagal']),
                 'banyak_import' => $hasil['banyak_import'],
                 'banyak_skip' => $hasil['banyak_skip'],
                 'banyak_gagal' => $hasil['banyak_gagal'],
+                'banyak_akun' => $hasil['banyak_akun'],
                 'laporan' => $hasil['baris'],
             ], $hasil['banyak_gagal'] === 0 ? 200 : 422);
         } catch (ValidationException $e) {

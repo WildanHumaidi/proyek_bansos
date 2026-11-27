@@ -112,7 +112,7 @@ export default function DiagnosaKoneksi() {
     setRunning(false);
   };
 
-  const color = { ok: '#065f46', warn: '#d97706', error: '#ba1a1a', loading: '#45464d' };
+  const color = { ok: '#065f46', warn: '#d97706', error: '#991b1b', loading: '#45464d' };
   const bg = { ok: '#d1fae5', warn: '#fef3c7', error: '#ffdad6', loading: '#f1f5f9' };
   const icon = { ok: '✅', warn: '⚠️', error: '❌', loading: '⏳' };
 
@@ -137,7 +137,7 @@ export default function DiagnosaKoneksi() {
         disabled={running}
         style={{
           padding: '10px 24px',
-          background: running ? '#c6c6cd' : '#0051d5',
+          background: running ? '#c6c6cd' : '#0b3fa8',
           color: '#fff',
           border: 'none',
           borderRadius: 8,

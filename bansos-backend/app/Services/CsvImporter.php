@@ -30,26 +30,38 @@ use Illuminate\Support\Facades\DB;
  *
  * Import berjalan dalam satu transaksi: satu baris gagal → seluruh impor
  * di-rollback dan response memuat laporan per baris (atomic import P0-01).
+ *
+ * Akun warga: bila `$buatAkun` true (dipakai endpoint import), setiap warga
+ * yang dibuat — juga warga lama hasil impor sebelumnya yang belum punya akun —
+ * langsung mendapat akun login (role warga, tertaut lewat id_warga) dengan
+ * aturan App\Services\AkunWarga: username = nama depan (unik, disufiks satu huruf
+ * bila bentrok), password awal = nama depan + "123". Password HANYA
+ * dikembalikan sekali di laporan impor untuk diteruskan ke warga.
  */
 class CsvImporter
 {
     private array $laporan = [];
 
+    private bool $buatAkun = false;
+
     /**
      * Import isi CSV (string mentah).
      *
+     * @param  bool  $buatAkun  true = buatkan akun login untuk tiap warga
      * @return array{banyak_import:int, banyak_gagal:int, banyak_skip:int,
-     *               baris:array<int,array>, error_header:?string}
+     *               banyak_akun:int, baris:array<int,array>, error_header:?string}
      */
-    public function impor(string $isiCsv): array
+    public function impor(string $isiCsv, bool $buatAkun = false): array
     {
         $this->laporan = [];
+        $this->buatAkun = $buatAkun;
 
         if (trim($isiCsv) === '') {
             return [
                 'banyak_import' => 0,
                 'banyak_gagal' => 0,
                 'banyak_skip' => 0,
+                'banyak_akun' => 0,
                 'baris' => [],
                 'error_header' => 'File CSV kosong.',
             ];
@@ -62,6 +74,7 @@ class CsvImporter
                 'banyak_import' => 0,
                 'banyak_gagal' => 0,
                 'banyak_skip' => 0,
+                'banyak_akun' => 0,
                 'baris' => [],
                 'error_header' => $e->getMessage(),
             ];
@@ -73,6 +86,7 @@ class CsvImporter
             $banyakImport = 0;
             $banyakGagal = 0;
             $banyakSkip = 0;
+            $banyakAkun = 0;
 
             foreach ($barisData as $nomorBaris => $data) {
                 try {
@@ -84,6 +98,10 @@ class CsvImporter
                         $banyakSkip++;
                     }
 
+                    if ($hasil['akun_baru'] ?? false) {
+                        $banyakAkun++;
+                    }
+
                     $this->laporan[] = [
                         'baris' => $nomorBaris,
                         'nama' => $hasil['nama'] ?? '',
@@ -91,6 +109,8 @@ class CsvImporter
                         'rt' => $hasil['rt'] ?? '',
                         'status' => $hasil['aksi'] === 'import' ? 'import' : 'skip',
                         'detail' => $hasil['detail'] ?? '',
+                        'username' => $hasil['username'] ?? null,
+                        'password_awal' => $hasil['password_awal'] ?? null,
                     ];
                 } catch (JawabanTidakDikenalException $e) {
                     $banyakGagal++;
@@ -102,6 +122,8 @@ class CsvImporter
                         'rt' => $data['rt'] ?? '',
                         'status' => 'gagal',
                         'detail' => $e->getMessage(),
+                        'username' => null,
+                        'password_awal' => null,
                     ];
                 } catch (\InvalidArgumentException $e) {
                     $banyakGagal++;
@@ -113,6 +135,8 @@ class CsvImporter
                         'rt' => $data['rt'] ?? '',
                         'status' => 'gagal',
                         'detail' => $e->getMessage(),
+                        'username' => null,
+                        'password_awal' => null,
                     ];
                 }
             }
@@ -124,6 +148,7 @@ class CsvImporter
                     'banyak_import' => 0,
                     'banyak_gagal' => $banyakGagal,
                     'banyak_skip' => $banyakSkip,
+                    'banyak_akun' => 0,
                     'baris' => $this->laporan,
                     'error_header' => null,
                 ];
@@ -140,6 +165,7 @@ class CsvImporter
             'banyak_import' => $banyakImport,
             'banyak_gagal' => $banyakGagal,
             'banyak_skip' => $banyakSkip,
+            'banyak_akun' => $banyakAkun,
             'baris' => $this->laporan,
             'error_header' => null,
         ];
@@ -255,9 +281,10 @@ class CsvImporter
     // ────────────────────────────────────────────────────────────────────────
 
     /**
-     * @return array{aksi:'import'|'skip', nama:string, alamat:string, rt:string, detail:string}
+     * @return array{aksi:'import'|'skip', nama:string, alamat:string, rt:string,
+     *               detail:string, username:?string, password_awal:?string, akun_baru:bool}
      *
-     * @throws \InvalidArgumentException    nama kosong / RT tidak valid
+     * @throws \InvalidArgumentException     nama kosong / RT tidak valid
      * @throws JawabanTidakDikenalException jawaban tak dapat dipetakan
      */
     private function prosesBaris(array $data, int $nomorBaris): array
@@ -297,12 +324,21 @@ class CsvImporter
             ->first();
 
         if ($existing) {
+            // Impor ulang: data tidak ditimpa, tetapi warga lama yang belum
+            // punya akun (hasil impor sebelum fitur ini) tetap dilengkapi akun.
+            $akun = $this->buatAkun ? $this->pastikanAkun($existing) : $this->akunKosong();
+
             return [
                 'aksi' => 'skip',
                 'nama' => $nama,
                 'alamat' => $alamat,
                 'rt' => $rt,
-                'detail' => 'Baris identik sudah ada (nama + RT + alamat sama); dilewati.',
+                'detail' => $akun['akun_baru']
+                    ? 'Data identik sudah ada; akun warga dibuat otomatis.'
+                    : 'Baris identik sudah ada (nama + RT + alamat sama); dilewati.',
+                'username' => $akun['username'],
+                'password_awal' => $akun['password_awal'],
+                'akun_baru' => $akun['akun_baru'],
             ];
         }
 
@@ -322,13 +358,36 @@ class CsvImporter
         // P0-01: mapping wajib sukses 100% atau baris gagal (atomic).
         PenilaianAssembler::bangun($pengajuan->id_pengajuan, $jawabanMentah, strict: true);
 
+        $akun = $this->buatAkun ? $this->pastikanAkun($warga) : $this->akunKosong();
+
         return [
             'aksi' => 'import',
             'nama' => $nama,
             'alamat' => $alamat,
             'rt' => $rt,
-            'detail' => 'Data warga + pengajuan (menunggu) dibuat.',
+            'detail' => $akun['akun_baru']
+                ? 'Data warga + pengajuan (menunggu) + akun login dibuat.'
+                : 'Data warga + pengajuan (menunggu) dibuat.',
+            'username' => $akun['username'],
+            'password_awal' => $akun['password_awal'],
+            'akun_baru' => $akun['akun_baru'],
         ];
+    }
+
+    /**
+     * Pastikan satu warga punya akun login (aturan ada di App\Services\AkunWarga).
+     *
+     * @return array{username:?string, password_awal:?string, akun_baru:bool}
+     */
+    private function pastikanAkun(Warga $warga): array
+    {
+        return (new AkunWarga)->pastikan($warga);
+    }
+
+    /** @return array{username:null, password_awal:null, akun_baru:false} */
+    private function akunKosong(): array
+    {
+        return ['username' => null, 'password_awal' => null, 'akun_baru' => false];
     }
 }
 

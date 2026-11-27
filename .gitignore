@@ -45,3 +45,6 @@ docs/archive/*_backup_*.sql
 *.sw?
 .DS_Store
 Thumbs.db
+
+# Backup data live (data pribadi / hash password): jangan di-commit
+docs/archive/*_backup_*.json

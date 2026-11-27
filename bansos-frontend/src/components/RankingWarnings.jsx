@@ -20,7 +20,7 @@ const Box = ({ tone, children }) => {
   const palette = {
     error: { bg: '#fef2f2', border: '#fecaca', color: '#b91c1c' },
     warning: { bg: '#fffbeb', border: '#fde68a', color: '#92400e' },
-    info: { bg: '#FAFCFF', border: '#DBEAFE', color: '#1d4ed8' },
+    info: { bg: '#FAFCFF', border: '#DBEAFE', color: '#0b3fa8' },
   }[tone];
 
   return (

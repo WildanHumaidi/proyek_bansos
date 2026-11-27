@@ -8,18 +8,18 @@ const CSS = `
   .material-symbols-outlined { font-family: 'Material Symbols Outlined'; font-variation-settings: 'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24; font-style: normal; display: inline-block; line-height: 1; text-transform: none; letter-spacing: normal; white-space: nowrap; }
 
   .ld-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 11px 22px; border-radius: 10px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; transition: .15s; text-decoration: none; }
-  .ld-btn-primary { background: #1A56DB; color: #fff; border: 1.5px solid #1A56DB; }
-  .ld-btn-primary:hover { background: #1649C4; border-color: #1649C4; }
+  .ld-btn-primary { background: #0b3fa8; color: #fff; border: 1.5px solid #0b3fa8; }
+  .ld-btn-primary:hover { background: #0b3fa8; border-color: #0b3fa8; }
   .ld-btn-ghost { background: transparent; color: #fff; border: 1.5px solid rgba(255,255,255,.55); }
   .ld-btn-ghost:hover { background: rgba(255,255,255,.1); border-color: #fff; }
-  .ld-btn-light { background: #fff; color: #1A56DB; border: 1.5px solid #C6DCFF; }
+  .ld-btn-light { background: #fff; color: #0b3fa8; border: 1.5px solid #a9c7f0; }
   .ld-btn-light:hover { background: #EBF3FF; }
 
   .ld-faq summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 14.5px; color: #0f172a; padding: 14px 16px; }
   .ld-faq summary::-webkit-details-marker { display: none; }
   .ld-faq[open] summary .mi-chev { transform: rotate(180deg); }
-  .ld-faq .mi-chev { transition: transform .18s ease; color: #1A56DB; flex-shrink: 0; }
-  .ld-faq-body { padding: 0 16px 16px; font-size: 13.5px; line-height: 1.7; color: #526078; }
+  .ld-faq .mi-chev { transition: transform .18s ease; color: #0b3fa8; flex-shrink: 0; }
+  .ld-faq-body { padding: 0 16px 16px; font-size: 13.5px; line-height: 1.7; color: #334155; }
   @keyframes ldFadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
   @media (max-width: 900px) {
@@ -29,6 +29,22 @@ const CSS = `
     .ld-feats { grid-template-columns: 1fr !important; }
     .ld-nav { padding: 12px 16px !important; gap: 8px !important; }
     .ld-container { padding-left: 18px !important; padding-right: 18px !important; }
+  }
+
+  /* HP: brand dan tombol Masuk/Daftar satu baris, sama seperti header Portal Warga.
+     Tanpa ini flex-wrap mendorong tombol turun ke bawah logo. */
+  @media (max-width: 560px) {
+    .ld-nav-inner { flex-wrap: nowrap !important; padding: 10px 14px !important; gap: 8px !important; }
+    .ld-nav-brand { min-width: 0; }
+    .ld-nav-brand-sub { display: none !important; }
+    .ld-nav-actions { gap: 6px !important; flex-shrink: 0; }
+    .ld-nav-actions .material-symbols-outlined { display: none; }
+    .ld-nav-actions .ld-btn { padding: 8px 12px !important; font-size: 13px !important; min-height: 40px; }
+  }
+  @media (max-width: 359px) {
+    .ld-nav-brand .material-symbols-outlined { font-size: 17px !important; }
+    .ld-nav-brand .ld-brand-icon { width: 34px !important; height: 34px !important; }
+    .ld-nav-actions .ld-btn { padding: 8px 9px !important; }
   }
 `;
 
@@ -98,6 +114,7 @@ export default function LandingPage() {
         }}
       >
         <div
+          className="ld-nav-inner"
           style={{
             maxWidth: 1100,
             margin: '0 auto',
@@ -109,13 +126,14 @@ export default function LandingPage() {
             flexWrap: 'wrap',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div className="ld-nav-brand" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div
+              className="ld-brand-icon"
               style={{
                 width: 38,
                 height: 38,
                 borderRadius: 10,
-                background: 'linear-gradient(135deg,#1A56DB 0%,#1e40af 100%)',
+                background: 'linear-gradient(135deg,#0b3fa8 0%,#062b6e 100%)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -126,12 +144,13 @@ export default function LandingPage() {
             </div>
             <div>
               <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', letterSpacing: '-.3px' }}>
-                BANSOS<span style={{ color: '#1A56DB' }}>HUB</span>
+                BANSOS<span style={{ color: '#0b3fa8' }}>HUB</span>
               </div>
               <div
+                className="ld-nav-brand-sub"
                 style={{
                   fontSize: 10,
-                  color: '#526078',
+                  color: '#334155',
                   fontWeight: 600,
                   textTransform: 'uppercase',
                   letterSpacing: '.07em',
@@ -142,7 +161,7 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div className="ld-nav-actions" style={{ display: 'flex', gap: 10 }}>
             <button className="ld-btn ld-btn-light" onClick={goLogin} style={{ padding: '9px 18px' }}>
               <MI name="login" size={16} /> Masuk
             </button>
@@ -172,9 +191,9 @@ export default function LandingPage() {
               gap: 7,
               fontSize: 12,
               fontWeight: 700,
-              color: '#1A56DB',
+              color: '#0b3fa8',
               background: '#EBF3FF',
-              border: '1px solid #C6DCFF',
+              border: '1px solid #a9c7f0',
               padding: '6px 12px',
               borderRadius: 999,
               marginBottom: 18,
@@ -196,7 +215,7 @@ export default function LandingPage() {
             <br />
             Kini Lebih Mudah &amp; Transparan
           </h1>
-          <p style={{ fontSize: 15.5, color: '#526078', lineHeight: 1.75, marginBottom: 26, maxWidth: 520 }}>
+          <p style={{ fontSize: 15.5, color: '#334155', lineHeight: 1.75, marginBottom: 26, maxWidth: 520 }}>
             Warga RW 08 bisa mendaftar lewat HP, mengisi 10 pertanyaan sederhana, lalu memantau
             sendiri hasil penilaiannya — tanpa harus berulang kali bertanya ke Ketua RT.
           </p>
@@ -208,7 +227,7 @@ export default function LandingPage() {
               Saya sudah punya akun
             </button>
           </div>
-          <p style={{ fontSize: 12, color: '#526078', marginTop: 14 }}>
+          <p style={{ fontSize: 12, color: '#334155', marginTop: 14 }}>
             Butuh bantuan? Hubungi Ketua RT di wilayah Anda.
           </p>
         </div>
@@ -217,7 +236,7 @@ export default function LandingPage() {
         <div
           className="ld-hero-side"
           style={{
-            background: 'linear-gradient(155deg, #0C2D6B 0%, #1A56DB 60%, #3B82F6 100%)',
+            background: 'linear-gradient(155deg, #0C2D6B 0%, #0b3fa8 60%, #3B82F6 100%)',
             borderRadius: 18,
             padding: '32px 30px',
             minHeight: 280,
@@ -259,7 +278,7 @@ export default function LandingPage() {
                   flexShrink: 0,
                   fontSize: 11,
                   fontWeight: 800,
-                  color: '#1e40af',
+                  color: '#062b6e',
                 }}
               >
                 {s.step}
@@ -276,11 +295,11 @@ export default function LandingPage() {
       {/* ── MANFAAT ── */}
       <section className="ld-container" style={{ maxWidth: 1100, margin: '0 auto', padding: '44px 24px 8px' }}>
         <h2 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>Kenapa lewat BansosHub?</h2>
-        <p style={{ fontSize: 14, color: '#526078', marginBottom: 24 }}>Sistem yang dipakai petugas di wilayah Anda.</p>
+        <p style={{ fontSize: 14, color: '#334155', marginBottom: 24 }}>Sistem yang dipakai petugas di wilayah Anda.</p>
         <div className="ld-feats" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16 }}>
           {[
-            { icon: 'fact_check', color: '#1d4ed8', bg: '#dbeafe', t: 'Penilaian Objektif', d: '10 kriteria terukur — penghasilan, pengeluaran, rumah, dan lainnya. Bukan subjektif.' },
-            { icon: 'verified_user', color: '#047857', bg: '#dcfce7', t: 'Verifikasi Berjenjang', d: 'Ketua RT memeriksa, Ketua RW mengawasi, Admin mengelola data.' },
+            { icon: 'fact_check', color: '#0b3fa8', bg: '#dbeafe', t: 'Penilaian Objektif', d: '10 kriteria terukur — penghasilan, pengeluaran, rumah, dan lainnya. Bukan subjektif.' },
+            { icon: 'verified_user', color: '#065f46', bg: '#dcfce7', t: 'Verifikasi Berjenjang', d: 'Ketua RT memeriksa, Ketua RW mengawasi, Admin mengelola data.' },
             { icon: 'devices', color: '#155e75', bg: '#cffafe', t: 'Bisa dari HP', d: 'Cukup pakai HP apa pun. Kalau kesulitan, Ketua RT siap membantu.' },
           ].map((f) => (
             <div
@@ -307,7 +326,7 @@ export default function LandingPage() {
                 <MI name={f.icon} fill size={21} style={{ color: f.color }} />
               </div>
               <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>{f.t}</div>
-              <div style={{ fontSize: 13.5, color: '#526078', lineHeight: 1.65 }}>{f.d}</div>
+              <div style={{ fontSize: 13.5, color: '#334155', lineHeight: 1.65 }}>{f.d}</div>
             </div>
           ))}
         </div>
@@ -317,7 +336,7 @@ export default function LandingPage() {
       <section className="ld-container" style={{ maxWidth: 1100, margin: '0 auto', padding: '44px 24px 8px' }}>
         <div
           style={{
-            background: 'linear-gradient(135deg,#1A56DB 0%,#1e40af 100%)',
+            background: 'linear-gradient(135deg,#0b3fa8 0%,#062b6e 100%)',
             borderRadius: 18,
             padding: '30px 34px',
             display: 'flex',
@@ -337,8 +356,8 @@ export default function LandingPage() {
             </div>
           </div>
           <button className="ld-btn ld-btn-primary" onClick={goRegister} style={{ background: '#fff', borderColor: '#fff' }}>
-            <MI name="person_add" size={16} style={{ color: '#1A56DB' }} />
-            <span style={{ color: '#1A56DB' }}>Daftar Sekarang</span>
+            <MI name="person_add" size={16} style={{ color: '#0b3fa8' }} />
+            <span style={{ color: '#0b3fa8' }}>Daftar Sekarang</span>
           </button>
         </div>
       </section>
@@ -346,7 +365,7 @@ export default function LandingPage() {
       {/* ── FAQ ── */}
       <section className="ld-container" style={{ maxWidth: 900, margin: '0 auto', padding: '44px 24px 8px' }}>
         <h2 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>Pertanyaan yang Sering Diajukan</h2>
-        <p style={{ fontSize: 14, color: '#526078', marginBottom: 22 }}>Jawaban singkat untuk pertanyaan umum warga.</p>
+        <p style={{ fontSize: 14, color: '#334155', marginBottom: 22 }}>Jawaban singkat untuk pertanyaan umum warga.</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {FAQS.map((f) => (
             <details key={f.q} className="ld-faq" style={{ background: '#fff', border: '1px solid #DBEAFE', borderRadius: 12 }}>
@@ -370,7 +389,7 @@ export default function LandingPage() {
           textAlign: 'center',
         }}
       >
-        <div style={{ fontSize: 13, color: '#526078', lineHeight: 1.7 }}>
+        <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.7 }}>
           BansosHub — Sistem Pendukung Keputusan Bantuan Sosial (Metode SAW) · RW 08
           <br />
           <span style={{ fontSize: 12.5 }}>

@@ -2,7 +2,7 @@
   --text: #111827;
   --text-h: #111827;
   --bg: #f0f6ff;
-  --border: #c6dcff;
+  --border: #a9c7f0;
   --code-bg: #f4f3ec;
   --accent: #aa3bff;
   --accent-bg: rgba(170, 59, 255, 0.1);
@@ -48,8 +48,28 @@ select {
 /* Memastikan teks placeholder (bantuan) tetap abu-abu dan terbaca */
 input::placeholder,
 textarea::placeholder {
-  color: #76777d !important;
+  color: #475569 !important;
   opacity: 1 !important;
+}
+
+/* Batas kolom isian dinaikkan ke 4.1:1 terhadap putih supaya kotak input
+   terlihat jelas oleh pengguna lanjut usia (WCAG non-text minimum 3:1). */
+input:not([type='checkbox']):not([type='radio']):not([type='hidden']),
+select,
+textarea {
+  border-color: #7d93af !important;
+}
+
+/* Fokus keyboard harus selalu terlihat, termasuk saat inline style mematikan
+   outline. Di sidebar gelap, cincin fokus memakai amber agar kontras. */
+:where(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline-width: 3px !important;
+  outline-style: solid !important;
+  outline-color: #0b3fa8 !important;
+  outline-offset: 2px !important;
+}
+aside :where(button, a, input, select):focus-visible {
+  outline-color: #b45309 !important;
 }
 
 #root {
@@ -94,4 +114,72 @@ code {
 .select-none {
   user-select: none;
   -webkit-user-select: none;
+}
+
+
+/* ── HP: tabel data & grid dashboard RT/RW/Admin melebur jadi kartu ─────────
+   Tabel selebar desktop dipotong di layar 360px, dan kolom aksi (Tinjau /
+   Verifikasi) ada paling kanan sehingga tombolnya di luar layar — pengguna
+   hanya bisa melihat, tidak bisa bertindak. Di bawah 900px tabelnya berubah
+   jadi daftar kartu: satu <tr> = satu kartu, tiap sel membawa label dari <th>
+   lewat `data-label` (diisi src/lib/mobTable.js). Aturan ini hanya hidup di
+   media query, jadi desktop tidak berubah. */
+@media (max-width: 900px) {
+  .mob-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 12px !important; }
+  .mob-two-col { grid-template-columns: 1fr !important; gap: 14px !important; }
+  /* Header kartu (judul + tombol aksi) tidak boleh mendorong tombol ke luar layar. */
+  .mob-card-head { flex-wrap: wrap !important; gap: 8px 12px !important; }
+  .mob-card-head > * { min-width: 0; }
+
+  .mob-banner {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 14px !important;
+    padding: 20px !important;
+  }
+  .mob-banner-text { max-width: 100% !important; }
+  .mob-banner > button { width: 100%; justify-content: center; }
+
+  .mob-table { display: block !important; width: 100% !important; }
+  .mob-table thead { display: none !important; }
+  .mob-table tbody { display: block !important; }
+  .mob-table tr {
+    display: block !important;
+    border: 1px solid #DBEAFE;
+    border-radius: 10px;
+    margin: 0 0 10px;
+    padding: 3px 0;
+    background: #fff;
+  }
+  .mob-table td {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 12px !important;
+    border: none !important;
+    text-align: right;
+    /* Kolom di desktop dibatasi 200px + nowrap; di kartu harus bebas membungkus. */
+    max-width: none !important;
+    white-space: normal !important;
+    overflow: visible !important;
+  }
+  .mob-table td::before {
+    content: attr(data-label);
+    flex: 0 0 auto;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: #475569;
+    text-align: left;
+  }
+  /* Nomor urut tidak berguna di kartu. */
+  .mob-table td[data-label="No"] { display: none !important; }
+  /* Alamat/nama panjang harus membungkus, bukan terpotong di dalam sel. */
+  .mob-table td > * { min-width: 0; overflow-wrap: anywhere; }
+  /* Sel aksi: tombolnya selebar kartu dan setinggi target jempol (44px). */
+  .mob-table td[data-label="Aksi"] { padding-top: 4px !important; }
+  .mob-table td[data-label="Aksi"] > * { width: 100%; justify-content: center; min-height: 44px; }
+  .mob-table td[data-label="Aksi"] button { font-size: 13px !important; }
 }

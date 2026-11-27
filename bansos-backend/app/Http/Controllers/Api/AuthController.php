@@ -121,4 +121,50 @@ class AuthController extends Controller
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
+
+    // ==========================================
+    // 4. GANTI PASSWORD SENDIRI
+    // ==========================================
+    public function gantiPassword(Request $request)
+    {
+        $request->validate([
+            'current_password' => 'required|string',
+            'password' => 'required|string|min:8|confirmed',
+        ], [
+            'current_password.required' => 'Password saat ini wajib diisi.',
+            'password.required' => 'Password baru wajib diisi.',
+            'password.min' => 'Password baru minimal 8 karakter.',
+            'password.confirmed' => 'Konfirmasi password baru tidak cocok.',
+        ]);
+
+        $user = $request->user();
+
+        if (! Hash::check($request->current_password, $user->password)) {
+            throw ValidationException::withMessages([
+                'current_password' => 'Password saat ini salah.',
+            ]);
+        }
+
+        if (Hash::check($request->password, $user->password)) {
+            throw ValidationException::withMessages([
+                'password' => 'Password baru harus berbeda dari password saat ini.',
+            ]);
+        }
+
+        $user->password = Hash::make($request->password);
+        $user->save();
+
+        // Cabut sesi/token lain; perangkat yang sedang dipakai tetap aktif.
+        $token = $user->currentAccessToken();
+        if ($token instanceof \Laravel\Sanctum\PersonalAccessToken) {
+            $user->tokens()->where('id', '!=', $token->id)->delete();
+        }
+
+        LogController::catatLog($user->name, $user->role, 'Ganti password akun sendiri');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Password berhasil diganti.',
+        ]);
+    }
 }

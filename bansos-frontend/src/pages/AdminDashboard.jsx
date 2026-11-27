@@ -5,6 +5,7 @@ import RankingWarnings from '../components/RankingWarnings';
 import PengaduanPanel from '../components/PengaduanPanel';
 import { rtLabel } from '../lib/rt';
 import { unduhLaporanSaw } from '../lib/report';
+import { pasangLabelTabel } from '../lib/mobTable';
 
 const API = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000/api';
 const tok = () => localStorage.getItem('token');
@@ -31,11 +32,24 @@ function useDesign() {
             box-shadow: 0 0 0 0 rgba(15,23,42,.35);
           }
           .admin-sidebar.open { transform: translateX(0); box-shadow: 0 0 0 100vmax rgba(15,23,42,.35); }
-          .admin-header { padding: 0 12px !important; height: 56px !important; gap: 8px; }
-          .admin-header-title { font-size: 14px !important; }
+          .admin-header { padding: 8px 12px !important; height: auto !important; min-height: 56px !important; gap: 8px; flex-wrap: wrap; row-gap: 8px; }
+          .admin-header-title { font-size: 14px !important; flex: 1 1 auto; min-width: 0; }
+          .admin-header-actions { width: 100%; display: flex !important; gap: 8px !important; }
+          .admin-header-actions:empty { display: none !important; }
+          /* Cetak/Import/Hitung/Tambah Akun tadinya berdesakan di satu baris;
+             sekarang turun ke baris kedua dan berbagi lebar rata. */
+          .admin-header-actions > * { flex: 1 1 0; min-height: 42px; justify-content: center; padding: 8px 6px !important; font-size: 12px !important; line-height: 1.15; white-space: nowrap; }
           .admin-main-pad { padding: 16px 12px !important; }
-          .admin-burger { display: inline-flex !important; }
+          .admin-burger { display: inline-flex !important; width: 42px !important; height: 42px !important; }
+          .mob-banner-actions { width: 100%; display: flex; gap: 8px; }
+          .mob-banner-actions > * { flex: 1 1 0; justify-content: center; min-height: 42px; padding: 10px 8px !important; font-size: 12.5px !important; }
+          .mob-scroll-hint { display: flex !important; }
+          .mob-table .jawaban-sel { max-width: none !important; white-space: normal !important; overflow: visible !important; text-align: left; }
+          .mob-table td[data-label="Aksi"] button { flex: 1 1 0; min-height: 44px; }
+          /* Tombol Lihat (n) ada di kolom Sub-Kriteria, bukan Aksi. */
+          .mob-table td button { min-height: 40px; }
         }
+        .mob-scroll-hint { display: none; }
         @media print { .admin-burger, .admin-scrim { display:none!important; } }
 
         @media print {
@@ -216,10 +230,10 @@ const fmtDateTime = (s) =>
     : '-';
 
 const roleCfg = (role, rt) => {
-  if (role === 'admin') return { label: 'Administrator', bg: '#fef9c3', color: '#a16207' };
-  if (role === 'rw') return { label: 'Ketua RW', bg: '#f3e8ff', color: '#7c3aed' };
-  if (role === 'rt') return { label: `Ketua ${rtLabel(rt)}`, bg: '#dbeafe', color: '#1d4ed8' };
-  return { label: 'Warga', bg: '#f1f5f9', color: '#475569' };
+  if (role === 'admin') return { label: 'Administrator', bg: '#fef9c3', color: '#92400e' };
+  if (role === 'rw') return { label: 'Ketua RW', bg: '#f3e8ff', color: '#5b21b6' };
+  if (role === 'rt') return { label: `Ketua ${rtLabel(rt)}`, bg: '#dbeafe', color: '#0b3fa8' };
+  return { label: 'Warga', bg: '#f1f5f9', color: '#334155' };
 };
 
 /* ─── Kuesioner constants ────────────────────────────────────────────────── */
@@ -389,7 +403,7 @@ const ModalHead = ({ title, sub, onClose }) => (
   >
     <div>
       <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a' }}>{title}</div>
-      {sub && <div style={{ fontSize: 12, color: '#475569', marginTop: 2 }}>{sub}</div>}
+      {sub && <div style={{ fontSize: 12, color: '#334155', marginTop: 2 }}>{sub}</div>}
     </div>
     <button
       onClick={onClose}
@@ -406,7 +420,7 @@ const ModalHead = ({ title, sub, onClose }) => (
         flexShrink: 0,
       }}
     >
-      <MI name="close" size={17} style={{ color: '#475569' }} />
+      <MI name="close" size={17} style={{ color: '#334155' }} />
     </button>
   </div>
 );
@@ -417,7 +431,7 @@ const Lbl = ({ children, required: req }) => (
       display: 'block',
       fontSize: 11,
       fontWeight: 700,
-      color: '#475569',
+      color: '#334155',
       textTransform: 'uppercase',
       letterSpacing: '.07em',
       marginBottom: 6,
@@ -434,7 +448,7 @@ const Inp = ({ style: s = {}, ...p }) => (
       width: '100%',
       padding: '10px 13px',
       borderRadius: 9,
-      border: '1.5px solid #C6DCFF',
+      border: '1.5px solid #a9c7f0',
       background: '#FAFCFF',
       fontFamily: "'Plus Jakarta Sans',sans-serif",
       fontSize: 13.5,
@@ -442,8 +456,8 @@ const Inp = ({ style: s = {}, ...p }) => (
       outline: 'none',
       ...s,
     }}
-    onFocus={(e) => (e.target.style.borderColor = '#1A56DB')}
-    onBlur={(e) => (e.target.style.borderColor = '#C6DCFF')}
+    onFocus={(e) => (e.target.style.borderColor = '#0b3fa8')}
+    onBlur={(e) => (e.target.style.borderColor = '#a9c7f0')}
     {...p}
   />
 );
@@ -454,7 +468,7 @@ const Sel = ({ children, style: s = {}, ...p }) => (
       width: '100%',
       padding: '10px 13px',
       borderRadius: 9,
-      border: '1.5px solid #C6DCFF',
+      border: '1.5px solid #a9c7f0',
       background: '#FAFCFF',
       fontFamily: "'Plus Jakarta Sans',sans-serif",
       fontSize: 13.5,
@@ -464,8 +478,8 @@ const Sel = ({ children, style: s = {}, ...p }) => (
       cursor: 'pointer',
       ...s,
     }}
-    onFocus={(e) => (e.target.style.borderColor = '#1A56DB')}
-    onBlur={(e) => (e.target.style.borderColor = '#C6DCFF')}
+    onFocus={(e) => (e.target.style.borderColor = '#0b3fa8')}
+    onBlur={(e) => (e.target.style.borderColor = '#a9c7f0')}
     {...p}
   >
     {children}
@@ -479,7 +493,7 @@ const BtnPrimary = ({ children, style: s = {}, ...p }) => (
       alignItems: 'center',
       gap: 7,
       padding: '9px 18px',
-      background: '#1A56DB',
+      background: '#0b3fa8',
       color: '#fff',
       border: 'none',
       borderRadius: 9,
@@ -490,10 +504,10 @@ const BtnPrimary = ({ children, style: s = {}, ...p }) => (
       ...s,
     }}
     onMouseEnter={(e) => {
-      if (!p.disabled) e.currentTarget.style.background = '#1649C4';
+      if (!p.disabled) e.currentTarget.style.background = '#0b3fa8';
     }}
     onMouseLeave={(e) => {
-      if (!p.disabled) e.currentTarget.style.background = s.background || '#0051d5';
+      if (!p.disabled) e.currentTarget.style.background = s.background || '#0b3fa8';
     }}
     {...p}
   >
@@ -509,8 +523,8 @@ const BtnGhost = ({ children, ...p }) => (
       gap: 7,
       padding: '9px 18px',
       background: '#fff',
-      color: '#475569',
-      border: '1.5px solid #C6DCFF',
+      color: '#334155',
+      border: '1.5px solid #a9c7f0',
       borderRadius: 9,
       fontSize: 13,
       fontWeight: 700,
@@ -518,7 +532,7 @@ const BtnGhost = ({ children, ...p }) => (
       transition: '.15s',
     }}
     onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#93C5FD')}
-    onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#C6DCFF')}
+    onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#a9c7f0')}
     {...p}
   >
     {children}
@@ -581,6 +595,9 @@ export default function AdminDashboard() {
   /* modal — sub-kriteria */
   const [modalSubKrit, setModalSubKrit] = useState(null);
   const [formSubKrit, setFormSubKrit] = useState({ keterangan: '', nilai: 10 });
+
+  /* modal — laporan hasil import CSV (akun warga yang dibuat) */
+  const [hasilImport, setHasilImport] = useState(null);
 
   /* UI */
   const [searchUser, setSearchUser] = useState('');
@@ -713,14 +730,42 @@ export default function AdminDashboard() {
       const r = await axios.post(`${API}/admin/pengajuan/import`, fd, {
         headers: { ...authH(), 'Content-Type': 'multipart/form-data' },
       });
+      // Laporan memuat username + password awal akun yang baru dibuat;
+      // password tidak bisa dilihat lagi setelah modal ditutup.
+      setHasilImport(r.data);
       showToast(r.data.message || 'Import berhasil');
       fetchData();
     } catch (err) {
-      showToast(`Import gagal: ${err.response?.data?.message || err.message}`, 'error');
+      const data = err.response?.data;
+      if (data?.laporan) {
+        setHasilImport(data);
+        showToast(data.message || 'Import dibatalkan', 'error');
+      } else {
+        showToast(`Import gagal: ${data?.message || err.message}`, 'error');
+      }
     } finally {
       setLoading(false);
       e.target.value = null;
     }
+  };
+
+  const unduhAkunImport = () => {
+    const baris = (hasilImport?.laporan || []).filter((b) => b.username);
+    const csv = [
+      'Nama,RT,Username,Password Awal',
+      ...baris.map((b) =>
+        [b.nama, b.rt, b.username, b.password_awal || '-']
+          .map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`)
+          .join(',')
+      ),
+    ].join('\n');
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'akun_warga_import.csv';
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const jalankanSAW = async () => {
@@ -917,6 +962,11 @@ export default function AdminDashboard() {
             : p.status === filterStatus
         );
 
+  // Tabel berubah jadi kartu di HP dan butuh label kolom di tiap sel.
+  useEffect(() => {
+    pasangLabelTabel();
+  });
+
   /* ── Nav ─────────────────────────────────────────────────────────────── */
   const navGroups = [
     {
@@ -954,9 +1004,9 @@ export default function AdminDashboard() {
   /* ── Inline styles ───────────────────────────────────────────────────── */
   const tblTh = {
     padding: '11px 18px',
-    fontSize: 11,
+    fontSize: 11.5,
     fontWeight: 700,
-    color: '#475569',
+    color: '#0f172a',
     textAlign: 'left',
     textTransform: 'uppercase',
     letterSpacing: '.06em',
@@ -996,7 +1046,7 @@ export default function AdminDashboard() {
             gap: 10,
             padding: '12px 20px',
             borderRadius: 12,
-            background: toast.type === 'error' ? '#b91c1c' : '#1A56DB',
+            background: toast.type === 'error' ? '#b91c1c' : '#0b3fa8',
             color: '#fff',
             fontSize: 13,
             fontWeight: 600,
@@ -1021,7 +1071,7 @@ export default function AdminDashboard() {
           display: 'flex',
           flexDirection: 'column',
           height: '100%',
-          borderRight: '1px solid #C6DCFF',
+          borderRight: '1px solid #a9c7f0',
           overflowY: 'auto',
         }}
       >
@@ -1030,8 +1080,8 @@ export default function AdminDashboard() {
           className="admin-sidebar-brand"
           style={{
             padding: '20px 20px 16px',
-            borderBottom: '1px solid #C6DCFF',
-            background: 'linear-gradient(135deg, #1A56DB 0%, #1e40af 100%)',
+            borderBottom: '1px solid #a9c7f0',
+            background: 'linear-gradient(135deg, #0b3fa8 0%, #062b6e 100%)',
             position: 'relative',
             overflow: 'hidden',
           }}
@@ -1098,7 +1148,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* User chip */}
-        <div style={{ padding: '14px 16px', borderBottom: '1px solid #C6DCFF' }}>
+        <div style={{ padding: '14px 16px', borderBottom: '1px solid #a9c7f0' }}>
           <div
             style={{
               display: 'flex',
@@ -1114,7 +1164,7 @@ export default function AdminDashboard() {
                 width: 34,
                 height: 34,
                 borderRadius: 9,
-                background: '#1A56DB',
+                background: '#0b3fa8',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -1139,7 +1189,7 @@ export default function AdminDashboard() {
               >
                 {userData.name}
               </div>
-              <div style={{ fontSize: 11, color: '#1A56DB', fontWeight: 600 }}>Administrator</div>
+              <div style={{ fontSize: 11, color: '#0b3fa8', fontWeight: 600 }}>Administrator</div>
             </div>
           </div>
         </div>
@@ -1158,11 +1208,11 @@ export default function AdminDashboard() {
             <div key={group.label}>
               <div
                 style={{
-                  fontSize: 10,
-                  fontWeight: 700,
-                  color: '#6B7280',
+                  fontSize: 11,
+                  fontWeight: 800,
+                  color: '#0f172a',
                   textTransform: 'uppercase',
-                  letterSpacing: '.1em',
+                  letterSpacing: '.08em',
                   padding: '0 8px',
                   marginBottom: 8,
                 }}
@@ -1190,7 +1240,7 @@ export default function AdminDashboard() {
                         cursor: 'pointer',
                         fontSize: 13,
                         fontWeight: active ? 700 : 600,
-                        background: active ? '#1d4ed8' : 'transparent',
+                        background: active ? '#0b3fa8' : 'transparent',
                         color: active ? '#fff' : '#374151',
                         transition: '.12s',
                         borderLeft: `2px solid ${active ? '#fff' : 'transparent'}`,
@@ -1198,8 +1248,8 @@ export default function AdminDashboard() {
                       }}
                       onMouseEnter={(e) => {
                         if (!active) {
-                          e.currentTarget.style.background = '#C6DCFF';
-                          e.currentTarget.style.color = '#1A56DB';
+                          e.currentTarget.style.background = '#a9c7f0';
+                          e.currentTarget.style.color = '#0b3fa8';
                         }
                       }}
                       onMouseLeave={(e) => {
@@ -1214,7 +1264,7 @@ export default function AdminDashboard() {
                       {badge > 0 && (
                         <span
                           style={{
-                            background: '#dc2626',
+                            background: '#b91c1c',
                             color: '#fff',
                             fontSize: 10,
                             fontWeight: 700,
@@ -1254,7 +1304,7 @@ export default function AdminDashboard() {
               gap: 7,
               padding: '9px',
               borderRadius: 9,
-              border: '1px solid #C6DCFF',
+              border: '1px solid #a9c7f0',
               background: 'transparent',
               color: '#374151',
               fontSize: 12,
@@ -1263,8 +1313,8 @@ export default function AdminDashboard() {
               transition: '.12s',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#C6DCFF';
-              e.currentTarget.style.color = '#1A56DB';
+              e.currentTarget.style.background = '#a9c7f0';
+              e.currentTarget.style.color = '#0b3fa8';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = 'transparent';
@@ -1272,6 +1322,35 @@ export default function AdminDashboard() {
             }}
           >
             <MI name="download" size={15} /> Unduh Laporan
+          </button>
+          <button
+            onClick={() => navigate('/ganti-password')}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 7,
+              padding: '9px',
+              borderRadius: 9,
+              border: '1px solid #a9c7f0',
+              background: 'transparent',
+              color: '#374151',
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: '.12s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#a9c7f0';
+              e.currentTarget.style.color = '#0b3fa8';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.color = '#374151';
+            }}
+          >
+            <MI name="lock" size={15} /> Ganti Password
           </button>
           <button
             onClick={() => {
@@ -1286,16 +1365,16 @@ export default function AdminDashboard() {
               gap: 7,
               padding: '9px',
               borderRadius: 9,
-              border: 'none',
-              background: 'rgba(239,68,68,.1)',
-              color: '#f87171',
+              border: '1.5px solid #b91c1c',
+              background: '#ffffff',
+              color: '#b91c1c',
               fontSize: 12,
               fontWeight: 700,
               cursor: 'pointer',
               transition: '.12s',
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(239,68,68,.18)')}
-            onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(239,68,68,.1)')}
+            onMouseEnter={(e) => (e.currentTarget.style.background = '#fee2e2')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = '#ffffff')}
           >
             <MI name="logout" size={15} /> Keluar Sistem
           </button>
@@ -1329,9 +1408,9 @@ export default function AdminDashboard() {
               width: 38,
               height: 38,
               borderRadius: 10,
-              border: '1.5px solid #C6DCFF',
+              border: '1.5px solid #a9c7f0',
               background: '#FAFCFF',
-              color: '#1A56DB',
+              color: '#0b3fa8',
               cursor: 'pointer',
               flexShrink: 0,
             }}
@@ -1352,12 +1431,12 @@ export default function AdminDashboard() {
                 {pageTitle}
               </h1>
               {loading && (
-                <p style={{ fontSize: 11, color: '#475569', margin: 0 }}>Memuat data...</p>
+                <p style={{ fontSize: 11, color: '#334155', margin: 0 }}>Memuat data...</p>
               )}
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <div className="admin-header-actions" style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             {['pengajuan', 'matriks', 'ranking', 'log'].includes(activeMenu) && (
               <BtnGhost onClick={() => window.print()}>
                 <MI name="print" size={15} /> Cetak
@@ -1370,7 +1449,7 @@ export default function AdminDashboard() {
                   alignItems: 'center',
                   gap: 7,
                   padding: '9px 18px',
-                  background: '#7c3aed',
+                  background: '#5b21b6',
                   color: '#fff',
                   borderRadius: 9,
                   fontSize: 13,
@@ -1378,8 +1457,8 @@ export default function AdminDashboard() {
                   cursor: 'pointer',
                   transition: '.15s',
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = '#6d28d9')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = '#7c3aed')}
+                onMouseEnter={(e) => (e.currentTarget.style.background = '#4c1d95')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = '#5b21b6')}
               >
                 <MI name="upload_file" size={15} />
                 {loading ? 'Memproses...' : 'Import CSV'}
@@ -1396,7 +1475,7 @@ export default function AdminDashboard() {
               <BtnPrimary
                 onClick={jalankanSAW}
                 disabled={loading}
-                style={{ background: '#047857' }}
+                style={{ background: '#065f46' }}
               >
                 <MI name="calculate" size={15} />
                 {loading ? 'Menghitung...' : 'Hitung Ulang SAW'}
@@ -1419,13 +1498,13 @@ export default function AdminDashboard() {
           {activeMenu === 'beranda' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
               {/* Stat cards */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
+              <div className="mob-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
                 {[
                   {
                     label: 'Total Akun Sistem',
                     value: userList.length,
                     icon: 'group',
-                    color: '#1d4ed8',
+                    color: '#0b3fa8',
                     bg: '#dbeafe',
                     sub: 'Admin, RW, RT, Warga',
                   },
@@ -1433,7 +1512,7 @@ export default function AdminDashboard() {
                     label: 'Total Kuesioner',
                     value: pengajuanList.length,
                     icon: 'fact_check',
-                    color: '#7c3aed',
+                    color: '#5b21b6',
                     bg: '#f3e8ff',
                     sub: 'Semua status',
                   },
@@ -1441,7 +1520,7 @@ export default function AdminDashboard() {
                     label: 'Warga Disetujui',
                     value: countDiterima,
                     icon: 'verified',
-                    color: '#047857',
+                    color: '#065f46',
                     bg: '#dcfce7',
                     sub: 'Siap kalkulasi SAW',
                   },
@@ -1449,7 +1528,7 @@ export default function AdminDashboard() {
                     label: 'Menunggu Verifikasi',
                     value: countPending,
                     icon: 'pending_actions',
-                    color: '#a16207',
+                    color: '#92400e',
                     bg: '#fef9c3',
                     sub: 'Perlu tindakan',
                   },
@@ -1486,45 +1565,46 @@ export default function AdminDashboard() {
                       </div>
                       <span
                         style={{
-                          fontSize: 10,
-                          fontWeight: 700,
-                          color: '#475569',
-                          background: '#FAFCFF',
+                          fontSize: 11,
+                          fontWeight: 800,
+                          color: '#0f172a',
+                          background: '#FFFFFF',
                           padding: '3px 8px',
                           borderRadius: 5,
-                          border: '1px solid #DBEAFE',
+                          border: '1px solid #cbd5e1',
                         }}
                       >
                         Live
                       </span>
                     </div>
-                    <div style={{ fontSize: 12, color: '#475569', marginBottom: 2 }}>{label}</div>
+                    <div style={{ fontSize: 12, color: '#334155', marginBottom: 2 }}>{label}</div>
                     <div style={{ fontSize: 32, fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>
                       {value}
                     </div>
-                    <div style={{ fontSize: 11, color: '#475569', marginTop: 5 }}>{sub}</div>
+                    <div style={{ fontSize: 11, color: '#334155', marginTop: 5 }}>{sub}</div>
                   </div>
                 ))}
               </div>
 
               {/* Banner */}
               <div
+                className="mob-banner"
                 style={{
                   borderRadius: 16,
                   padding: '28px 36px',
-                  background: 'linear-gradient(135deg,#1A56DB 0%,#1e40af 100%)',
+                  background: 'linear-gradient(135deg,#0b3fa8 0%,#062b6e 100%)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   gap: 24,
                 }}
               >
-                <div style={{ maxWidth: '62%' }}>
+                <div className="mob-banner-text" style={{ maxWidth: '62%' }}>
                   <div
                     style={{
                       fontSize: 11,
                       fontWeight: 700,
-                      color: '#000000',
+                      color: '#bfdbfe',
                       textTransform: 'uppercase',
                       letterSpacing: '.1em',
                       marginBottom: 10,
@@ -1551,12 +1631,13 @@ export default function AdminDashboard() {
                       margin: 0,
                     }}
                   >
-                    Data CSV akan otomatis diproses dan status pengajuan diset ke{' '}
-                    <strong style={{ color: '#ffffff' }}>disetujui</strong>. Setelahnya jalankan
-                    kalkulasi SAW untuk mendapatkan peringkat terbaru.
+                    Data CSV diproses menjadi data warga + pengajuan baru dengan status{' '}
+                    <strong style={{ color: '#ffffff' }}>menunggu</strong>, lalu diverifikasi RT
+                    wilayahnya. Setelah ada yang disetujui, jalankan kalkulasi SAW untuk
+                    mendapatkan peringkat terbaru.
                   </p>
                 </div>
-                <div style={{ display: 'flex', gap: 12, flexShrink: 0 }}>
+                <div className="mob-banner-actions" style={{ display: 'flex', gap: 12, flexShrink: 0 }}>
                   <label
                     style={{
                       display: 'inline-flex',
@@ -1591,7 +1672,7 @@ export default function AdminDashboard() {
                       alignItems: 'center',
                       gap: 8,
                       padding: '12px 22px',
-                      background: '#047857',
+                      background: '#065f46',
                       color: '#fff',
                       border: 'none',
                       borderRadius: 10,
@@ -1607,7 +1688,7 @@ export default function AdminDashboard() {
               </div>
 
               {/* Bottom grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
+              <div className="mob-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
                 {/* Top 5 Ranking */}
                 <div
                   style={{
@@ -1618,6 +1699,7 @@ export default function AdminDashboard() {
                   }}
                 >
                   <div
+                    className="mob-card-head"
                     style={{
                       padding: '16px 22px',
                       borderBottom: '1px solid #f1f5f9',
@@ -1634,16 +1716,18 @@ export default function AdminDashboard() {
                       style={{
                         fontSize: 12,
                         fontWeight: 700,
-                        color: '#1A56DB',
+                        color: '#0b3fa8',
                         background: 'none',
                         border: 'none',
                         cursor: 'pointer',
+                        minHeight: 40,
+                        padding: '0 6px',
                       }}
                     >
                       Selengkapnya
                     </button>
                   </div>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <table className="mob-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr>
                         {['Rank', 'Nama Warga', 'RT', 'Skor (V)'].map((h) => (
@@ -1666,8 +1750,8 @@ export default function AdminDashboard() {
                                 width: 30,
                                 height: 30,
                                 borderRadius: '50%',
-                                background: i === 0 ? '#0051d5' : '#f1f5f9',
-                                color: i === 0 ? '#fff' : '#475569',
+                                background: i === 0 ? '#0b3fa8' : '#f1f5f9',
+                                color: i === 0 ? '#fff' : '#334155',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
@@ -1687,7 +1771,7 @@ export default function AdminDashboard() {
                                 background: '#F0F6FF',
                                 fontSize: 11,
                                 fontWeight: 700,
-                                color: '#475569',
+                                color: '#334155',
                               }}
                             >
                               {rtLabel(r.rt)}
@@ -1698,7 +1782,7 @@ export default function AdminDashboard() {
                               ...tblTd,
                               fontFamily: 'monospace',
                               fontWeight: 800,
-                              color: '#1A56DB',
+                              color: '#0b3fa8',
                               fontSize: 14,
                             }}
                           >
@@ -1713,7 +1797,7 @@ export default function AdminDashboard() {
                             style={{
                               padding: '32px',
                               textAlign: 'center',
-                              color: '#475569',
+                              color: '#334155',
                               fontSize: 13,
                             }}
                           >
@@ -1744,11 +1828,11 @@ export default function AdminDashboard() {
                     {
                       label: 'Disetujui',
                       count: countDiterima,
-                      color: '#047857',
+                      color: '#065f46',
                       track: '#dcfce7',
                     },
                     { label: 'Ditolak', count: countDitolak, color: '#b91c1c', track: '#fee2e2' },
-                    { label: 'Pending', count: countPending, color: '#a16207', track: '#fef9c3' },
+                    { label: 'Pending', count: countPending, color: '#92400e', track: '#fef9c3' },
                   ].map(({ label, count, color, track }) => {
                     const total = pengajuanList.length;
                     const pct = total > 0 ? Math.round((count / total) * 100) : 0;
@@ -1766,7 +1850,7 @@ export default function AdminDashboard() {
                           <span style={{ color: '#0f172a' }}>{label}</span>
                           <span style={{ color }}>
                             {count} warga{' '}
-                            <span style={{ color: '#475569', fontWeight: 400 }}>({pct}%)</span>
+                            <span style={{ color: '#334155', fontWeight: 400 }}>({pct}%)</span>
                           </span>
                         </div>
                         <div
@@ -1795,7 +1879,7 @@ export default function AdminDashboard() {
                       paddingTop: 8,
                       borderTop: '1px solid #f1f5f9',
                       fontSize: 12.5,
-                      color: '#475569',
+                      color: '#334155',
                     }}
                   >
                     Total pengajuan:{' '}
@@ -1832,9 +1916,9 @@ export default function AdminDashboard() {
                       style={{
                         padding: '7px 14px',
                         borderRadius: 8,
-                        border: `1.5px solid ${filterStatus === s ? '#0051d5' : '#e2e8f0'}`,
-                        background: filterStatus === s ? '#0051d5' : '#fff',
-                        color: filterStatus === s ? '#fff' : '#475569',
+                        border: `1.5px solid ${filterStatus === s ? '#0b3fa8' : '#cbd5e1'}`,
+                        background: filterStatus === s ? '#0b3fa8' : '#fff',
+                        color: filterStatus === s ? '#fff' : '#334155',
                         fontSize: 12,
                         fontWeight: 700,
                         cursor: 'pointer',
@@ -1862,7 +1946,7 @@ export default function AdminDashboard() {
                     </button>
                   ))}
                   <span
-                    style={{ marginLeft: 'auto', fontSize: 12, color: '#475569', fontWeight: 600 }}
+                    style={{ marginLeft: 'auto', fontSize: 12, color: '#334155', fontWeight: 600 }}
                   >
                     {filteredPengajuan.length} dari {pengajuanList.length} data
                   </span>
@@ -1889,7 +1973,7 @@ export default function AdminDashboard() {
                       fontWeight: 600,
                     }}
                   >
-                    <MI name="warning" size={18} style={{ color: '#b45309' }} />
+                    <MI name="warning" size={18} style={{ color: '#92400e' }} />
                     <span>
                       Sebagian warga belum punya matriks penilaian lengkap (10 kriteria). Baris
                       bertanda “—” belum dihitung SAW. Jalankan “Sapu Ajaib” atau setujui ulang
@@ -1922,26 +2006,38 @@ export default function AdminDashboard() {
                         ? `Matriks Nilai SAW — ${pengajuanList.filter((p) => p.status === 'disetujui').length} warga disetujui`
                         : `Total ${filteredPengajuan.length} Kuesioner`}
                     </div>
-                    <div style={{ fontSize: 12, color: '#475569', marginTop: 2 }}>
+                    <div style={{ fontSize: 12, color: '#334155', marginTop: 2 }}>
                       {activeMenu === 'matriks'
                         ? 'Nilai rij dari sub-kriteria masing-masing warga'
                         : 'Data kuesioner dari seluruh wilayah RT'}
                     </div>
                   </div>
+                {activeMenu === 'matriks' && (
+                  <div className="mob-scroll-hint">
+                    <MI name="info" size={15} /> Geser tabel ke samping untuk melihat semua kriteria.
+                  </div>
+                )}
                 </div>
-                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
+                <table
+                  className={activeMenu === 'pengajuan' ? 'mob-table' : undefined}
+                  style={{
+                    width: '100%',
+                    borderCollapse: 'collapse',
+                    minWidth: activeMenu === 'matriks' ? 900 : undefined,
+                  }}
+                >
                   <thead>
                     <tr>
                       <th style={tblTh}>No</th>
                       <th style={{ ...tblTh, minWidth: 160 }}>Nama Warga</th>
                       {Array.from({ length: 10 }, (_, i) => (
                         <th key={i} style={{ ...tblTh, minWidth: 68, textAlign: 'center' }}>
-                          <span style={{ color: '#1d4ed8' }}>C{i + 1}</span>
+                          <span style={{ color: '#0b3fa8' }}>C{i + 1}</span>
                           <div
                             style={{
                               fontWeight: 500,
                               fontSize: 9.5,
-                              color: '#475569',
+                              color: '#334155',
                               marginTop: 1,
                             }}
                           >
@@ -1974,14 +2070,14 @@ export default function AdminDashboard() {
                           onMouseEnter={(e) => (e.currentTarget.style.background = '#fafcff')}
                           onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                         >
-                          <td style={{ ...tblTd, fontWeight: 700, color: '#475569', width: 44 }}>
+                          <td style={{ ...tblTd, fontWeight: 700, color: '#334155', width: 44 }}>
                             {i + 1}
                           </td>
                           <td style={tblTd}>
                             <div style={{ fontWeight: 700, fontSize: 13 }}>
                               {p.warga?.nama_lengkap || p.warga?.name || 'Tanpa Nama'}
                             </div>
-                            <div style={{ fontSize: 11, color: '#475569', marginTop: 1 }}>
+                            <div style={{ fontSize: 11, color: '#334155', marginTop: 1 }}>
                               {rtLabel(p.warga?.rt)}
                             </div>
                           </td>
@@ -2002,16 +2098,17 @@ export default function AdminDashboard() {
                                     fontFamily: 'monospace',
                                     fontWeight: 700,
                                     fontSize: 13,
-                                    color: getSkor(p, k + 1) === null ? '#b45309' : '#111827',
+                                    color: getSkor(p, k + 1) === null ? '#92400e' : '#111827',
                                   }}
                                 >
                                   {getSkor(p, k + 1) ?? '—'}
                                 </span>
                               ) : (
                                 <span
+                                  className="jawaban-sel"
                                   style={{
                                     fontSize: 11,
-                                    color: '#475569',
+                                    color: '#334155',
                                     lineHeight: 1.4,
                                     display: 'block',
                                     maxWidth: 70,
@@ -2050,10 +2147,10 @@ export default function AdminDashboard() {
                                       : '#fef9c3',
                                 color:
                                   p.status === 'disetujui'
-                                    ? '#15803d'
+                                    ? '#166534'
                                     : p.status === 'ditolak'
                                       ? '#b91c1c'
-                                      : '#a16207',
+                                      : '#92400e',
                                 fontFamily: "'Plus Jakarta Sans',sans-serif",
                               }}
                             >
@@ -2076,7 +2173,7 @@ export default function AdminDashboard() {
                                     borderRadius: 8,
                                     border: 'none',
                                     background: '#EBF3FF',
-                                    color: '#1A56DB',
+                                    color: '#0b3fa8',
                                     cursor: 'pointer',
                                     display: 'flex',
                                     alignItems: 'center',
@@ -2115,7 +2212,7 @@ export default function AdminDashboard() {
                           style={{
                             padding: '48px',
                             textAlign: 'center',
-                            color: '#475569',
+                            color: '#334155',
                             fontSize: 13,
                           }}
                         >
@@ -2146,6 +2243,7 @@ export default function AdminDashboard() {
 
               {/* Info bar */}
               <div
+                className="mob-card-head"
                 style={{
                   background: '#fff',
                   borderRadius: 12,
@@ -2157,8 +2255,8 @@ export default function AdminDashboard() {
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <MI name="info" fill size={18} style={{ color: '#1A56DB' }} />
-                  <span style={{ fontSize: 13, color: '#475569' }}>
+                  <MI name="info" fill size={18} style={{ color: '#0b3fa8' }} />
+                  <span style={{ fontSize: 13, color: '#334155' }}>
                     Total <strong style={{ color: '#0f172a' }}>{rankingData.length}</strong> warga
                     terhitung berdasarkan bobot dan nilai sub-kriteria aktif. Nilai V dihitung
                     menggunakan metode SAW di sisi server (PHP).
@@ -2168,7 +2266,7 @@ export default function AdminDashboard() {
                   <BtnPrimary
                     onClick={jalankanSAW}
                     disabled={loading}
-                    style={{ background: '#047857', minHeight: 40 }}
+                    style={{ background: '#065f46', minHeight: 40 }}
                   >
                     <MI name="refresh" size={15} />
                     {loading ? 'Menghitung...' : 'Hitung Ulang'}
@@ -2194,7 +2292,7 @@ export default function AdminDashboard() {
                   overflow: 'hidden',
                 }}
               >
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <table className="mob-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr>
                       {[
@@ -2228,13 +2326,13 @@ export default function AdminDashboard() {
                               // terang + teks gelap agar tetap terbaca.
                               background:
                                 i === 0
-                                  ? '#0051d5'
+                                  ? '#0b3fa8'
                                   : i === 1
                                     ? '#2563eb'
                                     : i === 2
                                       ? '#bfdbfe'
                                       : '#f1f5f9',
-                              color: i === 2 ? '#1e3a8a' : i < 2 ? '#fff' : '#475569',
+                              color: i === 2 ? '#1e3a8a' : i < 2 ? '#fff' : '#334155',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
@@ -2250,7 +2348,7 @@ export default function AdminDashboard() {
                           style={{
                             ...tblTd,
                             fontSize: 12.5,
-                            color: '#475569',
+                            color: '#334155',
                             maxWidth: 180,
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
@@ -2268,7 +2366,7 @@ export default function AdminDashboard() {
                               fontSize: 11.5,
                               fontWeight: 700,
                               background: '#EBF3FF',
-                              color: '#1d4ed8',
+                              color: '#0b3fa8',
                             }}
                           >
                             {rtLabel(w.rt)}
@@ -2280,7 +2378,7 @@ export default function AdminDashboard() {
                             fontFamily: 'monospace',
                             fontWeight: 800,
                             fontSize: 15,
-                            color: i === 0 ? '#0051d5' : '#334155',
+                            color: i === 0 ? '#0b3fa8' : '#334155',
                           }}
                         >
                           {Number(w.skor_saw).toFixed(6)}
@@ -2294,7 +2392,7 @@ export default function AdminDashboard() {
                           style={{
                             padding: '48px',
                             textAlign: 'center',
-                            color: '#475569',
+                            color: '#334155',
                             fontSize: 13,
                           }}
                         >
@@ -2320,6 +2418,7 @@ export default function AdminDashboard() {
                 }}
               >
                 <div
+                  className="mob-card-head"
                   style={{
                     padding: '18px 22px',
                     borderBottom: '1px solid #f1f5f9',
@@ -2333,7 +2432,7 @@ export default function AdminDashboard() {
                     <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>
                       Daftar Kriteria SAW
                     </div>
-                    <div style={{ fontSize: 12, color: '#475569', marginTop: 2 }}>
+                    <div style={{ fontSize: 12, color: '#334155', marginTop: 2 }}>
                       Normalisasi bobot dilakukan otomatis oleh SawController (bobot / totalBobot)
                     </div>
                   </div>
@@ -2361,8 +2460,8 @@ export default function AdminDashboard() {
                             : '#fef3c7',
                       }}
                     >
-                      <MI name="calculate" size={15} style={{ color: '#1A56DB' }} />
-                      <span style={{ fontSize: 12, fontWeight: 700, color: '#1A56DB' }}>
+                      <MI name="calculate" size={15} style={{ color: '#0b3fa8' }} />
+                      <span style={{ fontSize: 12, fontWeight: 700, color: '#0b3fa8' }}>
                         Total Bobot: {kriteriaData.reduce((s, k) => s + Number(k.bobot), 0)}%
                       </span>
                     </div>
@@ -2375,7 +2474,7 @@ export default function AdminDashboard() {
                         padding: '8px 14px',
                         borderRadius: 9,
                         border: 'none',
-                        background: '#1A56DB',
+                        background: '#0b3fa8',
                         color: '#fff',
                         fontSize: 12,
                         fontWeight: 700,
@@ -2386,7 +2485,7 @@ export default function AdminDashboard() {
                     </button>
                   </div>
                 </div>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <table className="mob-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr>
                       {['No', 'Kode', 'Nama Kriteria', 'Tipe', 'Bobot', 'Sub-Kriteria', 'Aksi'].map(
@@ -2406,7 +2505,7 @@ export default function AdminDashboard() {
                           onMouseEnter={(e) => (e.currentTarget.style.background = '#fafcff')}
                           onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                         >
-                          <td style={{ ...tblTd, fontWeight: 700, color: '#475569', width: 44 }}>
+                          <td style={{ ...tblTd, fontWeight: 700, color: '#334155', width: 44 }}>
                             {i + 1}
                           </td>
                           <td style={tblTd}>
@@ -2417,7 +2516,7 @@ export default function AdminDashboard() {
                                 fontSize: 12,
                                 fontWeight: 700,
                                 background: '#EBF3FF',
-                                color: '#1A56DB',
+                                color: '#0b3fa8',
                               }}
                             >
                               C{k.id_kriteria}
@@ -2432,7 +2531,7 @@ export default function AdminDashboard() {
                                 fontSize: 11,
                                 fontWeight: 700,
                                 background: k.tipe === 'benefit' ? '#dcfce7' : '#fee2e2',
-                                color: k.tipe === 'benefit' ? '#15803d' : '#b91c1c',
+                                color: k.tipe === 'benefit' ? '#166534' : '#b91c1c',
                               }}
                             >
                               {k.tipe === 'benefit' ? 'Benefit' : 'Cost'}
@@ -2445,7 +2544,7 @@ export default function AdminDashboard() {
                                   height: 6,
                                   width: 80,
                                   borderRadius: 4,
-                                  background: '#e2e8f0',
+                                  background: '#cbd5e1',
                                   overflow: 'hidden',
                                 }}
                               >
@@ -2453,7 +2552,7 @@ export default function AdminDashboard() {
                                   style={{
                                     height: '100%',
                                     borderRadius: 4,
-                                    background: '#1A56DB',
+                                    background: '#0b3fa8',
                                     width: `${Math.min(k.bobot, 100)}%`,
                                   }}
                                 />
@@ -2462,7 +2561,7 @@ export default function AdminDashboard() {
                                 style={{
                                   fontSize: 13,
                                   fontWeight: 700,
-                                  color: '#1A56DB',
+                                  color: '#0b3fa8',
                                   fontFamily: 'monospace',
                                 }}
                               >
@@ -2481,7 +2580,7 @@ export default function AdminDashboard() {
                                 borderRadius: 7,
                                 border: 'none',
                                 background: '#F0F6FF',
-                                color: '#1A56DB',
+                                color: '#0b3fa8',
                                 fontSize: 12,
                                 fontWeight: 700,
                                 cursor: 'pointer',
@@ -2506,7 +2605,7 @@ export default function AdminDashboard() {
                                 borderRadius: 8,
                                 border: 'none',
                                 background: '#EBF3FF',
-                                color: '#1A56DB',
+                                color: '#0b3fa8',
                                 cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
@@ -2525,7 +2624,7 @@ export default function AdminDashboard() {
                           style={{
                             padding: '48px',
                             textAlign: 'center',
-                            color: '#475569',
+                            color: '#334155',
                             fontSize: 13,
                           }}
                         >
@@ -2548,6 +2647,7 @@ export default function AdminDashboard() {
                   }}
                 >
                   <div
+                    className="mob-card-head"
                     style={{
                       padding: '16px 22px',
                       borderBottom: '1px solid #e0f2fe',
@@ -2562,7 +2662,7 @@ export default function AdminDashboard() {
                         Sub-Kriteria: {selectedKriteria.nama_kriteria} (C
                         {selectedKriteria.id_kriteria})
                       </div>
-                      <div style={{ fontSize: 12, color: '#0369a1', marginTop: 2 }}>
+                      <div style={{ fontSize: 12, color: '#0b3fa8', marginTop: 2 }}>
                         Nilai ini dipakai SawController sebagai input matriks keputusan
                       </div>
                     </div>
@@ -2571,16 +2671,18 @@ export default function AdminDashboard() {
                       style={{
                         fontSize: 12,
                         fontWeight: 700,
-                        color: '#475569',
+                        color: '#334155',
                         background: 'none',
                         border: 'none',
                         cursor: 'pointer',
+                        minHeight: 40,
+                        padding: '0 6px',
                       }}
                     >
                       Tutup
                     </button>
                   </div>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <table className="mob-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr>
                         {['No', 'Keterangan / Pilihan Jawaban', 'Nilai (rij)', 'Aksi'].map((h) => (
@@ -2597,7 +2699,7 @@ export default function AdminDashboard() {
                           onMouseEnter={(e) => (e.currentTarget.style.background = '#f0f9ff')}
                           onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                         >
-                          <td style={{ ...tblTd, fontWeight: 700, color: '#475569', width: 44 }}>
+                          <td style={{ ...tblTd, fontWeight: 700, color: '#334155', width: 44 }}>
                             {i + 1}
                           </td>
                           <td style={tblTd}>{sk.keterangan}</td>
@@ -2618,9 +2720,9 @@ export default function AdminDashboard() {
                                       : '#fee2e2',
                                 color:
                                   sk.nilai >= 7.5
-                                    ? '#15803d'
+                                    ? '#166534'
                                     : sk.nilai >= 5
-                                      ? '#a16207'
+                                      ? '#92400e'
                                       : '#b91c1c',
                               }}
                             >
@@ -2639,7 +2741,7 @@ export default function AdminDashboard() {
                                 borderRadius: 8,
                                 border: 'none',
                                 background: '#EBF3FF',
-                                color: '#1A56DB',
+                                color: '#0b3fa8',
                                 cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
@@ -2658,7 +2760,7 @@ export default function AdminDashboard() {
                             style={{
                               padding: '32px',
                               textAlign: 'center',
-                              color: '#475569',
+                              color: '#334155',
                               fontSize: 13,
                             }}
                           >
@@ -2689,7 +2791,7 @@ export default function AdminDashboard() {
                       left: 12,
                       top: '50%',
                       transform: 'translateY(-50%)',
-                      color: '#475569',
+                      color: '#334155',
                     }}
                   />
                   <input
@@ -2698,7 +2800,7 @@ export default function AdminDashboard() {
                       paddingRight: 14,
                       height: 38,
                       borderRadius: 9,
-                      border: '1.5px solid #C6DCFF',
+                      border: '1.5px solid #a9c7f0',
                       background: '#fff',
                       fontFamily: "'Plus Jakarta Sans',sans-serif",
                       fontSize: 13,
@@ -2709,11 +2811,11 @@ export default function AdminDashboard() {
                     placeholder="Cari nama atau username..."
                     value={searchUser}
                     onChange={(e) => setSearchUser(e.target.value)}
-                    onFocus={(e) => (e.target.style.borderColor = '#1A56DB')}
-                    onBlur={(e) => (e.target.style.borderColor = '#C6DCFF')}
+                    onFocus={(e) => (e.target.style.borderColor = '#0b3fa8')}
+                    onBlur={(e) => (e.target.style.borderColor = '#a9c7f0')}
                   />
                 </div>
-                <div style={{ display: 'flex', gap: 6 }}>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   {['all', 'admin', 'rw', 'rt', 'warga'].map((r) => (
                     <button
                       key={r}
@@ -2721,9 +2823,9 @@ export default function AdminDashboard() {
                       style={{
                         padding: '7px 13px',
                         borderRadius: 8,
-                        border: `1.5px solid ${filterRole === r ? '#0051d5' : '#e2e8f0'}`,
-                        background: filterRole === r ? '#0051d5' : '#fff',
-                        color: filterRole === r ? '#fff' : '#475569',
+                        border: `1.5px solid ${filterRole === r ? '#0b3fa8' : '#cbd5e1'}`,
+                        background: filterRole === r ? '#0b3fa8' : '#fff',
+                        color: filterRole === r ? '#fff' : '#334155',
                         fontSize: 12,
                         fontWeight: 700,
                         cursor: 'pointer',
@@ -2735,7 +2837,7 @@ export default function AdminDashboard() {
                   ))}
                 </div>
                 <span
-                  style={{ marginLeft: 'auto', fontSize: 12, color: '#475569', fontWeight: 600 }}
+                  style={{ marginLeft: 'auto', fontSize: 12, color: '#334155', fontWeight: 600 }}
                 >
                   {filteredUsers.length} akun
                 </span>
@@ -2749,7 +2851,7 @@ export default function AdminDashboard() {
                   overflow: 'hidden',
                 }}
               >
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <table className="mob-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr>
                       {[
@@ -2779,7 +2881,7 @@ export default function AdminDashboard() {
                           onMouseEnter={(e) => (e.currentTarget.style.background = '#fafcff')}
                           onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                         >
-                          <td style={{ ...tblTd, fontWeight: 700, color: '#475569', width: 44 }}>
+                          <td style={{ ...tblTd, fontWeight: 700, color: '#334155', width: 44 }}>
                             {i + 1}
                           </td>
                           <td style={tblTd}>
@@ -2789,7 +2891,7 @@ export default function AdminDashboard() {
                                   width: 34,
                                   height: 34,
                                   borderRadius: 9,
-                                  background: '#1A56DB',
+                                  background: '#0b3fa8',
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
@@ -2809,7 +2911,7 @@ export default function AdminDashboard() {
                               ...tblTd,
                               fontFamily: 'monospace',
                               fontSize: 12.5,
-                              color: '#475569',
+                              color: '#334155',
                             }}
                           >
                             {u.username}
@@ -2819,7 +2921,7 @@ export default function AdminDashboard() {
                           </td>
                           <td style={tblTd}>
                             {u.role !== 'warga' ? (
-                              <span style={{ color: '#64748b', fontSize: 12 }}>—</span>
+                              <span style={{ color: '#475569', fontSize: 12 }}>—</span>
                             ) : u.id_warga ? (
                               <span
                                 title={`Tertaut ke warga #${u.id_warga}`}
@@ -2856,7 +2958,7 @@ export default function AdminDashboard() {
                             style={{
                               ...tblTd,
                               fontSize: 12.5,
-                              color: '#475569',
+                              color: '#334155',
                               maxWidth: 160,
                               overflow: 'hidden',
                               textOverflow: 'ellipsis',
@@ -2891,7 +2993,7 @@ export default function AdminDashboard() {
                                   borderRadius: 8,
                                   border: 'none',
                                   background: '#EBF3FF',
-                                  color: '#1A56DB',
+                                  color: '#0b3fa8',
                                   cursor: 'pointer',
                                   display: 'flex',
                                   alignItems: 'center',
@@ -2929,7 +3031,7 @@ export default function AdminDashboard() {
                           style={{
                             padding: '48px',
                             textAlign: 'center',
-                            color: '#475569',
+                            color: '#334155',
                             fontSize: 13,
                           }}
                         >
@@ -2960,6 +3062,7 @@ export default function AdminDashboard() {
                 </p>
               </div>
               <div
+                className="mob-card-head"
                 style={{
                   padding: '18px 22px',
                   borderBottom: '1px solid #f1f5f9',
@@ -2973,7 +3076,7 @@ export default function AdminDashboard() {
                   <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>
                     Riwayat Aktivitas Sistem
                   </div>
-                  <div style={{ fontSize: 12, color: '#475569', marginTop: 2 }}>
+                  <div style={{ fontSize: 12, color: '#334155', marginTop: 2 }}>
                     Menampilkan 500 aktivitas terbaru — endpoint: GET /api/logs
                   </div>
                 </div>
@@ -2984,14 +3087,14 @@ export default function AdminDashboard() {
                     background: '#F0F6FF',
                     fontSize: 12,
                     fontWeight: 700,
-                    color: '#475569',
+                    color: '#334155',
                   }}
                 >
                   {activityLogs.length} entri
                 </span>
               </div>
               {activityLogs.length > 0 ? (
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <table className="mob-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr>
                       {['No', 'Waktu', 'Pengguna', 'Hak Akses', 'Deskripsi Aktivitas'].map((h) => (
@@ -3010,7 +3113,7 @@ export default function AdminDashboard() {
                           onMouseEnter={(e) => (e.currentTarget.style.background = '#fafcff')}
                           onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                         >
-                          <td style={{ ...tblTd, fontWeight: 700, color: '#475569', width: 44 }}>
+                          <td style={{ ...tblTd, fontWeight: 700, color: '#334155', width: 44 }}>
                             {i + 1}
                           </td>
                           <td
@@ -3018,7 +3121,7 @@ export default function AdminDashboard() {
                               ...tblTd,
                               fontFamily: 'monospace',
                               fontSize: 12,
-                              color: '#475569',
+                              color: '#334155',
                               whiteSpace: 'nowrap',
                             }}
                           >
@@ -3057,14 +3160,14 @@ export default function AdminDashboard() {
                     gap: 12,
                   }}
                 >
-                  <MI name="history" size={48} style={{ color: '#64748b' }} />
-                  <div style={{ fontSize: 14, fontWeight: 600, color: '#475569' }}>
+                  <MI name="history" size={48} style={{ color: '#475569' }} />
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#334155' }}>
                     Belum ada aktivitas tercatat
                   </div>
                   <div
                     style={{
                       fontSize: 12.5,
-                      color: '#475569',
+                      color: '#334155',
                       textAlign: 'center',
                       lineHeight: 1.6,
                     }}
@@ -3099,6 +3202,7 @@ export default function AdminDashboard() {
               style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}
             >
               <div
+                className="mob-two-col"
                 style={{
                   overflowY: 'auto',
                   padding: '20px 24px',
@@ -3116,7 +3220,7 @@ export default function AdminDashboard() {
                       style={{
                         padding: '16px 18px',
                         borderRadius: 12,
-                        border: `1.5px solid ${formMentah[key] ? '#bfdbfe' : '#e2e8f0'}`,
+                        border: `1.5px solid ${formMentah[key] ? '#bfdbfe' : '#cbd5e1'}`,
                         background: formMentah[key] ? '#f0f9ff' : '#f8fafc',
                         transition: '.15s',
                       }}
@@ -3125,13 +3229,13 @@ export default function AdminDashboard() {
                         style={{
                           fontSize: 11,
                           fontWeight: 700,
-                          color: '#475569',
+                          color: '#334155',
                           textTransform: 'uppercase',
                           letterSpacing: '.07em',
                           marginBottom: 10,
                         }}
                       >
-                        <span style={{ color: '#1A56DB', marginRight: 4 }}>C{i + 1}</span>
+                        <span style={{ color: '#0b3fa8', marginRight: 4 }}>C{i + 1}</span>
                         {h}
                       </div>
                       <div style={{ position: 'relative' }}>
@@ -3160,7 +3264,7 @@ export default function AdminDashboard() {
                   justifyContent: 'flex-end',
                   gap: 10,
                   padding: '16px 24px',
-                  borderTop: '1px solid #e2e8f0',
+                  borderTop: '1px solid #cbd5e1',
                   flexShrink: 0,
                 }}
               >
@@ -3192,7 +3296,7 @@ export default function AdminDashboard() {
               onSubmit={simpanUser}
               style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}
             >
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              <div className="mob-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                 <div style={{ gridColumn: '1/-1' }}>
                   <Lbl required>Nama Lengkap</Lbl>
                   <Inp
@@ -3257,7 +3361,7 @@ export default function AdminDashboard() {
                       width: '100%',
                       padding: '10px 13px',
                       borderRadius: 9,
-                      border: '1.5px solid #C6DCFF',
+                      border: '1.5px solid #a9c7f0',
                       background: '#FAFCFF',
                       fontFamily: "'Plus Jakarta Sans',sans-serif",
                       fontSize: 13.5,
@@ -3265,8 +3369,8 @@ export default function AdminDashboard() {
                       outline: 'none',
                       resize: 'none',
                     }}
-                    onFocus={(e) => (e.target.style.borderColor = '#1A56DB')}
-                    onBlur={(e) => (e.target.style.borderColor = '#C6DCFF')}
+                    onFocus={(e) => (e.target.style.borderColor = '#0b3fa8')}
+                    onBlur={(e) => (e.target.style.borderColor = '#a9c7f0')}
                   />
                 </div>
               </div>
@@ -3328,10 +3432,10 @@ export default function AdminDashboard() {
                   borderRadius: 9,
                   background: '#F0F6FF',
                   fontSize: 11.5,
-                  color: '#475569',
+                  color: '#334155',
                 }}
               >
-                <MI name="info" size={15} style={{ color: '#1A56DB' }} />
+                <MI name="info" size={15} style={{ color: '#0b3fa8' }} />
                 <span>
                   Bobot C{modalKrit.id_kriteria} saat ini <b>{modalKrit.bobot}%</b>. Total bobot
                   seluruh kriteria wajib 100%, jadi bobot diubah serentak lewat tombol{' '}
@@ -3379,7 +3483,7 @@ export default function AdminDashboard() {
                       fontSize: 11,
                       fontWeight: 700,
                       background: '#EBF3FF',
-                      color: '#1A56DB',
+                      color: '#0b3fa8',
                     }}
                   >
                     C{k.id_kriteria}
@@ -3407,7 +3511,7 @@ export default function AdminDashboard() {
                         top: '50%',
                         transform: 'translateY(-50%)',
                         fontSize: 11,
-                        color: '#475569',
+                        color: '#334155',
                         pointerEvents: 'none',
                       }}
                     >
@@ -3426,7 +3530,7 @@ export default function AdminDashboard() {
                   borderRadius: 9,
                   background:
                     Math.abs(totalBobotForm - 100) < 0.001 ? '#d1fae5' : '#ffdad6',
-                  color: Math.abs(totalBobotForm - 100) < 0.001 ? '#065f46' : '#ba1a1a',
+                  color: Math.abs(totalBobotForm - 100) < 0.001 ? '#065f46' : '#991b1b',
                   fontSize: 12.5,
                   fontWeight: 700,
                 }}
@@ -3477,7 +3581,7 @@ export default function AdminDashboard() {
                     width: '100%',
                     padding: '10px 13px',
                     borderRadius: 9,
-                    border: '1.5px solid #C6DCFF',
+                    border: '1.5px solid #a9c7f0',
                     background: '#FAFCFF',
                     fontFamily: "'Plus Jakarta Sans',sans-serif",
                     fontSize: 13.5,
@@ -3485,8 +3589,8 @@ export default function AdminDashboard() {
                     outline: 'none',
                     resize: 'none',
                   }}
-                  onFocus={(e) => (e.target.style.borderColor = '#1A56DB')}
-                  onBlur={(e) => (e.target.style.borderColor = '#C6DCFF')}
+                  onFocus={(e) => (e.target.style.borderColor = '#0b3fa8')}
+                  onBlur={(e) => (e.target.style.borderColor = '#a9c7f0')}
                 />
               </div>
               <div>
@@ -3514,6 +3618,98 @@ export default function AdminDashboard() {
                 </BtnPrimary>
               </div>
             </form>
+          </ModalBox>
+        </Overlay>
+      )}
+
+      {/* ════ MODAL: Hasil Import CSV (akun warga) ════ */}
+      {hasilImport && (
+        <Overlay onClose={() => setHasilImport(null)}>
+          <ModalBox maxW={760} fullH>
+            <ModalHead
+              title="Hasil Import Data Warga"
+              sub={`${hasilImport.banyak_import ?? 0} data masuk · ${hasilImport.banyak_akun ?? 0} akun dibuat · ${hasilImport.banyak_skip ?? 0} dilewati · ${hasilImport.banyak_gagal ?? 0} gagal`}
+              onClose={() => setHasilImport(null)}
+            />
+            <div style={{ padding: '16px 24px', overflowY: 'auto', flex: 1 }}>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 9,
+                  alignItems: 'flex-start',
+                  padding: '12px 14px',
+                  borderRadius: 10,
+                  background: '#EFF6FF',
+                  border: '1px solid #BFDBFE',
+                  marginBottom: 14,
+                }}
+              >
+                <MI name="info" fill size={17} style={{ color: '#0b3fa8', marginTop: 1 }} />
+                <span style={{ fontSize: 12.5, color: '#1e3a8a', lineHeight: 1.55 }}>
+                  Tiap warga hasil import otomatis punya akun login: username = nama
+                  depan, password awal = nama depan + 123 (nama depan kembar diberi
+                  huruf, mis. budia). Password hanya ditampilkan sekali di sini —
+                  unduh CSV-nya dan teruskan ke warga masing-masing.
+                </span>
+              </div>
+
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+                  <thead>
+                    <tr>
+                      {['Nama', 'RT', 'Username', 'Password Awal', 'Keterangan'].map((h) => (
+                        <th
+                          key={h}
+                          style={{
+                            textAlign: 'left',
+                            padding: '9px 10px',
+                            fontSize: 10.5,
+                            fontWeight: 700,
+                            color: '#334155',
+                            textTransform: 'uppercase',
+                            letterSpacing: '.05em',
+                            background: '#F0F6FF',
+                            borderBottom: '1px solid #DBEAFE',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(hasilImport.laporan || []).map((b, i) => (
+                      <tr key={i}>
+                        <td style={{ padding: '9px 10px', borderBottom: '1px solid #EBF3FF', fontWeight: 600 }}>
+                          {b.nama || '—'}
+                        </td>
+                        <td style={{ padding: '9px 10px', borderBottom: '1px solid #EBF3FF', whiteSpace: 'nowrap' }}>
+                          {b.rt || '—'}
+                        </td>
+                        <td style={{ padding: '9px 10px', borderBottom: '1px solid #EBF3FF', fontFamily: 'monospace', fontSize: 11.5, color: '#334155', whiteSpace: 'nowrap' }}>
+                          {b.username || '—'}
+                        </td>
+                        <td style={{ padding: '9px 10px', borderBottom: '1px solid #EBF3FF', fontFamily: 'monospace', fontSize: 11.5, fontWeight: 700, color: b.password_awal ? '#065f46' : '#475569', whiteSpace: 'nowrap' }}>
+                          {b.password_awal || '—'}
+                        </td>
+                        <td style={{ padding: '9px 10px', borderBottom: '1px solid #EBF3FF', fontSize: 11.5, color: b.status === 'gagal' ? '#b91c1c' : '#334155', maxWidth: 230 }}>
+                          {b.detail || b.status}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '14px 24px', borderTop: '1px solid #DBEAFE', flexShrink: 0 }}>
+              <BtnGhost onClick={() => setHasilImport(null)}>Tutup</BtnGhost>
+              {(hasilImport.laporan || []).some((b) => b.username) && (
+                <BtnPrimary onClick={unduhAkunImport}>
+                  <MI name="download" size={15} /> Unduh CSV Akun
+                </BtnPrimary>
+              )}
+            </div>
           </ModalBox>
         </Overlay>
       )}

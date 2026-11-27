@@ -35,10 +35,10 @@ const KATEGORI = [
 const statusCfg = (st) => {
   const s = String(st || '').toLowerCase();
   if (s === 'diterima')
-    return { label: 'Diterima', bg: '#dcfce7', color: '#15803d', icon: 'check_circle' };
+    return { label: 'Diterima', bg: '#dcfce7', color: '#166534', icon: 'check_circle' };
   if (s === 'ditolak')
     return { label: 'Ditolak', bg: '#fee2e2', color: '#b91c1c', icon: 'cancel' };
-  return { label: 'Menunggu', bg: '#fef9c3', color: '#a16207', icon: 'schedule' };
+  return { label: 'Menunggu', bg: '#fef9c3', color: '#92400e', icon: 'schedule' };
 };
 
 const fmtWaktu = (s) =>
@@ -171,14 +171,14 @@ export default function PengaduanPanel({ role = 'warga' }) {
         <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a' }}>
           Pengaduan Warga
         </div>
-        <div style={{ fontSize: 12.5, color: '#475569', marginTop: 4 }}>
+        <div style={{ fontSize: 12.5, color: '#334155', marginTop: 4 }}>
           {role === 'rt'
             ? 'Kelola keluhan warga. RT hanya melihat pengaduan di wilayahnya sendiri.'
             : staf
               ? 'Kelola keluhan dari seluruh RT. Admin dapat mengambil alih bila RT tidak tersedia.'
               : 'Sampaikan keluhan bila data atau proses bantuan tidak sesuai. Status dapat Anda pantau di sini.'}
           {staf && belumDitangani > 0 && (
-            <strong style={{ color: '#a16207' }}>
+            <strong style={{ color: '#92400e' }}>
               {' '}
               {belumDitangani} pengaduan belum ditangani.
             </strong>
@@ -215,7 +215,7 @@ export default function PengaduanPanel({ role = 'warga' }) {
             borderRadius: 12,
             background: '#ecfdf5',
             border: '1px solid #a7f3d0',
-            color: '#047857',
+            color: '#065f46',
             fontSize: 13,
           }}
         >
@@ -249,7 +249,7 @@ export default function PengaduanPanel({ role = 'warga' }) {
                 minHeight: 44,
                 padding: '10px 13px',
                 borderRadius: 9,
-                border: '1.5px solid #C6DCFF',
+                border: '1.5px solid #a9c7f0',
                 background: '#FAFCFF',
                 fontSize: 13.5,
                 fontFamily: 'inherit',
@@ -278,7 +278,7 @@ export default function PengaduanPanel({ role = 'warga' }) {
                 marginTop: 6,
                 padding: '11px 13px',
                 borderRadius: 9,
-                border: '1.5px solid #C6DCFF',
+                border: '1.5px solid #a9c7f0',
                 background: '#FAFCFF',
                 fontSize: 13.5,
                 fontFamily: 'inherit',
@@ -294,7 +294,7 @@ export default function PengaduanPanel({ role = 'warga' }) {
               disabled={kirimLoading}
               style={{
                 ...tombol,
-                background: '#1A56DB',
+                background: '#0b3fa8',
                 color: '#fff',
                 border: 'none',
                 opacity: kirimLoading ? 0.6 : 1,
@@ -303,7 +303,7 @@ export default function PengaduanPanel({ role = 'warga' }) {
               <Ikon name="send" size={16} />
               {kirimLoading ? 'Mengirim...' : 'Kirim Pengaduan'}
             </button>
-            <span style={{ fontSize: 11.5, color: '#475569' }}>
+            <span style={{ fontSize: 11.5, color: '#334155' }}>
               {isi.length}/5000 karakter
             </span>
           </div>
@@ -332,18 +332,18 @@ export default function PengaduanPanel({ role = 'warga' }) {
         </div>
 
         {loading && (
-          <div style={{ padding: '32px', textAlign: 'center', fontSize: 13, color: '#475569' }}>
+          <div style={{ padding: '32px', textAlign: 'center', fontSize: 13, color: '#334155' }}>
             Memuat pengaduan...
           </div>
         )}
 
         {!loading && daftar.length === 0 && (
           <div style={{ padding: '40px 22px', textAlign: 'center' }}>
-            <Ikon name="inbox" size={40} style={{ color: '#475569' }} />
+            <Ikon name="inbox" size={40} style={{ color: '#334155' }} />
             <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginTop: 10 }}>
               Belum ada pengaduan
             </div>
-            <div style={{ fontSize: 12.5, color: '#475569', marginTop: 4 }}>
+            <div style={{ fontSize: 12.5, color: '#334155', marginTop: 4 }}>
               {staf
                 ? 'Belum ada warga yang mengirim keluhan.'
                 : 'Gunakan formulir di atas bila ada yang perlu disampaikan.'}
@@ -391,11 +391,11 @@ export default function PengaduanPanel({ role = 'warga' }) {
                   >
                     <Ikon name={cfg.icon} size={14} /> {cfg.label}
                   </span>
-                  <span style={{ fontSize: 11.5, color: '#475569' }}>
+                  <span style={{ fontSize: 11.5, color: '#334155' }}>
                     #{d.id_pengaduan} · {d.kategori || 'umum'} · {fmtWaktu(d.created_at)}
                   </span>
                   {staf && d.warga && (
-                    <span style={{ fontSize: 11.5, color: '#475569' }}>
+                    <span style={{ fontSize: 11.5, color: '#334155' }}>
                       · {d.warga.nama_lengkap} (RT {d.warga.rt})
                     </span>
                   )}
@@ -422,7 +422,7 @@ export default function PengaduanPanel({ role = 'warga' }) {
                 )}
 
                 {riwayat.length > 0 && (
-                  <div style={{ fontSize: 11.5, color: '#475569' }}>
+                  <div style={{ fontSize: 11.5, color: '#334155' }}>
                     Riwayat:{' '}
                     {riwayat
                       .map((r) => `${r.status_lama || '—'} → ${r.status_baru}`)
@@ -446,7 +446,7 @@ export default function PengaduanPanel({ role = 'warga' }) {
                         minHeight: 44,
                         padding: '10px 13px',
                         borderRadius: 9,
-                        border: '1.5px solid #C6DCFF',
+                        border: '1.5px solid #a9c7f0',
                         background: '#FAFCFF',
                         fontSize: 13,
                         fontFamily: 'inherit',
@@ -458,7 +458,7 @@ export default function PengaduanPanel({ role = 'warga' }) {
                       onClick={() => tindak(d.id_pengaduan, 'diterima')}
                       style={{
                         ...tombol,
-                        background: '#047857',
+                        background: '#065f46',
                         color: '#fff',
                         border: 'none',
                       }}

@@ -13,7 +13,10 @@ const login = async (user, pass) => {
   await page.fill('input[placeholder*="username"]', user);
   await page.fill('input[type="password"]', pass);
   await page.click('button[type="submit"]');
-  await page.waitForTimeout(1900);
+  // Tunggu kerangka dashboard terpasang; jeda tetap saja bisa menangkap halaman
+  // yang masih memuat sehingga navigasi berikutnya tidak menemukan tombol.
+  await page.waitForSelector('.nav-tab, aside, main', { timeout: 20000 }).catch(() => {});
+  await page.waitForTimeout(1200);
 };
 
 const check = async (label) => {
@@ -27,6 +30,15 @@ const check = async (label) => {
 };
 
 const clickNav = async (re) => {
+  // Tunggu tombolnya benar-benar ada; kalau tidak, klik tidak terjadi dan guard
+  // memeriksa halaman yang salah (dulu: kuesioner diperiksa padahal masih Beranda).
+  await page
+    .waitForFunction(
+      (pat) => [...document.querySelectorAll('.nav-tab, aside button')].some((x) => new RegExp(pat).test(x.textContent)),
+      re,
+      { timeout: 20000 }
+    )
+    .catch(() => {});
   await page.evaluate((pat) => {
     const b = [...document.querySelectorAll('.nav-tab, aside button')].find((x) => new RegExp(pat).test(x.textContent));
     if (b) b.click();
@@ -55,6 +67,11 @@ console.log('register: teks wajib diisi =', regHelp, '| tautan masuk =', regLink
 await login('warga01', 'warga123');
 await check('warga:beranda');
 await clickNav('Kuesioner');
+// Isi kuesioner dimuat async (GET /warga/status). Tanpa menunggu, guard mengukur
+// dan memotret halaman yang masih menampilkan spinner "Memuat data pengajuan...".
+await page
+  .waitForFunction(() => !/Memuat data pengajuan/.test(document.body.innerText), null, { timeout: 20000 })
+  .catch(() => {});
 await check('warga:kuesioner');
 await page.screenshot({ path: `${SHOTS}/uat_15_warga_kuesioner_360.png` });
 await clickNav('^Status$');

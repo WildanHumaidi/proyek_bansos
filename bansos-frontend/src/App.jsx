@@ -7,6 +7,7 @@ import RtDashboard from './pages/RtDashboard';
 import RwDashboard from './pages/RwDashboard';
 import WargaDashboard from './pages/WargaDashboard';
 import DiagnosaKoneksi from './pages/DiagnosaKoneksi';
+import GantiPassword from './pages/GantiPassword';
 import { getUser } from './lib/api';
 
 /* Proteksi route — cek token & role */
@@ -27,6 +28,16 @@ export default function App() {
         {/* Autentikasi */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<RegisterWarga />} />
+
+        {/* Ganti password — semua peran yang sudah login */}
+        <Route
+          path="/ganti-password"
+          element={
+            <Protected>
+              <GantiPassword />
+            </Protected>
+          }
+        />
 
         {/* Dashboard Admin */}
         <Route

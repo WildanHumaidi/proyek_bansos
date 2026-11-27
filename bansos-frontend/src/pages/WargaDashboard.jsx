@@ -133,26 +133,26 @@ const fmtDate = (s) =>
 const CSS = `
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { font-family: 'Plus Jakarta Sans', sans-serif; background: #F0F6FF; color: #0f172a; -webkit-font-smoothing: antialiased; }
-  ::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-thumb { background: #C6DCFF; border-radius: 6px; }
+  ::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-thumb { background: #a9c7f0; border-radius: 6px; }
   .material-symbols-outlined { font-family: 'Material Symbols Outlined'; font-variation-settings: 'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24; font-style: normal; display: inline-block; line-height: 1; text-transform: none; letter-spacing: normal; white-space: nowrap; }
 
   .nav-tab { background: none; border: none; cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13.5px; font-weight: 600; padding: 12px 20px; color: #374151; border-bottom: 2px solid transparent; transition: .15s; white-space: nowrap; }
-  .nav-tab:hover { color: #1A56DB; }
-  .nav-tab.active { color: #1A56DB; border-bottom-color: #1A56DB; }
+  .nav-tab:hover { color: #0b3fa8; }
+  .nav-tab.active { color: #0b3fa8; border-bottom-color: #0b3fa8; }
 
-  .inp-field { width: 100%; padding: 11px 14px; border-radius: 9px; border: 1.5px solid #C6DCFF; background: #FAFCFF; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13.5px; color: #0f172a; outline: none; transition: .15s; }
-  .inp-field:focus { border-color: #1A56DB; background: #fff; box-shadow: 0 0 0 3px rgba(26,86,219,.08); }
+  .inp-field { width: 100%; padding: 11px 14px; border-radius: 9px; border: 1.5px solid #a9c7f0; background: #FAFCFF; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13.5px; color: #0f172a; outline: none; transition: .15s; }
+  .inp-field:focus { border-color: #0b3fa8; background: #fff; box-shadow: 0 0 0 3px rgba(26,86,219,.08); }
 
   .opt-card { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border: 1.5px solid #DBEAFE; border-radius: 9px; cursor: pointer; transition: .12s; background: #fff; }
   .opt-card:hover { border-color: #93c5fd; background: #F0F6FF; }
-  .opt-card.sel { border-color: #1A56DB; background: #EBF3FF; }
+  .opt-card.sel { border-color: #0b3fa8; background: #EBF3FF; }
 
-  .btn-blue { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 11px 22px; background: #1A56DB; color: #fff; border: none; border-radius: 9px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; transition: .15s; }
-  .btn-blue:hover:not(:disabled) { background: #1649C4; }
+  .btn-blue { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 11px 22px; background: #0b3fa8; color: #fff; border: none; border-radius: 9px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; transition: .15s; }
+  .btn-blue:hover:not(:disabled) { background: #0b3fa8; }
   .btn-blue:disabled { opacity: .6; cursor: not-allowed; }
 
-  .btn-ghost { display: inline-flex; align-items: center; gap: 7px; padding: 10px 18px; background: #fff; color: #374151; border: 1.5px solid #C6DCFF; border-radius: 9px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; transition: .15s; }
-  .btn-ghost:hover { background: #EBF3FF; border-color: #93C5FD; color: #1A56DB; }
+  .btn-ghost { display: inline-flex; align-items: center; gap: 7px; padding: 10px 18px; background: #fff; color: #374151; border: 1.5px solid #a9c7f0; border-radius: 9px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; transition: .15s; }
+  .btn-ghost:hover { background: #EBF3FF; border-color: #93C5FD; color: #0b3fa8; }
 
   .card { background: #fff; border-radius: 14px; border: 1px solid #DBEAFE; }
 
@@ -162,12 +162,28 @@ const CSS = `
 
   /* ── Responsif HP: warga banyak yang pakai HP layar kecil ── */
   @media (max-width: 900px) {
-    .warga-nav-wrap { flex-wrap: wrap; height: auto !important; padding: 8px 14px !important; gap: 6px; }
-    .warga-tabs { order: 3; width: 100%; overflow-x: auto; margin-top: 2px; padding-bottom: 2px; }
+    /* HP: brand + profil + keluar dalam SATU baris, tab pindah ke baris kedua.
+       Flex-wrap biasa membuat chip profil terdorong turun ke bawah logo saat
+       layar sempit; grid memaksa posisinya. Lebar 62 px tetap untuk desktop. */
+    .warga-nav-wrap {
+      display: grid !important;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      flex-wrap: nowrap;
+      height: auto !important;
+      padding: 8px 12px !important;
+      gap: 6px 8px;
+    }
+    .warga-nav-wrap > div:first-child { grid-column: 1; grid-row: 1; min-width: 0; }
+    .warga-user-chip { grid-column: 3; grid-row: 1; padding: 0 !important; gap: 6px; }
+    .warga-user-chip > div:first-child { padding: 4px 8px !important; gap: 7px; }
+    .warga-tabs { grid-column: 1 / -1; grid-row: 2; width: 100%; height: auto; overflow-x: auto; margin-top: 0; padding-bottom: 2px; }
     .warga-tabs .nav-tab { padding: 10px 14px; font-size: 13px; }
-    .warga-user-chip { padding: 5px 8px !important; }
-    .warga-user-name .nama { font-size: 12px !important; }
+    /* Nama bisa dipotong elipsis; label "Keluar" disembunyikan supaya muat. */
+    .warga-user-name .nama { font-size: 12px !important; max-width: 84px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .warga-user-name .sub { display: none; }
+    .warga-user-chip button { padding: 7px 9px !important; }
+    .warga-logout-text { display: none; }
     .warga-hero { grid-template-columns: 1fr !important; }
     .warga-hero-side { padding: 20px 24px !important; }
     .warga-stats { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
@@ -182,6 +198,11 @@ const CSS = `
   }
   @media (max-width: 480px) {
     .warga-stats { grid-template-columns: 1fr !important; }
+  }
+  @media (max-width: 359px) {
+    /* Layar 320-359px: nama tidak muat sebaris dengan logo — sisakan avatarnya. */
+    .warga-user-name { display: none; }
+    .warga-user-chip > div:first-child { padding: 4px 6px !important; }
   }
 `;
 
@@ -207,26 +228,26 @@ const statusCfg = (st) => {
   if (s === 'disetujui' || s.includes('setuju'))
     return {
       label: 'Disetujui',
-      color: '#15803d',
+      color: '#166534',
       bg: '#dcfce7',
-      dot: '#22c55e',
+      dot: '#15803d',
       icon: 'check_circle',
       step: 2,
     };
   if (s === 'ditolak' || s.includes('tolak'))
     return {
       label: 'Ditolak',
-      color: '#dc2626',
+      color: '#b91c1c',
       bg: '#fee2e2',
-      dot: '#ef4444',
+      dot: '#b91c1c',
       icon: 'cancel',
       step: -1,
     };
   return {
     label: 'Menunggu Verifikasi',
-    color: '#ca8a04',
+    color: '#92400e',
     bg: '#fef9c3',
-    dot: '#f59e0b',
+    dot: '#92400e',
     icon: 'schedule',
     step: 1,
   };
@@ -498,13 +519,13 @@ export default function WargaDashboard() {
                 width: 36,
                 height: 36,
                 border: '3px solid #DBEAFE',
-                borderTopColor: '#1A56DB',
+                borderTopColor: '#0b3fa8',
                 borderRadius: '50%',
                 margin: '0 auto 14px',
                 animation: 'spin .8s linear infinite',
               }}
             />
-            <div style={{ color: '#526078', fontSize: 14 }}>Memuat data pengajuan...</div>
+            <div style={{ color: '#334155', fontSize: 14 }}>Memuat data pengajuan...</div>
           </div>
         </div>
       </>
@@ -544,7 +565,7 @@ export default function WargaDashboard() {
                 width: 38,
                 height: 38,
                 borderRadius: 10,
-                background: 'linear-gradient(135deg,#1A56DB 0%,#1e40af 100%)',
+                background: 'linear-gradient(135deg,#0b3fa8 0%,#062b6e 100%)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -588,13 +609,13 @@ export default function WargaDashboard() {
                   lineHeight: 1.1,
                 }}
               >
-                BANSOS<span style={{ color: '#1A56DB' }}>HUB</span>
+                BANSOS<span style={{ color: '#0b3fa8' }}>HUB</span>
               </div>
               <div
                 style={{
                   fontSize: 10,
                   fontWeight: 600,
-                  color: '#6B7280',
+                  color: '#475569',
                   textTransform: 'uppercase',
                   letterSpacing: '.07em',
                 }}
@@ -617,7 +638,7 @@ export default function WargaDashboard() {
                   <span
                     style={{
                       marginLeft: 6,
-                      background: '#1A56DB',
+                      background: '#0b3fa8',
                       color: '#fff',
                       borderRadius: '50%',
                       fontSize: 10,
@@ -649,7 +670,7 @@ export default function WargaDashboard() {
                   width: 28,
                   height: 28,
                   borderRadius: 7,
-                  background: '#1A56DB',
+                  background: '#0b3fa8',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -668,12 +689,44 @@ export default function WargaDashboard() {
                 >
                   {userData?.name}
                 </div>
-                <div className="sub" style={{ fontSize: 10.5, color: '#1A56DB', fontWeight: 600 }}>
+                <div className="sub" style={{ fontSize: 10.5, color: '#0b3fa8', fontWeight: 600 }}>
                   Warga · {rtLabel(userData?.rt)}
                 </div>
               </div>
             </div>
             <button
+              aria-label="Ganti Password"
+              title="Ganti Password"
+              onClick={() => navigate('/ganti-password')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '7px 14px',
+                background: '#fff',
+                color: '#374151',
+                border: '1.5px solid #a9c7f0',
+                borderRadius: 8,
+                fontSize: 12.5,
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: '.12s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#EBF3FF';
+                e.currentTarget.style.color = '#0b3fa8';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = '#fff';
+                e.currentTarget.style.color = '#374151';
+              }}
+            >
+              <MI name="lock" size={15} />
+              <span className="warga-logout-text">Ganti Sandi</span>
+            </button>
+            <button
+              aria-label="Keluar"
+              title="Keluar"
               onClick={() => {
                 localStorage.clear();
                 navigate('/login');
@@ -685,7 +738,7 @@ export default function WargaDashboard() {
                 padding: '7px 14px',
                 background: '#fff',
                 color: '#374151',
-                border: '1.5px solid #C6DCFF',
+                border: '1.5px solid #a9c7f0',
                 borderRadius: 8,
                 fontSize: 12.5,
                 fontWeight: 600,
@@ -694,14 +747,15 @@ export default function WargaDashboard() {
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = '#EBF3FF';
-                e.currentTarget.style.color = '#1A56DB';
+                e.currentTarget.style.color = '#0b3fa8';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.background = '#fff';
                 e.currentTarget.style.color = '#374151';
               }}
             >
-              <MI name="logout" size={15} /> Keluar
+              <MI name="logout" size={15} />
+              <span className="warga-logout-text">Keluar</span>
             </button>
           </div>
         </div>
@@ -729,7 +783,7 @@ export default function WargaDashboard() {
                   style={{
                     fontSize: 11,
                     fontWeight: 700,
-                    color: '#1A56DB',
+                    color: '#0b3fa8',
                     textTransform: 'uppercase',
                     letterSpacing: '.08em',
                     marginBottom: 12,
@@ -739,7 +793,7 @@ export default function WargaDashboard() {
                   }}
                 >
                   <span
-                    style={{ width: 6, height: 6, borderRadius: '50%', background: '#1A56DB' }}
+                    style={{ width: 6, height: 6, borderRadius: '50%', background: '#0b3fa8' }}
                   />{' '}
                   Sesi Aktif
                 </div>
@@ -757,7 +811,7 @@ export default function WargaDashboard() {
                 <p
                   style={{
                     fontSize: 14.5,
-                    color: '#475569',
+                    color: '#334155',
                     lineHeight: 1.7,
                     maxWidth: 480,
                     marginBottom: 26,
@@ -784,7 +838,7 @@ export default function WargaDashboard() {
               <div
                 className="warga-hero-side"
                 style={{
-                  background: 'linear-gradient(135deg,#1A56DB 0%,#1e40af 100%)',
+                  background: 'linear-gradient(135deg,#0b3fa8 0%,#062b6e 100%)',
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'center',
@@ -857,7 +911,7 @@ export default function WargaDashboard() {
                   <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>
                     Alur Pengajuan Bantuan
                   </div>
-                  <div style={{ fontSize: 12.5, color: '#526078', marginTop: 3 }}>
+                  <div style={{ fontSize: 12.5, color: '#334155', marginTop: 3 }}>
                     Pantau tahapan dokumen Anda saat ini
                   </div>
                 </div>
@@ -896,7 +950,7 @@ export default function WargaDashboard() {
                     top: 19,
                     left: '10%',
                     height: 2,
-                    background: '#1A56DB',
+                    background: '#0b3fa8',
                     zIndex: 1,
                     transition: 'width .5s',
                     width: !sw ? '0%' : sw.step === 2 ? '80%' : sw.step === 1 ? '40%' : '0%',
@@ -942,8 +996,8 @@ export default function WargaDashboard() {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        background: s.done ? '#1A56DB' : s.active ? '#EBF3FF' : '#f1f5f9',
-                        border: `2px solid ${s.done ? '#1A56DB' : s.active ? '#1A56DB' : '#DBEAFE'}`,
+                        background: s.done ? '#0b3fa8' : s.active ? '#EBF3FF' : '#f1f5f9',
+                        border: `2px solid ${s.done ? '#0b3fa8' : s.active ? '#0b3fa8' : '#DBEAFE'}`,
                         boxShadow: s.active ? '0 0 0 4px rgba(26,86,219,.12)' : 'none',
                         transition: '.3s',
                       }}
@@ -955,7 +1009,7 @@ export default function WargaDashboard() {
                           style={{
                             fontSize: 14,
                             fontWeight: 800,
-                            color: s.active ? '#1A56DB' : '#526078',
+                            color: s.active ? '#0b3fa8' : '#334155',
                           }}
                         >
                           {i + 1}
@@ -967,12 +1021,12 @@ export default function WargaDashboard() {
                         style={{
                           fontSize: 12.5,
                           fontWeight: 700,
-                          color: s.done || s.active ? '#0f172a' : '#526078',
+                          color: s.done || s.active ? '#0f172a' : '#334155',
                         }}
                       >
                         {s.label}
                       </div>
-                      <div style={{ fontSize: 11, color: '#526078', marginTop: 2 }}>{s.sub}</div>
+                      <div style={{ fontSize: 11, color: '#334155', marginTop: 2 }}>{s.sub}</div>
                     </div>
                   </div>
                 ))}
@@ -1023,7 +1077,7 @@ export default function WargaDashboard() {
                       justifyContent: 'center',
                     }}
                   >
-                    <MI name="fact_check" fill size={20} style={{ color: '#1A56DB' }} />
+                    <MI name="fact_check" fill size={20} style={{ color: '#0b3fa8' }} />
                   </div>
                   {sw && (
                     <span
@@ -1040,14 +1094,14 @@ export default function WargaDashboard() {
                     </span>
                   )}
                 </div>
-                <div style={{ fontSize: 12, color: '#526078', marginBottom: 4 }}>
+                <div style={{ fontSize: 12, color: '#334155', marginBottom: 4 }}>
                   Status Kuesioner
                 </div>
                 <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a' }}>
                   {statusBansos ? sw?.label || 'Terkirim' : 'Belum Diisi'}
                 </div>
                 {statusBansos?.created_at && (
-                  <div style={{ fontSize: 11, color: '#526078', marginTop: 4 }}>
+                  <div style={{ fontSize: 11, color: '#334155', marginTop: 4 }}>
                     Dikirim: {fmtDate(statusBansos.created_at)}
                   </div>
                 )}
@@ -1071,7 +1125,7 @@ export default function WargaDashboard() {
                       position: 'relative',
                     }}
                   >
-                    <MI name="forum" fill size={20} style={{ color: '#047857' }} />
+                    <MI name="forum" fill size={20} style={{ color: '#065f46' }} />
                     {pesanBelumDibaca > 0 && (
                       <div
                         style={{
@@ -1080,16 +1134,16 @@ export default function WargaDashboard() {
                           right: 5,
                           width: 9,
                           height: 9,
-                          background: '#ef4444',
+                          background: '#b91c1c',
                           borderRadius: '50%',
                           border: '1.5px solid #fff',
                         }}
                       />
                     )}
                   </div>
-                  <MI name="arrow_forward" size={16} style={{ color: '#526078' }} />
+                  <MI name="arrow_forward" size={16} style={{ color: '#334155' }} />
                 </div>
-                <div style={{ fontSize: 12, color: '#526078', marginBottom: 4 }}>
+                <div style={{ fontSize: 12, color: '#334155', marginBottom: 4 }}>
                   Diskusi dengan RT
                 </div>
                 <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a' }}>
@@ -1100,14 +1154,14 @@ export default function WargaDashboard() {
                     {pesanBelumDibaca} belum dibaca
                   </div>
                 )}
-                <div style={{ fontSize: 11, color: '#1A56DB', marginTop: 4, fontWeight: 600 }}>
+                <div style={{ fontSize: 11, color: '#0b3fa8', marginTop: 4, fontWeight: 600 }}>
                   Buka ruang diskusi
                 </div>
               </div>
 
               <div
                 className="card"
-                style={{ padding: '22px 24px', background: '#EBF3FF', border: '1px solid #C6DCFF' }}
+                style={{ padding: '22px 24px', background: '#EBF3FF', border: '1px solid #a9c7f0' }}
               >
                 <div
                   style={{
@@ -1121,26 +1175,26 @@ export default function WargaDashboard() {
                     marginBottom: 16,
                   }}
                 >
-                  <MI name="location_city" fill size={20} style={{ color: '#1d4ed8' }} />
+                  <MI name="location_city" fill size={20} style={{ color: '#0b3fa8' }} />
                 </div>
                 <div style={{ fontSize: 12, color: '#374151', marginBottom: 4 }}>Wilayah Anda</div>
                 <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a' }}>
                   {rtLabel(userData?.rt)} / RW 08
                 </div>
-                <div style={{ fontSize: 11, color: '#526078', marginTop: 4 }}>
+                <div style={{ fontSize: 11, color: '#334155', marginTop: 4 }}>
                   Data dapat diperbarui oleh RT
                 </div>
               </div>
             </div>
 
             {/* Info penting */}
-            <div className="card" style={{ padding: '22px 26px', borderLeft: '4px solid #1A56DB' }}>
+            <div className="card" style={{ padding: '22px 26px', borderLeft: '4px solid #0b3fa8' }}>
               <div style={{ display: 'flex', gap: 14 }}>
                 <MI
                   name="info"
                   fill
                   size={20}
-                  style={{ color: '#1A56DB', flexShrink: 0, marginTop: 2 }}
+                  style={{ color: '#0b3fa8', flexShrink: 0, marginTop: 2 }}
                 />
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>
@@ -1149,7 +1203,7 @@ export default function WargaDashboard() {
                   <ul
                     style={{
                       fontSize: 13,
-                      color: '#475569',
+                      color: '#334155',
                       lineHeight: 1.8,
                       paddingLeft: 0,
                       listStyle: 'none',
@@ -1161,7 +1215,7 @@ export default function WargaDashboard() {
                       'Gunakan fitur Diskusi jika ada pertanyaan atau keberatan terkait hasil verifikasi.',
                     ].map((text, i) => (
                       <li key={i} style={{ display: 'flex', gap: 8, marginBottom: i < 2 ? 4 : 0 }}>
-                        <span style={{ color: '#1A56DB', fontWeight: 700, flexShrink: 0 }}>
+                        <span style={{ color: '#0b3fa8', fontWeight: 700, flexShrink: 0 }}>
                           0{i + 1}.
                         </span>{' '}
                         {text}
@@ -1199,12 +1253,12 @@ export default function WargaDashboard() {
                     margin: '0 auto 20px',
                   }}
                 >
-                  <MI name="check_circle" fill size={32} style={{ color: '#15803d' }} />
+                  <MI name="check_circle" fill size={32} style={{ color: '#166534' }} />
                 </div>
                 <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>
                   Kuesioner Sudah Terkirim
                 </h2>
-                <p style={{ fontSize: 14, color: '#475569', lineHeight: 1.7, marginBottom: 28 }}>
+                <p style={{ fontSize: 14, color: '#334155', lineHeight: 1.7, marginBottom: 28 }}>
                   Data Anda telah terekam pada <strong>{fmtDate(statusBansos.created_at)}</strong>.
                   Pengisian ulang tidak diperkenankan untuk menjaga integritas data penilaian.
                 </p>
@@ -1237,7 +1291,7 @@ export default function WargaDashboard() {
                     <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a' }}>
                       {step === 0 ? 'Bagian 1 — Data Diri' : 'Bagian 2 — Kuesioner Ekonomi'}
                     </div>
-                    <div style={{ fontSize: 12, color: '#526078', marginTop: 2 }}>
+                    <div style={{ fontSize: 12, color: '#334155', marginTop: 2 }}>
                       {step === 0
                         ? 'Isi identitas dan domisili Anda'
                         : `${pct} dari 10 pertanyaan terjawab`}
@@ -1251,12 +1305,12 @@ export default function WargaDashboard() {
                           height: 4,
                           width: 48,
                           borderRadius: 4,
-                          background: i <= step ? '#1A56DB' : '#DBEAFE',
+                          background: i <= step ? '#0b3fa8' : '#DBEAFE',
                           transition: '.3s',
                         }}
                       />
                     ))}
-                    <span style={{ fontSize: 11, color: '#526078', marginLeft: 4 }}>
+                    <span style={{ fontSize: 11, color: '#334155', marginLeft: 4 }}>
                       {step + 1}/2
                     </span>
                   </div>
@@ -1269,7 +1323,7 @@ export default function WargaDashboard() {
                       borderRadius: 9,
                       background: '#fee2e2',
                       border: '1px solid #fca5a5',
-                      color: '#dc2626',
+                      color: '#b91c1c',
                       fontSize: 13,
                       fontWeight: 600,
                       marginBottom: 16,
@@ -1404,8 +1458,8 @@ export default function WargaDashboard() {
                         >
                           <span
                             style={{
-                              background: jawaban[q.id] ? '#1A56DB' : '#DBEAFE',
-                              color: jawaban[q.id] ? '#fff' : '#6B7280',
+                              background: jawaban[q.id] ? '#0b3fa8' : '#DBEAFE',
+                              color: jawaban[q.id] ? '#fff' : '#475569',
                               fontSize: 11,
                               fontWeight: 700,
                               padding: '3px 9px',
@@ -1423,7 +1477,7 @@ export default function WargaDashboard() {
                               name="check_circle"
                               fill
                               size={16}
-                              style={{ color: '#22c55e', marginLeft: 'auto' }}
+                              style={{ color: '#15803d', marginLeft: 'auto' }}
                             />
                           )}
                         </div>
@@ -1445,7 +1499,7 @@ export default function WargaDashboard() {
                                   width: 16,
                                   height: 16,
                                   borderRadius: '50%',
-                                  border: `2px solid ${jawaban[q.id] === opt ? '#1A56DB' : '#C6DCFF'}`,
+                                  border: `2px solid ${jawaban[q.id] === opt ? '#0b3fa8' : '#a9c7f0'}`,
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
@@ -1460,7 +1514,7 @@ export default function WargaDashboard() {
                                       width: 7,
                                       height: 7,
                                       borderRadius: '50%',
-                                      background: '#1A56DB',
+                                      background: '#0b3fa8',
                                     }}
                                   />
                                 )}
@@ -1468,7 +1522,7 @@ export default function WargaDashboard() {
                               <span
                                 style={{
                                   fontSize: 12.5,
-                                  color: jawaban[q.id] === opt ? '#1e40af' : '#374151',
+                                  color: jawaban[q.id] === opt ? '#062b6e' : '#374151',
                                   lineHeight: 1.45,
                                   fontWeight: jawaban[q.id] === opt ? 600 : 400,
                                 }}
@@ -1500,8 +1554,8 @@ export default function WargaDashboard() {
                         >
                           <MI name="arrow_back" size={15} /> Kembali
                         </button>
-                        <div style={{ fontSize: 12.5, color: '#526078' }}>
-                          <strong style={{ color: pct === 10 ? '#15803d' : '#0f172a' }}>
+                        <div style={{ fontSize: 12.5, color: '#334155' }}>
+                          <strong style={{ color: pct === 10 ? '#166534' : '#0f172a' }}>
                             {pct}
                           </strong>
                           /10 terjawab
@@ -1519,7 +1573,7 @@ export default function WargaDashboard() {
                             style={{
                               height: '100%',
                               borderRadius: 4,
-                              background: pct === 10 ? '#22c55e' : '#1A56DB',
+                              background: pct === 10 ? '#15803d' : '#0b3fa8',
                               width: `${(pct / 10) * 100}%`,
                               transition: '.3s',
                             }}
@@ -1565,7 +1619,7 @@ export default function WargaDashboard() {
                 <div style={{ fontSize: 17, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>
                   Belum Ada Pengajuan
                 </div>
-                <p style={{ fontSize: 14, color: '#526078', marginBottom: 22 }}>
+                <p style={{ fontSize: 14, color: '#334155', marginBottom: 22 }}>
                   Anda belum pernah mengisi kuesioner. Lengkapi formulir untuk memulai proses.
                 </p>
                 <button className="btn-blue" onClick={() => setActiveNav('kuesioner')}>
@@ -1603,7 +1657,7 @@ export default function WargaDashboard() {
                       style={{
                         fontSize: 11,
                         fontWeight: 700,
-                        color: '#526078',
+                        color: '#334155',
                         textTransform: 'uppercase',
                         letterSpacing: '.08em',
                         marginBottom: 5,
@@ -1620,7 +1674,7 @@ export default function WargaDashboard() {
                           ? 'Sedang Diverifikasi'
                           : 'Pengajuan Ditolak'}
                     </div>
-                    <p style={{ fontSize: 13.5, color: '#475569', lineHeight: 1.65, margin: 0 }}>
+                    <p style={{ fontSize: 13.5, color: '#334155', lineHeight: 1.65, margin: 0 }}>
                       {sw.step === 2 &&
                         'Anda dinyatakan memenuhi syarat penerima Bantuan Sosial. Tunggu instruksi pencairan dari RT.'}
                       {sw.step === 1 &&
@@ -1657,7 +1711,7 @@ export default function WargaDashboard() {
                           style={{
                             fontSize: 11,
                             fontWeight: 700,
-                            color: '#526078',
+                            color: '#334155',
                             textTransform: 'uppercase',
                             letterSpacing: '.06em',
                             marginBottom: 5,
@@ -1711,7 +1765,7 @@ export default function WargaDashboard() {
                 <div style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>
                   Fitur Diskusi Belum Tersedia
                 </div>
-                <p style={{ fontSize: 14, color: '#526078', marginBottom: 22 }}>
+                <p style={{ fontSize: 14, color: '#334155', marginBottom: 22 }}>
                   Selesaikan pengisian kuesioner terlebih dahulu.
                 </p>
                 <button className="btn-blue" onClick={() => setActiveNav('kuesioner')}>
@@ -1744,13 +1798,13 @@ export default function WargaDashboard() {
                       justifyContent: 'center',
                     }}
                   >
-                    <MI name="forum" fill size={19} style={{ color: '#1A56DB' }} />
+                    <MI name="forum" fill size={19} style={{ color: '#0b3fa8' }} />
                   </div>
                   <div>
                     <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>
                       Diskusi dengan Ketua RT
                     </div>
-                    <div style={{ fontSize: 11.5, color: '#526078' }}>
+                    <div style={{ fontSize: 11.5, color: '#334155' }}>
                       Pengajuan #{statusBansos.id_pengajuan} · Pesan tercatat secara resmi
                     </div>
                   </div>
@@ -1783,7 +1837,7 @@ export default function WargaDashboard() {
                   }}
                 >
                   {pesanList.length === 0 ? (
-                    <div style={{ margin: 'auto', textAlign: 'center', color: '#526078' }}>
+                    <div style={{ margin: 'auto', textAlign: 'center', color: '#334155' }}>
                       <MI
                         name="chat_bubble_outline"
                         size={36}
@@ -1806,7 +1860,7 @@ export default function WargaDashboard() {
                           style={{
                             fontSize: 10,
                             fontWeight: 700,
-                            color: '#526078',
+                            color: '#334155',
                             marginBottom: 3,
                             textAlign: p.pengirim_role === 'warga' ? 'right' : 'left',
                           }}
@@ -1819,7 +1873,7 @@ export default function WargaDashboard() {
                             borderRadius: 12,
                             borderBottomRightRadius: p.pengirim_role === 'warga' ? 3 : 12,
                             borderBottomLeftRadius: p.pengirim_role === 'rt' ? 3 : 12,
-                            background: p.pengirim_role === 'warga' ? '#1A56DB' : '#fff',
+                            background: p.pengirim_role === 'warga' ? '#0b3fa8' : '#fff',
                             color: p.pengirim_role === 'warga' ? '#fff' : '#0f172a',
                             fontSize: 13.5,
                             lineHeight: 1.55,
@@ -1890,7 +1944,7 @@ export default function WargaDashboard() {
                     style={{
                       width: 44,
                       height: 44,
-                      background: pesanBaru.trim() ? '#1A56DB' : '#DBEAFE',
+                      background: pesanBaru.trim() ? '#0b3fa8' : '#DBEAFE',
                       border: 'none',
                       borderRadius: 10,
                       cursor: pesanBaru.trim() ? 'pointer' : 'default',
@@ -1905,7 +1959,7 @@ export default function WargaDashboard() {
                       name="send"
                       fill
                       size={17}
-                      style={{ color: pesanBaru.trim() ? '#fff' : '#526078' }}
+                      style={{ color: pesanBaru.trim() ? '#fff' : '#334155' }}
                     />
                   </button>
                 </form>
