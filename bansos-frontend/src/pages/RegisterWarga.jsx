@@ -26,9 +26,24 @@ const GLOBAL_CSS = `
     background: #f8fafc; font-family: 'Plus Jakarta Sans', sans-serif;
     font-size: 14px; color: #0f172a; outline: none; transition: .15s;
     -webkit-appearance: none;
+    min-height: 44px;
+  }
+  /* 16px di layar sentuh: Safari iOS memperbesar halaman saat fokus pada input
+     berukuran di bawah 16px, dan setelah itu tata letak terlihat rusak sampai
+     pengguna mencubit keluar. Ukuran 14px dipertahankan di layar lebar karena di
+     sana tidak ada perilaku itu. */
+  @media (max-width: 620px) {
+    .inp { font-size: 16px; }
   }
   .inp:focus { border-color: #0b3fa8; background: #fff; box-shadow: 0 0 0 3px rgba(0,81,213,.08); }
   .inp-icon { padding-left: 42px; }
+  /* Grid dua kolom hanya untuk layar yang cukup lebar. Di HP, dua field 152px
+     memotong placeholder dan label panjang, dan itu terbaca sebagai halaman yang
+     berantakan, bukan sebagai form yang rapat. */
+  .reg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 620px) {
+    .reg-grid { grid-template-columns: 1fr; gap: 14px; }
+  }
   @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
   .reg-brand { width: 380px; flex-shrink: 0; }
   @media (max-width: 900px) {
@@ -369,7 +384,14 @@ export default function RegisterWarga() {
               </h2>
               <p style={{ fontSize: 14.5, color: '#334155', lineHeight: 1.65 }}>
                 Isi kolom bertanda <span style={{ color: '#b91c1c', fontWeight: 700 }}>*</span>{' '}
-                <strong>wajib diisi</strong>. Kata sandi minimal 8 karakter. Sudah punya akun?{' '}
+                <strong>wajib diisi</strong>. Kata sandi minimal 8 karakter.
+              </p>
+              {/* Tautan masuk dipisah ke barisnya sendiri. Digabung dalam satu
+                  paragraf, di 360px kalimatnya pecah jadi tiga baris dan tautan
+                  "Masuk di sini" menggantung sendirian di baris terakhir, yang
+                  terbaca sebagai teks yang berantakan. */}
+              <p style={{ fontSize: 14.5, color: '#334155', lineHeight: 1.65, marginTop: 2 }}>
+                Sudah punya akun?{' '}
                 <Link to="/login" style={{ color: '#0b3fa8', fontWeight: 700 }}>
                   Masuk di sini
                 </Link>
@@ -403,8 +425,8 @@ export default function RegisterWarga() {
               onSubmit={handleRegister}
               style={{ display: 'flex', flexDirection: 'column', gap: 18 }}
             >
-              {/* Grid 2 kolom */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              {/* Grid 2 kolom; kelasnya yang menurunkan jadi 1 kolom di HP. */}
+              <div className="reg-grid">
                 {/* Nama Lengkap */}
                 <div style={{ gridColumn: '1 / -1' }}>
                   <Label required>Nama Lengkap Sesuai KTP</Label>
@@ -661,6 +683,9 @@ export default function RegisterWarga() {
                 style={{
                   width: '100%',
                   padding: '13px',
+                  /* 44px adalah lantai tap target; 13px padding + 14.5px teks
+                     hanya menghasilkan 43px di HP. */
+                  minHeight: 48,
                   background: loading ? '#93c5fd' : '#0b3fa8',
                   color: '#fff',
                   border: 'none',
@@ -700,6 +725,27 @@ export default function RegisterWarga() {
                   style={{ color: '#0b3fa8', fontWeight: 700, textDecoration: 'none' }}
                 >
                   Masuk di sini
+                </Link>
+              </p>
+              {/* Jalan keluar tanpa mendaftar. Tanpa tautan ini, satu-satunya cara
+                  meninggalkan halaman adalah menuju login, sehingga warga yang
+                  berubah pikiran terpaksa melihat formulir masuk yang tidak ia
+                  butuhkan. */}
+              <p style={{ textAlign: 'center', fontSize: 13.5, marginTop: 2 }}>
+                <Link
+                  to="/"
+                  style={{
+                    color: '#475569',
+                    fontWeight: 600,
+                    textDecoration: 'none',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    minHeight: 44,
+                    paddingInline: 8,
+                  }}
+                >
+                  <MI name="arrow_back" size={16} /> Kembali ke beranda
                 </Link>
               </p>
             </form>

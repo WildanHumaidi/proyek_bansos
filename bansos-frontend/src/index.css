@@ -53,11 +53,19 @@ textarea::placeholder {
 }
 
 /* Batas kolom isian dinaikkan ke 4.1:1 terhadap putih supaya kotak input
-   terlihat jelas oleh pengguna lanjut usia (WCAG non-text minimum 3:1). */
-input:not([type='checkbox']):not([type='radio']):not([type='hidden']),
-select,
-textarea {
-  border-color: #7d93af !important;
+   terlihat jelas oleh pengguna lanjut usia (WCAG non-text minimum 3:1).
+   Ditulis tanpa !important dan di-scope ke :where() supaya kekhususannya nol.
+   Dengan !important, aturan ini mengalahkan SEMUA border-color yang ditulis
+   komponen lewat inline style, termasuk border merah penanda isian tidak valid:
+   nilainya ada di atribut style tetapi computed-nya tetap abu-abu, jadi
+   pengguna tidak pernah melihat tanda errornya. */
+:where(input:not([type='checkbox']):not([type='radio']):not([type='hidden']), select, textarea) {
+  border-color: #7d93af;
+}
+/* Komponen yang menandai isian tidak valid menang atas warna dasar di atas. */
+[aria-invalid='true'],
+.is-invalid {
+  border-color: #dc2626 !important;
 }
 
 /* Fokus keyboard harus selalu terlihat, termasuk saat inline style mematikan
