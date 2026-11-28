@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import RankingWarnings from '../components/RankingWarnings';
 import PengaduanPanel from '../components/PengaduanPanel';
 import TombolExport from '../components/TombolExport';
+import KotakCari from '../components/KotakCari';
 import { rtInt, rtLabel } from '../lib/rt';
 import { pasangLabelTabel } from '../lib/mobTable';
 
@@ -132,6 +133,9 @@ export default function RwDashboard() {
   const [kriteriaTanpaVariasi, setKriteriaTanpaVariasi] = useState([]);
   const [rankingError, setRankingError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  // Pencarian Database Warga dipisah dari pencarian Ranking: kata kunci di satu
+  // menu tidak boleh menyaring tabel menu lain.
+  const [cariWargaRw, setCariWargaRw] = useState('');
   const [filterRT, setFilterRT] = useState('all');
   const [toast, setToast] = useState(null);
 
@@ -220,6 +224,19 @@ export default function RwDashboard() {
     const matchRT = filterRT === 'all' || rtInt(r.rt) === rtInt(filterRT);
     return matchSearch && matchRT;
   });
+
+  /* Database Warga: saring per RT DAN per kata kunci sekaligus. Endpoint
+     /rt/warga mengirim `name`, jadi pencarian memakai field itu — memakai
+     `nama_lengkap` di sini membuat hasil selalu kosong. */
+  const wargaRwTampil = wargaList
+    .filter((w) => filterRT === 'all' || String(Number(w.rt)) === String(Number(filterRT)))
+    .filter((w) => {
+      const q = cariWargaRw.trim().toLowerCase();
+      if (!q) return true;
+      return [w.name, w.username, w.alamat].some((v) =>
+        String(v ?? '').toLowerCase().includes(q)
+      );
+    });
 
   // Tabel berubah jadi kartu di HP dan butuh label kolom di tiap sel.
   useEffect(() => {
@@ -1114,6 +1131,18 @@ export default function RwDashboard() {
                   </div>
                   <TombolExport jenis="warga" label="data warga" onInfo={showToast} />
                 </div>
+                <div
+                  className="no-print"
+                  style={{ padding: '12px 18px', borderBottom: '1px solid #f1f5f9', display: 'flex', gap: 10, flexWrap: 'wrap' }}
+                >
+                  <KotakCari
+                    value={cariWargaRw}
+                    onChange={setCariWargaRw}
+                    placeholder="Cari nama, username, atau alamat..."
+                    hasil={wargaRwTampil.length}
+                    total={wargaList.length}
+                  />
+                </div>
                 <table className="mob-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr>
@@ -1125,11 +1154,7 @@ export default function RwDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {wargaList
-                      .filter(
-                        (w) =>
-                          filterRT === 'all' || String(Number(w.rt)) === String(Number(filterRT))
-                      )
+                    {wargaRwTampil
                       .map((w, i) => (
                         <tr
                           key={w.id}
@@ -1228,38 +1253,13 @@ export default function RwDashboard() {
                 }}
                 className="no-print"
               >
-                <div style={{ position: 'relative', flex: '1 1 220px' }}>
-                  <MI
-                    name="search"
-                    size={17}
-                    style={{
-                      position: 'absolute',
-                      left: 12,
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      color: '#334155',
-                    }}
-                  />
-                  <input
-                    placeholder="Cari nama warga..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    style={{
-                      boxSizing: 'border-box',
-                      width: '100%',
-                      padding: '9px 12px 9px 36px',
-                      borderRadius: 9,
-                      border: '1.5px solid #a9c7f0',
-                      fontSize: 13,
-                      outline: 'none',
-                      color: '#0f172a',
-                      background: '#FAFCFF',
-                      fontFamily: "'Plus Jakarta Sans',sans-serif",
-                    }}
-                    onFocus={(e) => (e.target.style.borderColor = '#0b3fa8')}
-                    onBlur={(e) => (e.target.style.borderColor = '#a9c7f0')}
-                  />
-                </div>
+                <KotakCari
+                  value={searchQuery}
+                  onChange={setSearchQuery}
+                  placeholder="Cari nama warga..."
+                  hasil={filteredRanking.length}
+                  total={rankingData.length}
+                />
                 <div style={{ display: 'flex', gap: 6 }}>
                   {['all', ...rtGroups.map(String)].map((rt) => (
                     <button

@@ -29,17 +29,24 @@ class SawCalculator
     /**
      * Ambil kumpulan alternatif yang ELIGIBLE untuk role & scope peminta.
      *
+     * @param  bool  $skalaGlobal  hitung max/min dari SELURUH RW, bukan hanya
+     *                             alternatif milik peminta. Skor & peringkat
+     *                             jadi sebanding lintas RT ("rank global RW"),
+     *                             tetapi daftar alternatif yang dikembalikan
+     *                             tetap terbatas pada scope peminta sehingga
+     *                             identitas warga RT lain tidak ikut bocor.
      * @return array{
      *   pengajuan: \Illuminate\Support\Collection,
      *   kriteria: \Illuminate\Support\Collection,
      *   kriteriaMap: array<int, array{nama:string,tipe:string,bobot_norm:float}>,
      *   matriks: array<int, array<int,float>>,
      *   meta: array<int, array{id_pengajuan:int,nama_warga:string,alamat:string,rt:string}>,
+     *   matriksGlobal: array<int, array<int,float>>,
      *   dilewati: array<int, array{id_pengajuan:?int,nama_warga:?string,rt:?string,alasan:string}>,
      *   scopeRt: ?int
      * }
      */
-    public static function ambilDataEligible(?object $user): array
+    public static function ambilDataEligible(?object $user, bool $skalaGlobal = false): array
     {
         $scopeRt = null;
         if ($user && $user->role === 'rt') {
@@ -47,7 +54,7 @@ class SawCalculator
         }
 
         // Satu transaksi = satu snapshot (P2-09).
-        return DB::transaction(function () use ($scopeRt) {
+        return DB::transaction(function () use ($scopeRt, $skalaGlobal) {
             $pengajuanQuery = Pengajuan::with(['warga', 'penilaian.subKriteria'])
                 ->where('status', 'disetujui');
 
@@ -142,10 +149,51 @@ class SawCalculator
                 'kriteriaMap' => $kriteriaMap,
                 'matriks' => $matriks,
                 'meta' => $meta,
+                'matriksGlobal' => self::matriksLingkupRw($scopeRt, $skalaGlobal, $jumlahKriteria) ?: $matriks,
                 'dilewati' => $dilewati,
                 'scopeRt' => $scopeRt,
             ];
         });
+    }
+
+    /**
+     * Matriks seluruh RW — hanya dipakai sebagai dasar max/min saat skala global
+     * diminta. Sengaja mengembalikan NILAI saja tanpa nama/alamat: identitas
+     * warga RT lain tidak pernah ikut ke response.
+     *
+     * @return array<int, array<int,float>>
+     */
+    private static function matriksLingkupRw(?int $scopeRt, bool $skalaGlobal, int $jumlahKriteria): array
+    {
+        if (! $skalaGlobal || $scopeRt === null) {
+            return [];
+        }
+
+        $semua = Pengajuan::with(['penilaian.subKriteria'])
+            ->where('status', 'disetujui')
+            ->get();
+
+        $matriks = [];
+        foreach ($semua as $p) {
+            $baris = [];
+            foreach ($p->penilaian as $penilaian) {
+                if (! $penilaian->subKriteria) {
+                    continue;
+                }
+                $baris[$penilaian->id_kriteria] = (float) $penilaian->subKriteria->nilai;
+            }
+
+            // Hanya baris lengkap yang boleh mempengaruhi max/min; baris
+            // setengah jadi akan menyeret nilai max ke bawah.
+            if (count($baris) >= $jumlahKriteria) {
+                // Kunci HARUS id_pengajuan: peringkat global dipetakan balik
+                // lewat id ini, dan indeks numerik biasa akan tertukar dengan
+                // id_pengajuan yang juga berurutan.
+                $matriks[$p->id_pengajuan] = $baris;
+            }
+        }
+
+        return $matriks;
     }
 
     /**
@@ -161,9 +209,9 @@ class SawCalculator
      *   pesan?:string
      * }
      */
-    public static function hitung(?object $user): array
+    public static function hitung(?object $user, bool $skalaGlobal = false): array
     {
-        $elig = self::ambilDataEligible($user);
+        $elig = self::ambilDataEligible($user, $skalaGlobal);
 
         if (count($elig['matriks']) === 0) {
             return [
@@ -173,18 +221,22 @@ class SawCalculator
                 'dilewati' => $elig['dilewati'],
                 'kriteria_tanpa_variasi' => [],
                 'scope_rt' => $elig['scopeRt'],
+                'skala' => $skalaGlobal ? 'rw' : 'rt',
                 'pesan' => 'Tidak ada data warga yang berstatus disetujui dengan matriks penilaian lengkap.',
             ];
         }
 
-        // Max/min per kriteria (hanya atas alternatif dalam scope).
+        // Max/min per kriteria. Saat skala RW diminta, batas diambil dari
+        // matriks SELURUH RW sehingga skor seorang warga RT 001 benar-benar
+        // sebanding dengan warga RT 003; daftar yang dikembalikan tetap hanya
+        // milik RT peminta.
         $maxNilai = [];
         $minNilai = [];
         $tanpaVariasi = [];
 
         foreach ($elig['kriteriaMap'] as $idK => $_) {
             $kolom = array_filter(
-                array_map(fn ($baris) => $baris[$idK] ?? null, $elig['matriks']),
+                array_map(fn ($baris) => $baris[$idK] ?? null, $elig['matriksGlobal']),
                 fn ($v) => $v !== null
             );
 
@@ -207,7 +259,7 @@ class SawCalculator
             }
         }
 
-        // Skor preferensi.
+        // Skor preferensi untuk alternatif dalam scope.
         $hasil = [];
         foreach ($elig['matriks'] as $idP => $baris) {
             $skorV = 0.0;
@@ -231,7 +283,42 @@ class SawCalculator
             ]);
         }
 
-        // Urutkan descending, tie-break deterministik id_pengajuan.
+        // Peringkat global: bila skala RW diminta, seluruh alternatif RW ikut
+        // diurutkan supaya nomor peringkat sama persis dengan yang dilihat
+        // Ketua RW — lalu hanya nomor milik alternatif dalam scope yang dipakai.
+        $posisiGlobal = [];
+        if ($skalaGlobal) {
+            $semuaSkor = [];
+            foreach ($elig['matriksGlobal'] as $idP => $baris) {
+                $skorV = 0.0;
+                foreach ($elig['kriteriaMap'] as $idK => $info) {
+                    $nilai = $baris[$idK] ?? 0;
+                    $max = $maxNilai[$idK] ?: 1;
+                    $min = $minNilai[$idK] ?: 1;
+                    $rij = $info['tipe'] === 'benefit'
+                        ? (($max > 0) ? ($nilai / $max) : 0)
+                        : (($nilai > 0) ? ($min / $nilai) : 0);
+                    $skorV += $info['bobot_norm'] * $rij;
+                }
+                $semuaSkor[$idP] = round($skorV, 6);
+            }
+
+            uksort($semuaSkor, function ($a, $b) use ($semuaSkor) {
+                if ($semuaSkor[$b] === $semuaSkor[$a]) {
+                    return $a <=> $b;
+                }
+
+                return $semuaSkor[$b] <=> $semuaSkor[$a];
+            });
+
+            $nomor = 0;
+            foreach (array_keys($semuaSkor) as $idP) {
+                $posisiGlobal[$idP] = ++$nomor;
+            }
+        }
+
+        // Urutkan descending, tie-break deterministik id_pengajuan (fallback
+        // saat skala RT biasa).
         uasort($hasil, function ($a, $b) {
             if ($b['skor_saw'] === $a['skor_saw']) {
                 return $a['id_pengajuan'] <=> $b['id_pengajuan'];
@@ -240,13 +327,10 @@ class SawCalculator
             return $b['skor_saw'] <=> $a['skor_saw'];
         });
 
-        $posisiGlobal = [];
-        $posisiPerRt = [];
-        $nomor = 0;
+        $nomorLokal = 0;
         foreach ($hasil as $idP => &$row) {
-            $nomor++;
-            $row['ranking'] = $nomor;          // urutan dalam response (sudah scope)
-            $posisiGlobal[$idP] = $nomor;
+            $nomorLokal++;
+            $row['ranking'] = $posisiGlobal[$idP] ?? $nomorLokal;
         }
         unset($row);
 
@@ -268,6 +352,7 @@ class SawCalculator
             'dilewati' => $elig['dilewati'],
             'kriteria_tanpa_variasi' => array_values($tanpaVariasi),
             'scope_rt' => $elig['scopeRt'],
+            'skala' => $skalaGlobal ? 'rw' : 'rt',
         ];
     }
 }

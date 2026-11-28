@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import RankingWarnings from '../components/RankingWarnings';
 import PengaduanPanel from '../components/PengaduanPanel';
+import KotakCari from '../components/KotakCari';
 import TombolExport from '../components/TombolExport';
 import { rtLabel } from '../lib/rt';
 import { unduhLaporanSaw } from '../lib/report';
@@ -602,6 +603,10 @@ export default function AdminDashboard() {
 
   /* UI */
   const [searchUser, setSearchUser] = useState('');
+  // Pencarian tabel Data Kuesioner / Matriks SAW. Terpisah dari searchUser
+  // (Kelola Akun) supaya kata kunci tidak saling bocor antar menu.
+  const [searchPengajuan, setSearchPengajuan] = useState('');
+  const [cariRankingAdmin, setCariRankingAdmin] = useState('');
   const [filterRole, setFilterRole] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [toast, setToast] = useState(null);
@@ -945,6 +950,15 @@ export default function AdminDashboard() {
   const countDiterima = pengajuanList.filter((p) => p.status === 'disetujui').length;
   const countDitolak = pengajuanList.filter((p) => p.status === 'ditolak').length;
 
+  // Pencarian tabel Hasil Keputusan (peringkat global RW).
+  const rankingAdminTampil = (() => {
+    const q = cariRankingAdmin.trim().toLowerCase();
+    if (!q) return rankingData;
+    return rankingData.filter((r) =>
+      [r.nama_warga, r.alamat, r.rt].some((v) => String(v ?? '').toLowerCase().includes(q))
+    );
+  })();
+
   const filteredUsers = userList.filter((u) => {
     const matchRole = filterRole === 'all' || u.role === filterRole;
     const matchSearch =
@@ -954,14 +968,27 @@ export default function AdminDashboard() {
     return matchRole && matchSearch;
   });
 
-  const filteredPengajuan =
-    filterStatus === 'all'
-      ? pengajuanList
-      : pengajuanList.filter((p) =>
-          filterStatus === 'menunggu'
-            ? !p.status || p.status === 'menunggu'
-            : p.status === filterStatus
-        );
+  const filteredPengajuan = (() => {
+    const perStatus =
+      filterStatus === 'all'
+        ? pengajuanList
+        : pengajuanList.filter((p) =>
+            filterStatus === 'menunggu'
+              ? !p.status || p.status === 'menunggu'
+              : p.status === filterStatus
+          );
+
+    // Pencarian nama/alamat di atas filter status. Tanpa ini admin harus
+    // menggulir ratusan baris untuk menemukan satu warga.
+    const q = (searchPengajuan || '').trim().toLowerCase();
+    if (!q) return perStatus;
+
+    return perStatus.filter((p) =>
+      [p.warga?.nama_lengkap, p.warga?.alamat, p.warga?.rt].some((v) =>
+        String(v ?? '').toLowerCase().includes(q)
+      )
+    );
+  })();
 
   // Tabel berubah jadi kartu di HP dan butuh label kolom di tiap sel.
   useEffect(() => {
@@ -1951,6 +1978,13 @@ export default function AdminDashboard() {
                   className="no-print"
                   style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}
                 >
+                  <KotakCari
+                    value={searchPengajuan}
+                    onChange={setSearchPengajuan}
+                    placeholder="Cari nama atau alamat warga..."
+                    hasil={filteredPengajuan.length}
+                    total={pengajuanList.length}
+                  />
                   {['all', 'menunggu', 'disetujui', 'ditolak'].map((s) => (
                     <button
                       key={s}
@@ -2335,6 +2369,19 @@ export default function AdminDashboard() {
               />
 
               <div
+                className="no-print"
+                style={{ padding: '12px 20px', background: '#fff', borderRadius: 12, border: '1px solid #DBEAFE', display: 'flex', gap: 10, flexWrap: 'wrap' }}
+              >
+                <KotakCari
+                  value={cariRankingAdmin}
+                  onChange={setCariRankingAdmin}
+                  placeholder="Cari nama warga..."
+                  hasil={rankingAdminTampil.length}
+                  total={rankingData.length}
+                />
+              </div>
+
+              <div
                 className="tabel-scroll"
                 style={{
                   background: '#fff',
@@ -2359,7 +2406,7 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {rankingData.map((w, i) => (
+                    {rankingAdminTampil.map((w, i) => (
                       <tr
                         key={i}
                         onMouseEnter={(e) => (e.currentTarget.style.background = '#fafcff')}

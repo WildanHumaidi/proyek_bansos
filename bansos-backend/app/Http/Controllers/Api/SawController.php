@@ -20,7 +20,12 @@ class SawController extends Controller
      */
     public function hitungRanking()
     {
-        $hasil = SawCalculator::hitung(request()->user());
+        // `skala=rw`: hitung skor & peringkat dengan batas (max/min) seluruh RW
+        // supaya angka di dashboard RT sebanding dengan dashboard RW untuk
+        // orang yang sama. Daftar yang dikembalikan tetap hanya wilayah peminta.
+        $skalaGlobal = request()->input('skala') === 'rw';
+
+        $hasil = SawCalculator::hitung(request()->user(), $skalaGlobal);
 
         if (! $hasil['success']) {
             return response()->json([
@@ -29,6 +34,7 @@ class SawController extends Controller
                 'dilewati' => $hasil['dilewati'],
                 'kriteria_tanpa_variasi' => $hasil['kriteria_tanpa_variasi'],
                 'scope_rt' => $hasil['scope_rt'],
+                'skala' => $hasil['skala'],
             ], 404);
         }
 
@@ -40,6 +46,7 @@ class SawController extends Controller
             'dilewati' => $hasil['dilewati'],
             'kriteria_tanpa_variasi' => $hasil['kriteria_tanpa_variasi'],
             'scope_rt' => $hasil['scope_rt'],
+            'skala' => $hasil['skala'],
         ]);
     }
 

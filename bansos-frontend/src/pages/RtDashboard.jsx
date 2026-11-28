@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import RankingWarnings from '../components/RankingWarnings';
 import PengaduanPanel from '../components/PengaduanPanel';
 import TombolExport from '../components/TombolExport';
+import KotakCari from '../components/KotakCari';
 import { rtLabel, rtInt } from '../lib/rt';
 import { unduhLaporanSaw } from '../lib/report';
 import { pasangLabelTabel } from '../lib/mobTable';
@@ -279,6 +280,11 @@ export default function RtDashboard() {
     }
   });
   const [activeMenu, setActiveMenu] = useState('beranda');
+  // Pencarian per menu: satu state per tabel, supaya kata kunci di Data Warga
+  // tidak ikut menyaring Verifikasi atau Ranking saat berpindah tab.
+  const [cariWarga, setCariWarga] = useState('');
+  const [cariVerifikasi, setCariVerifikasi] = useState('');
+  const [cariRanking, setCariRanking] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -346,9 +352,11 @@ export default function RtDashboard() {
           setPengajuanList((r.data.data || []).filter((p) => rtInt(p.warga?.rt) === rtNum));
         }
         if (['beranda', 'ranking'].includes(activeMenu)) {
-          // Backend sudah membatasi hasil ke RT ini (P0-06) dan mengirim
-          // ranking_rt (BUG-08). Tidak ada lagi filter/penomoran di klien.
-          const r = await axios.get(`${API}/saw/hitung?t=${Date.now()}`, {
+          // `skala=rw`: skor & peringkat dihitung dengan batas (max/min) seluruh
+          // RW, sehingga nomor peringkat di layar RT sama persis dengan yang
+          // dilihat Ketua RW untuk orang yang sama. Backend tetap menyaring
+          // daftar ke wilayah RT ini, jadi tidak ada warga RT lain yang tampil.
+          const r = await axios.get(`${API}/saw/hitung?skala=rw&t=${Date.now()}`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           setRankingAll(r.data.data || []);
@@ -567,9 +575,28 @@ export default function RtDashboard() {
 
   /* ── Computed ── */
   const rankingRT = rankingAll;
-  const rankingView = rankingAll;
   const pendingCt = pengajuanList.filter((p) => !p.status || p.status === 'menunggu').length;
   const diterimaCt = pengajuanList.filter((p) => p.status === 'disetujui').length;
+
+  /* Penyaring tabel. Kata kunci dibandingkan tanpa peduli huruf besar/kecil dan
+     juga mencakup alamat, karena warga sering dikenali dari jalan tempat
+     tinggalnya. */
+  const cocok = (kata, ...nilai) => {
+    const q = kata.trim().toLowerCase();
+    if (!q) return true;
+    return nilai.some((v) => String(v ?? '').toLowerCase().includes(q));
+  };
+
+  // Endpoint /rt/warga mengirim `name` (nama akun), bukan `nama_lengkap`;
+  // /rt/pengajuan mengirim `warga.nama_lengkap`. Keduanya harus ikut dicari,
+  // kalau tidak pencarian nama warga diam-diam mengembalikan nol hasil.
+  const namaWarga = (w) => w.nama_lengkap ?? w.name ?? '';
+
+  const wargaTampil = wargaList.filter((w) => cocok(cariWarga, namaWarga(w), w.alamat));
+  const verifikasiTampil = pengajuanList
+    .filter((p) => !p.status || p.status === 'menunggu')
+    .filter((p) => cocok(cariVerifikasi, p.warga?.nama_lengkap, p.warga?.alamat));
+  const rankingView = rankingAll.filter((r) => cocok(cariRanking, r.nama_warga, r.alamat));
 
   // Tabel berubah jadi kartu di HP dan butuh label kolom di tiap sel.
   useEffect(() => {
@@ -1529,8 +1556,8 @@ export default function RtDashboard() {
                               width: 30,
                               height: 30,
                               borderRadius: '50%',
-                              background: r.ranking_rt <= 3 ? '#0b3fa8' : '#f1f5f9',
-                              color: r.ranking_rt <= 3 ? '#fff' : '#334155',
+                              background: r.ranking <= 3 ? '#0b3fa8' : '#f1f5f9',
+                              color: r.ranking <= 3 ? '#fff' : '#334155',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
@@ -1538,7 +1565,7 @@ export default function RtDashboard() {
                               fontWeight: 800,
                             }}
                           >
-                            {r.ranking_rt}
+                            {r.ranking}
                           </div>
                         </td>
                         <td
@@ -1620,6 +1647,18 @@ export default function RtDashboard() {
                 </div>
                 <TombolExport jenis="warga" label="data warga" onInfo={showToast} />
               </div>
+              <div
+                className="no-print"
+                style={{ padding: '12px 22px', borderBottom: '1px solid #f1f5f9', display: 'flex', gap: 10, flexWrap: 'wrap' }}
+              >
+                <KotakCari
+                  value={cariWarga}
+                  onChange={setCariWarga}
+                  placeholder="Cari nama atau alamat warga..."
+                  hasil={wargaTampil.length}
+                  total={wargaList.length}
+                />
+              </div>
               <table className="mob-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: '#F0F6FF', borderBottom: '1px solid #DBEAFE' }}>
@@ -1644,7 +1683,7 @@ export default function RtDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {wargaList.map((w, i) => {
+                  {wargaTampil.map((w, i) => {
                     // Status datang langsung dari API (pengajuan terakhir warga ini).
                     const sudahAda = !!w.id_pengajuan;
                     return (
@@ -1800,6 +1839,18 @@ export default function RtDashboard() {
                   Pilih warga untuk mengisi atau mengedit data kuesioner
                 </div>
               </div>
+              <div
+                className="no-print"
+                style={{ padding: '12px 22px', borderBottom: '1px solid #f1f5f9', display: 'flex', gap: 10, flexWrap: 'wrap' }}
+              >
+                <KotakCari
+                  value={cariWarga}
+                  onChange={setCariWarga}
+                  placeholder="Cari nama atau alamat warga..."
+                  hasil={wargaTampil.length}
+                  total={wargaList.length}
+                />
+              </div>
               <table className="mob-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: '#F0F6FF', borderBottom: '1px solid #DBEAFE' }}>
@@ -1822,7 +1873,7 @@ export default function RtDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {wargaList.map((w, i) => {
+                  {wargaTampil.map((w, i) => {
                     const p = pengajuanList.find((x) => Number(x.id_warga) === Number(w.id_warga));
                     const sudah = !!p;
                     const jawObj = p ? parseJawaban(p.jawaban_mentah) : null;
@@ -2009,6 +2060,18 @@ export default function RtDashboard() {
                   </span>
                 </div>
               </div>
+              <div
+                className="no-print"
+                style={{ padding: '12px 22px', borderBottom: '1px solid #f1f5f9', display: 'flex', gap: 10, flexWrap: 'wrap' }}
+              >
+                <KotakCari
+                  value={cariVerifikasi}
+                  onChange={setCariVerifikasi}
+                  placeholder="Cari nama pengaju..."
+                  hasil={verifikasiTampil.length}
+                  total={pendingCt}
+                />
+              </div>
               <table className="mob-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: '#F0F6FF', borderBottom: '1px solid #DBEAFE' }}>
@@ -2031,7 +2094,7 @@ export default function RtDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {pengajuanList.map((p, i) => (
+                  {verifikasiTampil.map((p, i) => (
                     <tr
                       key={p.id_pengajuan}
                       style={{ borderBottom: '1px solid #EBF3FF' }}
@@ -2168,15 +2231,28 @@ export default function RtDashboard() {
                       Peringkat Prioritas Penerima Bansos — {rtLabel(userData.rt)}
                     </div>
                     <div style={{ fontSize: 12, color: '#334155', marginTop: 3 }}>
-                      Nilai tertinggi = prioritas utama penerima
+                      Peringkat dihitung bersama seluruh RW 08 — sama dengan yang dilihat Ketua RW.
+                      Nilai tertinggi = prioritas utama penerima.
                     </div>
                   </div>
                   <TombolExport jenis="saw" label="hasil perangkingan SAW" onInfo={showToast} />
                 </div>
+                <div
+                  className="no-print"
+                  style={{ padding: '12px 22px', borderBottom: '1px solid #f1f5f9', display: 'flex', gap: 10, flexWrap: 'wrap' }}
+                >
+                  <KotakCari
+                    value={cariRanking}
+                    onChange={setCariRanking}
+                    placeholder="Cari nama warga..."
+                    hasil={rankingView.length}
+                    total={rankingAll.length}
+                  />
+                </div>
                 <table className="mob-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ background: '#F0F6FF', borderBottom: '1px solid #DBEAFE' }}>
-                      {['Peringkat', 'Nama Warga', 'RT', 'Nilai Preferensi (V)'].map((h) => (
+                      {['Peringkat RW', 'Nama Warga', 'RT', 'Nilai Preferensi (V)'].map((h) => (
                         <th
                           key={h}
                           style={{
@@ -2208,8 +2284,8 @@ export default function RtDashboard() {
                               width: 32,
                               height: 32,
                               borderRadius: '50%',
-                              background: r.ranking_rt <= 3 ? '#0b3fa8' : '#f1f5f9',
-                              color: r.ranking_rt <= 3 ? '#fff' : '#334155',
+                              background: r.ranking <= 3 ? '#0b3fa8' : '#f1f5f9',
+                              color: r.ranking <= 3 ? '#fff' : '#334155',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
@@ -2217,7 +2293,7 @@ export default function RtDashboard() {
                               fontWeight: 800,
                             }}
                           >
-                            {r.ranking_rt}
+                            {r.ranking}
                           </div>
                         </td>
                         <td
@@ -2251,7 +2327,7 @@ export default function RtDashboard() {
                             padding: '13px 18px',
                             fontSize: 15,
                             fontWeight: 800,
-                            color: r.ranking_rt <= 3 ? '#0b3fa8' : '#334155',
+                            color: r.ranking <= 3 ? '#0b3fa8' : '#334155',
                             fontFamily: 'monospace',
                           }}
                         >
