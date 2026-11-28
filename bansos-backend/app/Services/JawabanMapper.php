@@ -56,6 +56,12 @@ class JawabanMapper
             'sumur (bor/gali)' => 'Sumur Milik Sendiri',
             'menumpang/ tidak meliki sumber air' => 'Sumur Milik Tetangga',
             'air kemasan / air galon' => 'PDAM Bebas / Air Kemasan',
+            // Formulir kuesioner memakai kalimat tanpa salah ketik; tanpa alias
+            // ini seluruh pengajuan lewat UI ditolak padahal artinya sama.
+            // Tidak ada tabrakan dengan opsi lain: satu-satunya sub-kriteria C8
+            // yang berbunyi "Menumpang ..." adalah kondisi paling membutuhkan,
+            // sedangkan "Air Kemasan" sudah ditangani alias terpisah di atas.
+            'menumpang / tidak memiliki sumber air' => 'Sumur Milik Tetangga',
         ],
         10 => [
             'jalan kaki / sepeda / sepeda motor seadanya / transportasi umum' => 'Jalan Kaki / Sepeda / Motor Seadanya',
