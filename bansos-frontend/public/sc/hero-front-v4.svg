@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900" preserveAspectRatio="xMidYMax slice" role="presentation">
+  <!-- Foreground plane: tropical foliage, not smooth mounds. Banana leaves and
+       palm fronds read instantly as "kampung" and are the cheapest part of the
+       scene to draw. The crest stays BELOW the window rows so the houses keep
+       their footing, and dips in the centre where the hero copy sits. -->
+  <g fill="#050b14">
+    <!-- left mass of banana leaves -->
+    <path d="M0 900 L0 760 Q40 726 96 748 Q140 722 190 750 Q236 728 268 762 Q300 744 330 776 L330 900 Z"/>
+    <!-- individual fronds: a stem with leaves off it, the shape that separates a
+         banana plant from a shrub -->
+    <g>
+      <path d="M92 902 q10 -70 -6 -128 q-30 -14 -46 -4 q22 16 28 44 q-24 -14 -40 -6 q26 20 34 52 q-20 -10 -32 0 q26 16 34 42 z"/>
+      <path d="M154 902 q-6 -78 16 -134 q32 -10 46 2 q-24 12 -32 40 q26 -12 42 -2 q-28 18 -38 50 q22 -8 34 4 q-28 14 -38 40 z"/>
+      <path d="M232 902 q12 -66 -2 -118 q-26 -12 -40 -2 q20 14 24 40 q-22 -12 -36 -4 q24 18 30 46 q-18 -8 -28 2 q22 14 28 36 z"/>
+    </g>
+
+    <!-- palm in the centre-left: a crown of long fronds with sawtooth edges -->
+    <g>
+      <path d="M382 902 q-14 -120 4 -196 q-28 -26 -74 -30 q40 22 62 52 q-42 -18 -82 -10 q38 18 68 44 q-34 -4 -60 8 q34 12 62 26 q-22 6 -36 18 q30 6 50 20 z"/>
+      <path d="M392 902 q18 -128 -6 -206 q34 -22 84 -22 q-44 20 -66 50 q46 -14 88 -2 q-42 16 -74 42 q36 -2 62 10 q-36 10 -66 22 q24 8 38 20 q-32 4 -54 18 z"/>
+    </g>
+
+    <!-- centre hedge, low, so the warung and row houses stay visible -->
+    <path d="M330 900 q40 -28 92 -20 q46 -30 100 -12 q44 -24 92 -8 q40 -22 84 -4 q40 -16 72 6 L800 900 Z"/>
+
+    <!-- right: dense bank of leaves in front of the two-storey house -->
+    <g>
+      <path d="M790 902 q26 -96 -4 -158 q-34 -14 -52 0 q26 16 32 46 q-28 -12 -46 0 q28 20 38 52 q-24 -8 -38 4 q28 14 38 42 q-18 -4 -28 6 q22 10 28 8 z"/>
+      <path d="M884 902 q-16 -104 10 -168 q36 -8 54 8 q-28 12 -38 42 q30 -10 48 4 q-30 14 -42 48 q26 -6 40 8 q-30 10 -42 40 q20 -2 30 8 q-24 8 -32 10 z"/>
+      <path d="M986 902 q22 -86 -6 -142 q-32 -10 -48 4 q24 12 28 40 q-26 -10 -42 2 q26 16 34 46 q-22 -6 -34 6 q26 12 34 34 z"/>
+    </g>
+
+    <!-- right edge: a bamboo clump, thin stems with leaf fans -->
+    <g>
+      <rect x="1300" y="792" width="5" height="110"/>
+      <rect x="1324" y="770" width="5" height="132"/>
+      <rect x="1346" y="798" width="5" height="104"/>
+      <rect x="1368" y="764" width="5" height="138"/>
+      <path d="M1302 792 q-30 -26 -62 -22 q28 20 62 22 z M1302 812 q-34 -8 -56 10 q30 6 56 -10 z"/>
+      <path d="M1326 770 q32 -24 66 -18 q-32 20 -66 18 z M1326 790 q36 -6 58 12 q-32 4 -58 -12 z"/>
+      <path d="M1370 764 q-34 -22 -70 -14 q34 18 70 14 z M1370 786 q-38 -6 -60 12 q34 4 60 -12 z"/>
+    </g>
+
+    <!-- far right: low ground cover closing the frame -->
+    <path d="M1180 900 q50 -34 108 -22 q52 -26 106 -10 q46 -20 92 -6 q40 -14 74 8 L1600 900 Z"/>
+  </g>
+
+  <!-- washed light spilling onto the near ground from the alley mouth -->
+  <path d="M700 900 L826 846 L968 846 L1074 900 Z" fill="#1a3a63" opacity="0.22"/>
+</svg>

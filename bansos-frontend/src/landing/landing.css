@@ -1,0 +1,630 @@
+/* ─── Mesin scroll, versi scoped ─────────────────────────────────────────────
+   Diadaptasi dari scrollcraft.css (MIT, nateherkai/scroll-craft). Yang diubah:
+   seluruh aturan global (`body`, `:root`, `img`, `button`) dipindah ke dalam
+   `.ld-page`, supaya dashboard RT/RW/Admin tidak ikut berubah saat landing page
+   dibuka. Kelas `.sc-*` yang dipakai halaman ini dipertahankan apa adanya,
+   karena mesin scrollcraft.js menulis ke class dan atribut itu.
+
+   Nilai-nilai token di bawah adalah sistem desain halaman ini, bukan default
+   pustaka. Alasan tiap pilihan ada di DESIGN-LANDING.md.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.ld-page {
+  /* Palet: 3 warna inti + 1 aksen. */
+  --ld-ink: #071322;          /* tinta: teks utama di atas kertas */
+  --ld-paper: #f2ece1;        /* kertas: dasar halaman bagian bawah */
+  --ld-night: #0a1a2e;        /* malam: dasar hero dan footer */
+  --ld-accent: #ffb52e;       /* aksen tunggal: kuning lampu jalan */
+  --ld-accent-ink: #201400;   /* teks di atas aksen */
+
+  --ld-ink-soft: #4a5568;
+  --ld-hairline: rgba(7, 19, 34, 0.14);
+  --ld-hairline-dark: rgba(242, 236, 225, 0.18);
+
+  /* Satu keluarga display, satu keluarga teks. Bricolage dipilih karena
+     ketebalannya bisa dipakai sebagai poster; Plus Jakarta Sans sudah dipakai
+     seluruh aplikasi jadi teks isi tetap dikenali pengguna. */
+  --ld-font-display: 'Bricolage Grotesque', 'Plus Jakarta Sans', system-ui, sans-serif;
+  --ld-font-text: 'Plus Jakarta Sans', system-ui, sans-serif;
+
+  --ld-step-xs: clamp(0.72rem, 0.7rem + 0.1vw, 0.8rem);
+  --ld-step-sm: clamp(0.86rem, 0.83rem + 0.15vw, 0.95rem);
+  --ld-step-base: clamp(1rem, 0.96rem + 0.2vw, 1.1rem);
+  --ld-step-lg: clamp(1.15rem, 1.05rem + 0.5vw, 1.45rem);
+  --ld-step-xl: clamp(1.5rem, 1.3rem + 1vw, 2.1rem);
+  --ld-step-2xl: clamp(2rem, 1.5rem + 2.2vw, 3.2rem);
+  --ld-step-3xl: clamp(2.6rem, 1.7rem + 4vw, 5.4rem);
+
+  --ld-gutter: clamp(1.15rem, 5vw, 5rem);
+  --ld-maxw: 76rem;
+
+  --ld-r-sm: 4px;
+  --ld-r-md: 10px;
+
+  --ld-ease: cubic-bezier(0.23, 1, 0.32, 1);
+
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  background: var(--ld-paper);
+  color: var(--ld-ink);
+  font-family: var(--ld-font-text);
+  font-size: var(--ld-step-base);
+  line-height: 1.62;
+  overflow-x: clip;
+  -webkit-font-smoothing: antialiased;
+}
+
+.ld-page *,
+.ld-page *::before,
+.ld-page *::after { box-sizing: border-box; }
+
+.ld-page :is(h1, h2, h3, p, ol, ul, figure) { margin: 0; }
+.ld-page :is(ol, ul) { list-style: none; padding: 0; }
+
+/* Permukaan browser juga bagian dari desain: seleksi, caret, scrollbar, cincin
+   fokus, dan angka tabular semuanya masih memakai default yang bukan milik
+   sistem ini. Ini langkah termurah yang membedakan halaman "dibuat" dari
+   halaman "dirangkai". */
+.ld-page ::selection { background: var(--ld-accent); color: var(--ld-accent-ink); }
+.ld-page { caret-color: var(--ld-accent); }
+.ld-page :focus-visible {
+  outline: 3px solid var(--ld-accent);
+  outline-offset: 3px;
+  border-radius: var(--ld-r-sm);
+}
+.ld-page :is(.sc-nums) { font-variant-numeric: tabular-nums; }
+
+/* ── Tipografi ────────────────────────────────────────────────────────────── */
+.ld-display {
+  font-family: var(--ld-font-display);
+  font-weight: 800;
+  line-height: 0.96;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+.ld-display--xl { font-size: var(--ld-step-3xl); }
+.ld-display--lg { font-size: var(--ld-step-2xl); }
+.ld-display--md { font-size: var(--ld-step-xl); letter-spacing: -0.02em; line-height: 1.1; }
+
+.ld-lede {
+  font-size: var(--ld-step-lg);
+  line-height: 1.5;
+  letter-spacing: -0.012em;
+  max-width: 44ch;
+  text-wrap: pretty;
+  margin: 0;
+}
+.ld-body { max-width: 62ch; color: var(--ld-ink-soft); text-wrap: pretty; margin: 0; }
+
+/* ── Tata letak ───────────────────────────────────────────────────────────── */
+.ld-wrap {
+  width: 100%;
+  max-width: var(--ld-maxw);
+  margin-inline: auto;
+  padding-inline: var(--ld-gutter);
+}
+
+/* ── Tombol ───────────────────────────────────────────────────────────────── */
+.ld-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 48px;
+  padding: 0.75rem 1.5rem;
+  border: 0;
+  border-radius: var(--ld-r-sm);
+  font-family: var(--ld-font-text);
+  font-size: var(--ld-step-sm);
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 160ms var(--ld-ease), color 160ms var(--ld-ease), transform 160ms var(--ld-ease);
+}
+.ld-btn--primary { background: var(--ld-accent); color: var(--ld-accent-ink); }
+.ld-btn--primary:hover { background: #ffc759; transform: translateY(-1px); }
+.ld-btn--ghost {
+  background: rgba(10, 26, 46, 0.55);
+  color: var(--ld-paper);
+  border: 1.5px solid rgba(242, 236, 225, 0.62);
+  backdrop-filter: blur(6px);
+}
+.ld-btn--ghost:hover { border-color: var(--ld-paper); background: rgba(10, 26, 46, 0.78); }
+.ld-btn--ink { background: var(--ld-ink); color: var(--ld-paper); }
+.ld-btn--ink:hover { background: #10243c; transform: translateY(-1px); }
+.ld-btn--sm { min-height: 44px; padding: 0.5rem 1rem; font-size: var(--ld-step-xs); }
+
+/* ── Navigasi ─────────────────────────────────────────────────────────────── */
+.ld-nav {
+  position: fixed;
+  inset-inline: 0;
+  top: 0;
+  z-index: 60;
+  background: color-mix(in srgb, var(--ld-night) 82%, transparent);
+  backdrop-filter: blur(14px) saturate(1.3);
+  border-bottom: 1px solid rgba(242, 236, 225, 0.12);
+  transition: background 220ms var(--ld-ease), border-color 220ms var(--ld-ease);
+}
+.ld-nav--solid {
+  background: var(--ld-night);
+  border-bottom-color: rgba(242, 236, 225, 0.22);
+}
+.ld-nav__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-block: 0.7rem;
+}
+.ld-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+  /* Ini <button>, bukan <div>, supaya bisa memakai perilaku fokus dan Enter
+     bawaan browser untuk "kembali ke atas". Konsekuensinya seluruh gaya bawaan
+     button harus dicabut: tanpa ini tombolnya tampil sebagai kotak putih
+     berbingkai di tengah navigasi gelap. */
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ld-brand__mark {
+  width: 34px; height: 34px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  background: var(--ld-accent);
+  border-radius: var(--ld-r-sm);
+  color: var(--ld-accent-ink);
+}
+.ld-brand__name {
+  font-family: var(--ld-font-display);
+  font-size: 1.02rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ld-paper);
+  line-height: 1.1;
+}
+.ld-brand__sub {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: rgba(242, 236, 225, 0.62);
+}
+.ld-nav__actions { display: flex; gap: 0.5rem; flex: 0 0 auto; }
+
+/* ── Hero ─────────────────────────────────────────────────────────────────── */
+.ld-hero {
+  position: relative;
+  background: var(--ld-night);
+  /* svh, bukan vh: bilah alamat seluler memakan 60-100px, dan hero yang dihitung
+     dengan vh akan mendorong tombol utama keluar layar di HP. */
+  min-height: 100svh;
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-end;
+  isolation: isolate;
+  overflow: clip;
+}
+@supports (height: 100svh) {
+  .ld-hero { min-height: 100svh; }
+}
+
+/* Tiga plane berlapis. Tidak memakai transform untuk memusatkan diri: mesin
+   menulis `transform: translate3d(0,Ypx,0)` inline untuk parallax, dan inline
+   style mengalahkan kelas, jadi translateX(-50%) akan hilang begitu scroll
+   bergerak. Pemusatan dilakukan dengan inset 0 + object-fit, dan tinggi diberi
+   kelonggaran supaya pergeseran vertikal parallax tidak membuka celah di tepi.
+   Hanya opacity dan transform yang tersentuh; transition pada transform akan
+   membuat setiap penulisan per-frame ikut di-ease, yang di HP terbaca sebagai
+   gambar tertinggal satu detik di belakang jempol. */
+.ld-hero__plane {
+  position: absolute;
+  inset-inline: 0;
+  top: calc(-1 * var(--ld-plane-slack, 90px));
+  width: 100%;
+  height: calc(100% + (2 * var(--ld-plane-slack, 90px)));
+  max-width: none;
+  object-fit: cover;
+  object-position: center bottom;
+  pointer-events: none;
+  user-select: none;
+  will-change: transform;
+}
+.ld-hero__plane--back { z-index: 0; --ld-plane-slack: 130px; }
+.ld-hero__plane--mid { z-index: 1; --ld-plane-slack: 80px; }
+.ld-hero__plane--front { z-index: 3; --ld-plane-slack: 40px; }
+
+/* Kabut: gradient ke warna malam di tepi bawah section, supaya garis potong
+   plane saat mereka bergerak tidak pernah terlihat. */
+.ld-hero__floor {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: clamp(120px, 26vh, 300px);
+  z-index: 4;
+  background: linear-gradient(to bottom, transparent, var(--ld-night) 82%);
+  pointer-events: none;
+}
+
+/* Scrim hanya di tempat teks berada. Menggelapkan seluruh frame akan
+   meratakan gambar di mana-mana demi kontras di satu sudut. */
+.ld-hero__scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    linear-gradient(to top, color-mix(in srgb, var(--ld-night) 94%, transparent) 0%,
+      color-mix(in srgb, var(--ld-night) 62%, transparent) 34%,
+      transparent 62%),
+    linear-gradient(to right, color-mix(in srgb, var(--ld-night) 78%, transparent) 0%,
+      color-mix(in srgb, var(--ld-night) 30%, transparent) 42%,
+      transparent 68%);
+}
+
+.ld-hero__copy {
+  position: relative;
+  z-index: 5;
+  width: 100%;
+  padding-block: clamp(4.5rem, 14vh, 9rem) clamp(2.5rem, 8vh, 4.5rem);
+}
+.ld-hero__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: var(--ld-step-xs);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ld-accent);
+  margin-bottom: 0.85rem;
+}
+.ld-hero__title {
+  color: var(--ld-paper);
+  font-size: clamp(2.5rem, 1.4rem + 5.4vw, 6rem);
+  max-width: 15ch;
+  /* Frasa kunci tidak boleh pecah di tengah: "bolak-balik" yang terbelah jadi
+     "bolak-" / "balik" membaca seperti teks rusak, bukan pemenggalan. */
+  hyphens: manual;
+  overflow-wrap: normal;
+}
+.ld-hero__title em {
+  font-style: normal;
+  color: var(--ld-accent);
+  /* Satu unit, jadi pembungkusan terjadi sebelum atau sesudahnya, bukan di
+     dalamnya. Di layar sempit ini turun ke baris sendiri, dan itu wajar. */
+  white-space: nowrap;
+}
+
+/* Teks hero tidak duduk di atas pita paling terang: scrim sudah menggelapkan,
+   tapi gradasi langit di belakang judul tetap harus redup supaya putih dan
+   aksen kuning tidak bertabrakan dengan kuning langit. Blok ini milik hero,
+   bukan milik gambar, jadi ia yang menyesuaikan. */
+.ld-hero__copy > * { position: relative; }
+.ld-hero__copy::before {
+  content: '';
+  position: absolute;
+  inset: -8% -12% -6% -12%;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(
+    72% 68% at 26% 58%,
+    color-mix(in srgb, var(--ld-night) 82%, transparent) 0%,
+    color-mix(in srgb, var(--ld-night) 52%, transparent) 46%,
+    transparent 78%
+  );
+}
+
+.ld-hero__lede {
+  color: rgba(242, 236, 225, 0.9);
+  margin-top: 1.1rem;
+  max-width: 40ch;
+}
+.ld-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  margin-top: 1.9rem;
+}
+.ld-hero__note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-top: 1.1rem;
+  font-size: var(--ld-step-sm);
+  line-height: 1.6;
+  color: rgba(242, 236, 225, 0.78);
+  max-width: 46ch;
+}
+
+/* ── Bagian isi (kertas) ──────────────────────────────────────────────────── */
+.ld-sheet {
+  background: var(--ld-paper);
+  color: var(--ld-ink);
+  padding-block: clamp(3.5rem, 9vw, 7rem);
+}
+.ld-sheet--tight { padding-block: clamp(2.5rem, 6vw, 4.5rem); }
+
+/* Judul bagian: tanpa kicker, tanpa nomor. Judul membawa beratnya sendiri. */
+.ld-head { max-width: 34ch; }
+.ld-head__title { margin-bottom: 0.9rem; }
+
+/* ── Kriteria: daftar bernomor tipografis, bukan kartu ──────────────────────
+   Jarak di atas daftar lebih lega daripada jarak judul ke paragrafnya: ruang
+   itu milik batas bagian, bukan milik pasangan judul-paragraf. */
+.ld-krit {
+  margin-top: clamp(1.6rem, 3.5vw, 2.4rem);
+  border-top: 1px solid var(--ld-hairline);
+}
+.ld-krit__row {
+  display: grid;
+  grid-template-columns: 3.2rem minmax(0, 1fr);
+  align-items: baseline;
+  gap: 0.5rem 1rem;
+  padding-block: 0.95rem;
+  border-bottom: 1px solid var(--ld-hairline);
+}
+.ld-krit__row:hover { background: rgba(7, 19, 34, 0.03); }
+.ld-krit__no {
+  font-family: var(--ld-font-display);
+  font-size: var(--ld-step-sm);
+  font-weight: 800;
+  /* Angka kriteria dulu memakai aksen amber di atas kertas: kontrasnya cuma
+     sekitar 2:1, jauh di bawah 4.5:1, jadi nomor urut praktis hilang bagi warga
+     yang matanya sudah tua. Sekarang nomornya memakai tinta, dan aksen tetap
+     memegang perannya sebagai penanda bagian. */
+  color: var(--ld-ink);
+  font-variant-numeric: tabular-nums;
+  /* Tabular saja tidak cukup: lebar kolom ditetapkan supaya "10" tidak bergeser
+     satu digit ke kiri dari "01". */
+  width: 2.4rem;
+  letter-spacing: 0.02em;
+}
+.ld-krit__name { font-size: var(--ld-step-base); font-weight: 600; line-height: 1.45; }
+
+/* ── Pan: jalur horizontal untuk langkah pendaftaran ──────────────────────── */
+.ld-pan { background: var(--ld-night); color: var(--ld-paper); position: relative; }
+.ld-pan__stage {
+  /* sticky, bukan static: ini stage yang harus menempel selama section pan
+     bergerak. Tanpa position:sticky rail-nya hanya geser sekali di tempat lalu
+     ikut ter-scroll pergi, dan section ini terbaca sebagai halaman kosong. */
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: clip;
+}
+@supports (height: 100svh) {
+  .ld-pan__stage { height: 100svh; }
+}
+
+/* Kepala rail: judul bagian dan penghitung langkah. Penghitung memberi tahu
+   "ini urutan, bukan teks yang terpotong" tanpa perlu panah atau tombol geser. */
+.ld-pan__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: clamp(1.2rem, 3vw, 2rem);
+}
+.ld-pan__head h2 { color: var(--ld-paper); }
+.ld-pan__count {
+  font-family: var(--ld-font-display);
+  font-size: var(--ld-step-lg);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  color: var(--ld-accent);
+  flex: 0 0 auto;
+}
+.ld-pan__count-sep { color: color-mix(in srgb, var(--ld-paper) 34%, transparent); margin-inline: 0.15em; }
+
+/* Tepi kanan: kabut tipis, supaya kartu berikutnya terbaca "masih ada di
+   samping" alih-alih terpotong keras di pinggir layar. */
+.ld-pan__edge {
+  position: absolute;
+  inset-block: 0;
+  right: 0;
+  width: clamp(2rem, 8vw, 7rem);
+  pointer-events: none;
+  background: linear-gradient(to right, transparent, var(--ld-night) 92%);
+}
+
+/* Penanda posisi: tiga garis, satu per langkah. Isinya bukan dekorasi, ia
+   menyatakan "ini urutan tiga bagian" dan menyala mengikuti langkah aktif. */
+.ld-pan__ticks {
+  display: flex;
+  gap: 0.4rem;
+  padding-top: clamp(1.2rem, 3vw, 2rem);
+}
+.ld-pan__tick {
+  height: 3px;
+  flex: 1 1 0;
+  background: color-mix(in srgb, var(--ld-paper) 20%, transparent);
+  transition: background 220ms var(--ld-ease);
+}
+.ld-pan__tick[data-on='1'] { background: var(--ld-accent); }
+.ld-pan__rail {
+  display: flex;
+  gap: clamp(1rem, 3vw, 2.2rem);
+  /* Padding sejajar dengan .ld-wrap, bukan --ld-gutter saja: kartu harus mulai
+     di garis yang sama dengan judul di atasnya, kalau tidak judul dan isi
+     terbaca sebagai dua kolom yang tidak berhubungan. */
+  padding-inline: max(var(--ld-gutter), calc((100vw - var(--ld-maxw)) / 2 + var(--ld-gutter)));
+  will-change: transform;
+}
+.ld-step {
+  flex: 0 0 auto;
+  /* Satu kartu selebar satu layar penuh. Dengan tiga kartu selebar 46rem, rail
+     hanya 624px lebih panjang dari viewport, sehingga kartu ketiga tidak pernah
+     sampai ke tengah layar dan penghitung langkah berhenti di "02". Lebar satu
+     layar memberi tiap langkah jarak geser yang sepadan dengan bacaannya. */
+  width: calc(100vw - (2 * var(--ld-gutter)));
+  padding-block: 1.6rem;
+  border-top: 3px solid var(--ld-accent);
+}
+.ld-step__title {
+  /* index.css punya `h1, h2 { color: var(--text-h) }` yang berlaku global dan
+     membuat judul langkah jadi tinta gelap di atas latar malam. Judul di sini
+     h3, tapi aturan itu tetap perlu dinyatakan ulang supaya warna judul tidak
+     bergantung pada urutan stylesheet. */
+  font-family: var(--ld-font-display);
+  font-size: var(--ld-step-xl);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--ld-paper);
+  margin-top: 0.7rem;
+}
+.ld-step__body {
+  /* Teks penjelas satu-satunya di section ini, jadi ia tidak boleh terbaca
+     sebagai fine print: ukurannya dinaikkan dan warnanya diterangkan. */
+  font-size: var(--ld-step-base);
+  line-height: 1.62;
+  color: rgba(242, 236, 225, 0.86);
+  margin-top: 0.7rem;
+  max-width: 46ch;
+}
+
+/* ── Syarat: dua kolom teks, tanpa kartu ──────────────────────────────────── */
+.ld-syarat {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: clamp(1.5rem, 5vw, 4rem);
+  align-items: start;
+}
+.ld-list { display: flex; flex-direction: column; gap: 0.9rem; margin-top: 1.4rem; }
+.ld-list li {
+  display: grid;
+  grid-template-columns: 1.35rem minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: start;
+  font-size: var(--ld-step-base);
+  line-height: 1.55;
+}
+.ld-list svg { margin-top: 0.2rem; color: #166534; }
+
+/* ── FAQ: <details> asli, jadi keyboard dan Escape sudah benar ────────────── */
+.ld-faq { margin-top: clamp(1.6rem, 4vw, 2.4rem); border-top: 1px solid var(--ld-hairline); }
+.ld-faq__item { border-bottom: 1px solid var(--ld-hairline); }
+.ld-faq__q {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  min-height: 56px;
+  padding: 1rem 0;
+  cursor: pointer;
+  list-style: none;
+  font-size: var(--ld-step-base);
+  font-weight: 700;
+  line-height: 1.45;
+}
+.ld-faq__q::-webkit-details-marker { display: none; }
+.ld-faq__q:hover { color: #0b3fa8; }
+.ld-faq__chev { flex: 0 0 auto; transition: transform 180ms var(--ld-ease); }
+.ld-faq__item[open] .ld-faq__chev { transform: rotate(180deg); }
+.ld-faq__a {
+  padding: 0 0 1.1rem;
+  font-size: var(--ld-step-sm);
+  line-height: 1.7;
+  color: var(--ld-ink-soft);
+  max-width: 68ch;
+}
+
+/* ── Penutup ──────────────────────────────────────────────────────────────── */
+.ld-close {
+  background: var(--ld-accent);
+  color: var(--ld-accent-ink);
+  padding-block: clamp(2.5rem, 7vw, 4.5rem);
+}
+.ld-close__inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+.ld-close__title { max-width: 24ch; }
+
+.ld-foot {
+  background: var(--ld-night);
+  color: rgba(242, 236, 225, 0.72);
+  padding-block: clamp(2rem, 5vw, 3.2rem);
+}
+.ld-foot__inner {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1.5rem;
+}
+.ld-foot__brand {
+  font-family: var(--ld-font-display);
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ld-paper);
+}
+.ld-foot__text { font-size: var(--ld-step-sm); line-height: 1.7; max-width: 52ch; margin-top: 0.4rem; }
+
+/* ── Gerak: satu momen yang ditata, bukan efek di setiap bagian ───────────── */
+[data-ld-reveal] {
+  opacity: 0;
+  transform: translate3d(0, 18px, 0);
+  transition: opacity 620ms var(--ld-ease), transform 620ms var(--ld-ease);
+}
+[data-ld-reveal].is-in { opacity: 1; transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ld-page [data-ld-reveal] { opacity: 1; transform: none; transition-duration: 1ms; }
+  .ld-page * { scroll-behavior: auto !important; }
+}
+
+/* ── HP ───────────────────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .ld-syarat { grid-template-columns: 1fr; }
+  .ld-hero { align-items: flex-end; }
+  .ld-hero__title { max-width: 12ch; }
+  .ld-step { width: min(84vw, 26rem); }
+  /* Di HP hero lebih tinggi dari layar dan glow-nya jatuh tepat di belakang
+     paragraf. Scrim dinaikkan khusus di sini supaya teks abu-abu tidak hilang
+     di atas pita hangat. */
+  .ld-hero__scrim {
+    background:
+      linear-gradient(to top, color-mix(in srgb, var(--ld-night) 96%, transparent) 0%,
+        color-mix(in srgb, var(--ld-night) 78%, transparent) 42%,
+        color-mix(in srgb, var(--ld-night) 34%, transparent) 66%,
+        transparent 88%);
+  }
+  /* Rail di HP tetap bisa digeser jari walau gerak dimatikan, karena transform
+     rail adalah navigasinya, bukan hiasan. */
+  .ld-pan__stage { overflow-x: auto; scroll-snap-type: x proximity; }
+  .ld-step { scroll-snap-align: center; }
+}
+
+@media (max-width: 620px) {
+  .ld-brand__sub { display: none; }
+  /* Di layar sempit hanya tombol utama yang tinggal di navigasi: dua tombol
+     berdampingan mendorong nama merek keluar layar. Yang disembunyikan adalah
+     tombol sekunder, bukan seluruh baris aksi. */
+  .ld-nav__actions .ld-btn--ghost { display: none; }
+  .ld-brand__name { font-size: 0.96rem; }
+  .ld-hero__actions .ld-btn { width: 100%; }
+  .ld-krit__row { grid-template-columns: 2.4rem minmax(0, 1fr); }
+  .ld-close__inner .ld-btn { width: 100%; }
+  .ld-foot__inner { flex-direction: column; }
+}
