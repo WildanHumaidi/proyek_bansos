@@ -185,21 +185,21 @@ export default function LandingPage() {
           <div className="ld-nav__inner">
             <button className="ld-brand" onClick={toTop} type="button">
               <span className="ld-brand__mark" aria-hidden="true">
-                <IconHouse width="19" height="19" />
+                <IconHouse width="20" height="20" />
               </span>
-              <span>
+              <span className="ld-brand__text">
                 <span className="ld-brand__name">BansosHub</span>
-                <br />
                 <span className="ld-brand__sub">Portal Bantuan Sosial RW 08</span>
               </span>
             </button>
 
             <div className="ld-nav__actions">
               <button className="ld-btn ld-btn--ghost ld-btn--sm" onClick={goLogin} type="button">
-                <IconLogin width="16" height="16" /> Masuk
+                <IconLogin width="16" height="16" />
+                <span className="ld-btn__label">Masuk</span>
               </button>
               <button className="ld-btn ld-btn--primary ld-btn--sm" onClick={goRegister} type="button">
-                Daftar
+                <span className="ld-btn__label">Daftar</span>
               </button>
             </div>
           </div>
@@ -320,13 +320,18 @@ export default function LandingPage() {
               <span>03</span>
             </p>
           </div>
-          <div className="ld-pan__rail" data-sc-pan="0.7">
+          <div className="ld-pan__rail" data-sc-pan="0">
             {ALUR.map((a, i) => (
               <article className="ld-step" key={a.t} data-step={i + 1}>
                 <h3 className="ld-step__title">{a.t}</h3>
                 <p className="ld-step__body">{a.d}</p>
               </article>
             ))}
+            {/* Spacer: flexbox mengabaikan padding kanan saat menghitung
+                scrollWidth, jadi travel tidak bisa ditambah lewat padding. Elemen
+                kosong yang selebar dua jarak antar-pusat membuat kartu terakhir
+                benar-benar berhenti di tengah. */}
+            <div className="ld-pan__tail" aria-hidden="true" />
           </div>
           <div className="ld-pan__edge" aria-hidden="true" />
           <div className="ld-pan__ticks ld-wrap" aria-hidden="true">

@@ -64,6 +64,12 @@
 .ld-page *::before,
 .ld-page *::after { box-sizing: border-box; }
 
+/* Reset margin untuk elemen teks. Catatan penting: selektor ini menang atas
+   kelas biasa karena kekhususan `:is()`, jadi setiap jarak antar-elemen di
+   halaman ini harus dinyatakan sebagai `display:flex; gap` pada induknya, bukan
+   sebagai margin-top pada anaknya. Margin-top pada anak akan diam-diam hilang.
+   Kesalahan itu pernah terjadi dan hasilnya judul dan paragraf saling menempel
+   tanpa jarak sama sekali. */
 .ld-page :is(h1, h2, h3, p, ol, ul, figure) { margin: 0; }
 .ld-page :is(ol, ul) { list-style: none; padding: 0; }
 
@@ -184,45 +190,52 @@
   cursor: pointer;
 }
 .ld-brand__mark {
-  width: 34px; height: 34px;
+  width: 38px; height: 38px;
   flex: 0 0 auto;
   display: grid;
   place-items: center;
   background: var(--ld-accent);
-  border-radius: var(--ld-r-sm);
+  border-radius: 9px;
   color: var(--ld-accent-ink);
 }
+.ld-brand__text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .ld-brand__name {
   font-family: var(--ld-font-display);
-  font-size: 1.02rem;
+  font-size: 1.08rem;
   font-weight: 800;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
   color: var(--ld-ink);
-  line-height: 1.1;
+  line-height: 1.05;
 }
 .ld-brand__sub {
   font-size: 0.68rem;
   font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
   color: var(--ld-ink-soft);
+  line-height: 1.1;
+  white-space: nowrap;
 }
-.ld-nav__actions { display: flex; gap: 0.5rem; flex: 0 0 auto; }
+/* Dua tombol selalu tampil, termasuk di HP. Sebelumnya tombol Masuk disembunyikan
+   di bawah 620px, jadi warga yang sudah punya akun tidak punya jalan masuk dari
+   halaman ini. Ikon tetap ada supaya tombol masih terbaca saat labelnya
+   dipersempit. */
+.ld-nav__actions { display: flex; gap: 0.5rem; flex: 0 0 auto; align-items: center; }
+.ld-btn__label { white-space: nowrap; }
 
 /* ── Hero ─────────────────────────────────────────────────────────────────── */
 .ld-hero {
   position: relative;
   background: var(--ld-surface);
-  /* svh, bukan vh: bilah alamat seluler memakan 60-100px, dan hero yang dihitung
-     dengan vh akan mendorong tombol utama keluar layar di HP. */
-  min-height: 100svh;
-  min-height: 100vh;
+  /* Hero tidak lagi dipaksa setinggi layar. min-height 100svh + align-items
+     flex-end menaruh seluruh kolom teks di dasar, jadi di layar 900px ada 306px
+     ruang kosong antara navigasi dan eyebrow. Sekarang hero setinggi isinya
+     dengan lantai 600px (atau 78svh di layar pendek) supaya ilustrasi tetap
+     punya ruang. */
+  min-height: min(600px, 78svh);
   display: flex;
   align-items: flex-end;
   isolation: isolate;
   overflow: clip;
-}
-@supports (height: 100svh) {
-  .ld-hero { min-height: 100svh; }
 }
 
 /* Tiga plane berlapis. Tidak memakai transform untuk memusatkan diri: mesin
@@ -238,6 +251,8 @@
   inset-inline: 0;
   top: calc(-1 * var(--ld-plane-slack, 90px));
   width: 100%;
+  /* Hero sekarang setinggi isinya, jadi tinggi plane mengikuti hero. Hero punya
+     min-height sendiri di bawah supaya ilustrasi tetap punya ruang. */
   height: calc(100% + (2 * var(--ld-plane-slack, 90px)));
   max-width: none;
   object-fit: cover;
@@ -286,9 +301,17 @@
   position: relative;
   z-index: 5;
   width: 100%;
-  padding-block: clamp(4.5rem, 14vh, 9rem) clamp(2.5rem, 8vh, 4.5rem);
+  /* Dodge nav yang fixed: tinggi nav diukur (72px) plus napas. Sebelumnya
+     padding atas 14vh menghasilkan 288px ruang mati di 900px, sementara judul
+     dan paragraf justru saling menempel karena margin-top-nya kalah oleh reset.
+     Sekarang jarak antar-elemen memakai gap, dan ruang atas dikendalikan di sini. */
+  padding-block: 108px clamp(1.75rem, 4vh, 2.5rem);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
 }
-.ld-hero__eyebrow {
+.ld-page .ld-hero__eyebrow {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
@@ -297,13 +320,15 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--ld-accent);
-  margin-bottom: 0.85rem;
+  /* Ditulis `.ld-page .x` supaya menang atas reset margin; versi sebelumnya
+     kalah kekhususan sehingga eyebrow dan judul menempel tanpa jarak. */
+  margin-bottom: clamp(0.75rem, 1.8vh, 1.15rem);
 }
 .ld-hero__title {
   /* Tinta gelap: latar hero sekarang langit pagi yang terang, jadi judul putih
      tidak akan terbaca. */
   color: var(--ld-ink);
-  font-size: clamp(2.5rem, 1.4rem + 5.4vw, 6rem);
+  font-size: clamp(2.5rem, 1.4rem + 5.4vw, 5.4rem);
   max-width: 15ch;
   /* Frasa kunci tidak boleh pecah di tengah: "bolak-balik" yang terbelah jadi
      "bolak-" / "balik" membaca seperti teks rusak, bukan pemenggalan. */
@@ -324,25 +349,25 @@
    gradien di atas, yang hanya pekat di kaki kolom. */
 .ld-hero__copy > * { position: relative; }
 
-.ld-hero__lede {
+/* Jarak vertikal di kolom hero. Ditulis sebagai `.ld-page .x` supaya menang atas
+   reset `.ld-page :is(...)` yang lebih dulu dideklarasikan; sebelumnya
+   margin-top pada kelas biasa kalah kekhususan dan semua elemen menempel. */
+.ld-page .ld-hero__lede {
   color: var(--ld-ink-soft);
-  margin-top: 1.1rem;
-  max-width: 40ch;
+  margin-top: clamp(0.9rem, 2vh, 1.35rem);
+  max-width: 42ch;
 }
-.ld-hero__actions {
+.ld-page .ld-hero__actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.7rem;
-  margin-top: 1.9rem;
+  margin-top: clamp(1.4rem, 3vh, 2rem);
 }
-.ld-hero__note {
+.ld-page .ld-hero__note {
   display: flex;
   align-items: flex-start;
   gap: 0.5rem;
-  margin-top: 1.1rem;
-  /* Teks kecil paling awal hilang di layar HP di bawah matahari. Diukur ulang
-     dari piksel hasil render: warna --ld-ink-soft hanya mencapai 4.37:1 di sini,
-     jadi catatan ini memakai tinta penuh, bukan abu-abu. */
+  margin-top: clamp(0.9rem, 2vh, 1.25rem);
   font-size: var(--ld-step-base);
   line-height: 1.6;
   color: var(--ld-ink);
@@ -350,22 +375,34 @@
 }
 
 /* ── Bagian isi (kertas) ──────────────────────────────────────────────────── */
+/* Bagian isi. Padding vertikal lebih rapat dari sebelumnya (dulu sampai 7rem
+   atas + 7rem bawah, jadi dua bagian yang berurutan terpisah 224px dan halaman
+   terbaca longgar tanpa alasan). Jarak milik batas bagian, bukan milik pasangan
+   judul-isi, jadi judul ke isi memakai jarak sendiri yang lebih kecil. */
 .ld-sheet {
   background: var(--ld-paper);
   color: var(--ld-ink);
-  padding-block: clamp(3.5rem, 9vw, 7rem);
+  padding-block: clamp(2.75rem, 6vw, 4.5rem);
 }
-.ld-sheet--tight { padding-block: clamp(2.5rem, 6vw, 4.5rem); }
+.ld-sheet--tight { padding-block: clamp(2rem, 4.5vw, 3.2rem); }
 
 /* Judul bagian: tanpa kicker, tanpa nomor. Judul membawa beratnya sendiri. */
-.ld-head { max-width: 34ch; }
-.ld-head__title { margin-bottom: 0.9rem; }
+/* `.ld-page` ditulis eksplisit supaya menang atas reset margin.
+   `.ld-head` adalah flex column dengan gap, jadi jarak judul ke paragraf dan
+   paragraf ke isi tidak bergantung pada margin yang bisa kalah kekhususan. */
+.ld-page .ld-head {
+  max-width: 34ch;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+.ld-page .ld-head__title { margin: 0; }
 
 /* ── Kriteria: daftar bernomor tipografis, bukan kartu ──────────────────────
    Jarak di atas daftar lebih lega daripada jarak judul ke paragrafnya: ruang
    itu milik batas bagian, bukan milik pasangan judul-paragraf. */
 .ld-krit {
-  margin-top: clamp(1.6rem, 3.5vw, 2.4rem);
+  margin-top: clamp(0.9rem, 1.6vw, 1.25rem);
   border-top: 1px solid var(--ld-hairline);
 }
 .ld-krit__row {
@@ -434,27 +471,37 @@
 }
 .ld-pan__count-sep { color: #94a3b8; margin-inline: 0.15em; }
 
-/* Tepi kanan: kabut tipis, supaya kartu berikutnya terbaca "masih ada di
-   samping" alih-alih terpotong keras di pinggir layar. */
+/* Kabut di kedua tepi. Kartu tetangga memang ikut terlihat, tapi teksnya tidak
+   boleh terpotong mentah di pinggir layar: itu terbaca sebagai halaman rusak,
+   bukan sebagai petunjuk bahwa masih ada langkah lain. Kabut memudarkan kedua
+   sisi sampai warna latar, jadi yang terlihat hanya bentuk kartu, bukan huruf
+   yang terbelah. */
 .ld-pan__edge {
   position: absolute;
   inset-block: 0;
-  right: 0;
-  width: clamp(2rem, 8vw, 7rem);
+  inset-inline: 0;
   pointer-events: none;
-  background: linear-gradient(to right, transparent, var(--ld-surface) 92%);
+  background:
+    linear-gradient(to right, var(--ld-surface) 0%, transparent 14%),
+    linear-gradient(to left, var(--ld-surface) 0%, transparent 14%);
 }
 
 /* Penanda posisi: tiga garis, satu per langkah. Isinya bukan dekorasi, ia
    menyatakan "ini urutan tiga bagian" dan menyala mengikuti langkah aktif. */
+/* Penanda posisi: tiga garis sama panjang, satu per langkah. `flex: 1 1 0` dengan
+   `min-width: 0` membuat ketiganya benar-benar sama walau isinya kosong; tanpa
+   min-width, flex-basis 0 masih bisa terpengaruh padding induk dan segmen
+   pertama tampak lebih pendek dari yang lain. */
 .ld-pan__ticks {
   display: flex;
   gap: 0.4rem;
-  padding-top: clamp(1.2rem, 3vw, 2rem);
+  padding-top: clamp(1.1rem, 2.5vw, 1.6rem);
+  width: 100%;
 }
 .ld-pan__tick {
   height: 3px;
   flex: 1 1 0;
+  min-width: 0;
   background: color-mix(in srgb, var(--ld-accent) 18%, transparent);
   transition: background 220ms var(--ld-ease);
 }
@@ -462,19 +509,35 @@
 .ld-pan__rail {
   display: flex;
   gap: clamp(1rem, 3vw, 2.2rem);
-  /* Padding sejajar dengan .ld-wrap, bukan --ld-gutter saja: kartu harus mulai
-     di garis yang sama dengan judul di atasnya, kalau tidak judul dan isi
-     terbaca sebagai dua kolom yang tidak berhubungan. */
-  padding-inline: max(var(--ld-gutter), calc((100vw - var(--ld-maxw)) / 2 + var(--ld-gutter)));
+  /* Padding kiri = setengah ruang kosong, supaya kartu PERTAMA sudah berada di
+     tengah layar saat act dimulai. Ini yang membuat ketiga langkah bisa berhenti
+     di tengah satu per satu: dengan padding selebar gutter, kartu pertama mulai
+     di x=70 dan tidak pernah mencapai tengah berapa pun travel-nya. Efek
+     sampingnya, over (scrollWidth - viewport) otomatis sama dengan jarak yang
+     dibutuhkan kartu terakhir untuk sampai tengah, jadi data-sc-pan = 0. */
+  --ld-pan-card: min(calc(100vw - (2 * var(--ld-gutter))), 34rem);
+  padding-inline: calc((100vw - var(--ld-pan-card)) / 2);
   will-change: transform;
+}
+.ld-pan__tail {
+  /* Lebar dua kali jarak antar-pusat kartu: inilah travel yang dibutuhkan supaya
+     kartu ketiga berhenti tepat di tengah viewport. */
+  flex: 0 0 auto;
+  /* Dua kali jarak antar-pusat kartu, dikurangi padding kanan rail yang sudah
+     ikut terhitung di scrollWidth. Tanpa pengurangan ini travel kelebihan dan
+     kartu ketiga meluncur melewati tengah. */
+  width: calc(2 * (var(--ld-pan-card) + clamp(1rem, 3vw, 2.2rem)) - (100vw - var(--ld-pan-card)) / 2 - 80px);
+  align-self: stretch;
 }
 .ld-step {
   flex: 0 0 auto;
-  /* Satu kartu selebar satu layar penuh. Dengan tiga kartu selebar 46rem, rail
-     hanya 624px lebih panjang dari viewport, sehingga kartu ketiga tidak pernah
-     sampai ke tengah layar dan penghitung langkah berhenti di "02". Lebar satu
-     layar memberi tiap langkah jarak geser yang sepadan dengan bacaannya. */
-  width: calc(100vw - (2 * var(--ld-gutter)));
+  /* Tiga kartu harus muat berdampingan. Ini keputusan komposisi, bukan detail:
+     kalau jarak antar-pusat kartu lebih besar dari viewport, tidak ada nilai
+     travel yang membuat ketiga kartu berhenti di tengah satu per satu, karena
+     kartu yang satu sudah keluar layar sebelum yang lain sampai. Lebar 28rem
+     dengan gutter 80px memberi tiga kartu + dua jarak = 1440px, jadi rail hanya
+     perlu digeser sedikit dan semua langkah tetap terlihat sebagai satu urutan. */
+  width: var(--ld-pan-card);
   padding-block: 1.6rem;
   border-top: 3px solid var(--ld-accent);
 }
@@ -520,7 +583,7 @@
 .ld-list svg { margin-top: 0.2rem; color: #166534; }
 
 /* ── FAQ: <details> asli, jadi keyboard dan Escape sudah benar ────────────── */
-.ld-faq { margin-top: clamp(1.6rem, 4vw, 2.4rem); border-top: 1px solid var(--ld-hairline); }
+.ld-faq { margin-top: clamp(1.1rem, 2.4vw, 1.7rem); border-top: 1px solid var(--ld-hairline); }
 .ld-faq__item { border-bottom: 1px solid var(--ld-hairline); }
 .ld-faq__q {
   display: flex;
@@ -552,7 +615,7 @@
 .ld-close {
   background: var(--ld-accent);
   color: var(--ld-accent-ink);
-  padding-block: clamp(2.5rem, 7vw, 4.5rem);
+  padding-block: clamp(2.2rem, 5vw, 3.4rem);
 }
 .ld-close__inner {
   display: flex;
@@ -566,7 +629,7 @@
 .ld-foot {
   background: var(--ld-surface);
   color: var(--ld-ink-soft);
-  padding-block: clamp(2rem, 5vw, 3.2rem);
+  padding-block: clamp(1.8rem, 4vw, 2.6rem);
 }
 .ld-foot__inner {
   display: flex;
@@ -647,12 +710,16 @@
 }
 
 @media (max-width: 620px) {
+  /* Sub-judul merek disembunyikan supaya nama merek + dua tombol muat di 360px.
+     Tombol Masuk TIDAK disembunyikan: warga yang sudah punya akun harus punya
+     jalan masuk dari halaman ini. Sebelumnya aturan lama masih menyembunyikannya
+     sehingga hanya "Daftar" yang terlihat. */
   .ld-brand__sub { display: none; }
-  /* Di layar sempit hanya tombol utama yang tinggal di navigasi: dua tombol
-     berdampingan mendorong nama merek keluar layar. Yang disembunyikan adalah
-     tombol sekunder, bukan seluruh baris aksi. */
-  .ld-nav__actions .ld-btn--ghost { display: none; }
-  .ld-brand__name { font-size: 0.96rem; }
+  .ld-brand__name { font-size: 0.92rem; }
+  .ld-brand__mark { width: 32px; height: 32px; }
+  .ld-nav__actions { gap: 0.35rem; }
+  .ld-nav__actions .ld-btn { padding-inline: 0.6rem; font-size: 0.72rem; }
+  .ld-nav__actions .ld-btn svg { width: 14px; height: 14px; }
   .ld-hero__actions .ld-btn { width: 100%; }
   .ld-krit__row { grid-template-columns: 2.4rem minmax(0, 1fr); }
   .ld-close__inner .ld-btn { width: 100%; }
