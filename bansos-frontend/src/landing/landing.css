@@ -194,23 +194,41 @@
   flex: 0 0 auto;
   display: grid;
   place-items: center;
+  /* Kotak ikon memakai aksen biru dengan ikon putih, sama seperti tombol utama.
+     Ikonnya `hub` dari subset Material Symbols yang sudah ada di aplikasi, jadi
+     tidak ada pustaka ikon baru yang ditambahkan ke halaman ini. */
   background: var(--ld-accent);
   border-radius: 9px;
   color: var(--ld-accent-ink);
+}
+.ld-brand__icon {
+  /* Ligatur Material Symbols: teks "hub" dirender sebagai ikon. `line-height: 1`
+     mencegah ikon bergeser ke bawah karena kotak baris yang lebih tinggi. */
+  font-family: 'Material Symbols Outlined';
+  font-size: 21px;
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  line-height: 1;
+  user-select: none;
 }
 .ld-brand__text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .ld-brand__name {
   font-family: var(--ld-font-display);
   font-size: 1.08rem;
   font-weight: 800;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.01em;
   color: var(--ld-ink);
   line-height: 1.05;
+  text-transform: uppercase;
 }
+/* HUB dibedakan warna, seperti di halaman login. Di nav putih, biru muda
+   (#93c5fd) tidak terbaca, jadi dipakai aksen penuh supaya tetap satu keluarga
+   dengan brand login tanpa mengorbankan kontras. */
+.ld-brand__name-accent { color: var(--ld-accent); }
 .ld-brand__sub {
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.01em;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   color: var(--ld-ink-soft);
   line-height: 1.1;
   white-space: nowrap;
@@ -508,26 +526,48 @@
 .ld-pan__tick[data-on='1'] { background: var(--ld-accent); }
 .ld-pan__rail {
   display: flex;
-  gap: clamp(1rem, 3vw, 2.2rem);
-  /* Padding kiri = setengah ruang kosong, supaya kartu PERTAMA sudah berada di
-     tengah layar saat act dimulai. Ini yang membuat ketiga langkah bisa berhenti
-     di tengah satu per satu: dengan padding selebar gutter, kartu pertama mulai
-     di x=70 dan tidak pernah mencapai tengah berapa pun travel-nya. Efek
-     sampingnya, over (scrollWidth - viewport) otomatis sama dengan jarak yang
-     dibutuhkan kartu terakhir untuk sampai tengah, jadi data-sc-pan = 0. */
+  align-items: stretch;
+  /* Tidak ada `gap` di sini, dan itu bukan kelalaian. Dengan dua pengisi di ujung
+     rail ada lima anak, sehingga `gap` berlaku empat kali: dua kali di antara
+     kartu dan dua kali di antara pengisi dan kartu. Empat gap membuat travel
+     kelebihan tepat 2G dan kartu terakhir selalu berhenti sebelum tengah.
+     Jarak antar-kartu diberikan lewat margin pada pasangan kartu saja, jadi
+     gap-nya tepat dua.
+     
+     Geometri rail dihitung dari dua elemen pengisi, bukan dari padding.
+     Alasannya terukur: `scrollWidth` mengabaikan padding kanan pada elemen flex
+     yang isinya meluap (1018 vs 1036 di 360px), jadi setiap perhitungan yang
+     bergantung pada padding selalu kurang sebesar padding itu dan kartu terakhir
+     berhenti sebelum tengah. Pengisi adalah elemen flex biasa, jadi ikut
+     terhitung.
+     
+     Dengan pengisi kiri dan kanan selebar (W - C) / 2:
+       scrollWidth = 2*(W-C)/2 + 3C + 2G = W + 2C + 2G
+       travel      = scrollWidth - W      = 2(C + G)
+     Travel itu tepat sama dengan jarak yang dibutuhkan ketiga kartu untuk
+     berhenti di tengah satu per satu. Tidak ada angka ajaib yang perlu disetel
+     per breakpoint, karena semuanya turun dari lebar kartu itu sendiri. */
   --ld-pan-card: min(calc(100vw - (2 * var(--ld-gutter))), 34rem);
-  padding-inline: calc((100vw - var(--ld-pan-card)) / 2);
   will-change: transform;
 }
-.ld-pan__tail {
-  /* Lebar dua kali jarak antar-pusat kartu: inilah travel yang dibutuhkan supaya
-     kartu ketiga berhenti tepat di tengah viewport. */
+/* `scrollWidth` mengabaikan padding kanan pada elemen flex yang isinya meluap
+   (terukur di 360px: 1018 padahal seharusnya 1036). Akibatnya travel kurang
+   tepat sebesar padding kanan, dan kartu terakhir berhenti 18px sebelum tengah.
+   Elemen setipis padding kanan menutup selisih itu tanpa menggeser posisi
+   kartu mana pun, karena ia tidak terlihat dan tidak punya isi. */
+
+.ld-step + .ld-step {
+  /* Hanya dua sambungan yang diberi jarak (kartu 1-2 dan 2-3), bukan empat.
+     Inilah yang membuat travel turun tepat menjadi 2(C + G). */
+  margin-inline-start: clamp(1rem, 3vw, 2.2rem);
+}
+.ld-pan__pad {
+  /* Lebar setengah ruang kosong, sama untuk kiri dan kanan. Lihat penjelasan di
+     .ld-pan__rail: dua pengisi inilah yang membuat travel tepat 2(C + G). */
   flex: 0 0 auto;
-  /* Dua kali jarak antar-pusat kartu, dikurangi padding kanan rail yang sudah
-     ikut terhitung di scrollWidth. Tanpa pengurangan ini travel kelebihan dan
-     kartu ketiga meluncur melewati tengah. */
-  width: calc(2 * (var(--ld-pan-card) + clamp(1rem, 3vw, 2.2rem)) - (100vw - var(--ld-pan-card)) / 2 - 80px);
+  width: calc((100vw - var(--ld-pan-card)) / 2);
   align-self: stretch;
+  pointer-events: none;
 }
 .ld-step {
   flex: 0 0 auto;
@@ -692,7 +732,6 @@
   .ld-hero__lede { margin-top: 0.8rem; }
   .ld-hero__actions { margin-top: 1.2rem; }
   .ld-hero__note { margin-top: 0.8rem; }
-  .ld-step { width: min(84vw, 26rem); }
   /* Di HP hero lebih tinggi dari layar dan glow-nya jatuh tepat di belakang
      paragraf. Scrim dinaikkan khusus di sini supaya teks abu-abu tidak hilang
      di atas pita hangat. */

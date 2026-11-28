@@ -6,7 +6,6 @@ import {
   IconArrow,
   IconCheck,
   IconChevron,
-  IconHouse,
   IconInfo,
   IconLogin,
   IconUserPlus,
@@ -184,12 +183,19 @@ export default function LandingPage() {
         <div className="ld-wrap">
           <div className="ld-nav__inner">
             <button className="ld-brand" onClick={toTop} type="button">
+              {/* Logo ini meniru brand di halaman login (Login.jsx): kotak ikon
+                  `hub` yang diisi, wordmark BANSOS + HUB dengan HUB berwarna
+                  biru muda, dan sub-judul uppercase berspasi lebar. Sebelumnya
+                  landing memakai ikon rumah dan nama "BansosHub" biasa, jadi
+                  halaman publik dan halaman masuk terlihat seperti dua produk. */}
               <span className="ld-brand__mark" aria-hidden="true">
-                <IconHouse width="20" height="20" />
+                <span className="ld-brand__icon">hub</span>
               </span>
               <span className="ld-brand__text">
-                <span className="ld-brand__name">BansosHub</span>
-                <span className="ld-brand__sub">Portal Bantuan Sosial RW 08</span>
+                <span className="ld-brand__name">
+                  BANSOS<span className="ld-brand__name-accent">HUB</span>
+                </span>
+                <span className="ld-brand__sub">Sistem Terpadu</span>
               </span>
             </button>
 
@@ -321,17 +327,16 @@ export default function LandingPage() {
             </p>
           </div>
           <div className="ld-pan__rail" data-sc-pan="0">
+            {/* Dua pengisi: geometri rail bergantung padanya, bukan pada padding.
+                Lihat komentar .ld-pan__rail di landing.css. */}
+            <div className="ld-pan__pad" aria-hidden="true" />
             {ALUR.map((a, i) => (
               <article className="ld-step" key={a.t} data-step={i + 1}>
                 <h3 className="ld-step__title">{a.t}</h3>
                 <p className="ld-step__body">{a.d}</p>
               </article>
             ))}
-            {/* Spacer: flexbox mengabaikan padding kanan saat menghitung
-                scrollWidth, jadi travel tidak bisa ditambah lewat padding. Elemen
-                kosong yang selebar dua jarak antar-pusat membuat kartu terakhir
-                benar-benar berhenti di tengah. */}
-            <div className="ld-pan__tail" aria-hidden="true" />
+            <div className="ld-pan__pad" aria-hidden="true" />
           </div>
           <div className="ld-pan__edge" aria-hidden="true" />
           <div className="ld-pan__ticks ld-wrap" aria-hidden="true">
