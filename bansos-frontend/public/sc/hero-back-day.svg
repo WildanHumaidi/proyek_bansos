@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900" preserveAspectRatio="xMidYMax slice" role="presentation">
+  <defs>
+    <!-- Versi siang, palet putih-biru seperti dashboard. Langit terang ke bawah
+         supaya teks gelap di kolom kiri tetap terbaca; tidak ada pita gelap
+         karena halaman ini tidak lagi bertema malam. -->
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#eaf4ff"/>
+      <stop offset="0.34" stop-color="#d7e9fb"/>
+      <stop offset="0.58" stop-color="#c2dcf6"/>
+      <stop offset="0.80" stop-color="#d5e7f8"/>
+      <stop offset="0.92" stop-color="#eef6ff"/>
+      <stop offset="1" stop-color="#f8fbff"/>
+    </linearGradient>
+    <!-- Glow matahari dibuang: kuning hangat di tengah produk putih-biru
+         terbaca sebagai warna asing. Langit sekarang biru bersih. -->
+    <radialGradient id="sunGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.85"/>
+      <stop offset="0.45" stop-color="#eaf4ff" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#d7e9fb" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="dither" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.022"/></feComponentTransfer>
+      <feBlend in2="SourceGraphic" mode="overlay"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#dither)">
+    <rect width="1600" height="900" fill="url(#sky)"/>
+
+    <!-- Matahari pagi, lembut, di kanan supaya kolom kiri tetap terang-merata -->
+    <circle cx="1180" cy="470" r="420" fill="url(#sunGlow)"/>
+    <circle cx="1180" cy="470" r="30" fill="#ffffff"/>
+
+    <!-- Ridge berlapis: makin jauh makin pucat, kebalikan tema malam -->
+    <path d="M0 512 L96 498 L168 506 L244 474 L330 494 L404 466 L470 486 L544 458 L618 480 L700 452 L786 476 L858 454 L940 474 L1020 444 L1104 470 L1180 446 L1266 472 L1340 452 L1420 466 L1500 442 L1584 464 L1600 462 L1600 620 L0 620 Z" fill="#8fb2d6" opacity="0.9"/>
+    <path d="M0 566 L82 552 L156 562 L236 534 L316 556 L392 526 L462 548 L540 520 L622 544 L706 516 L790 540 L864 518 L948 538 L1030 510 L1116 536 L1192 512 L1280 538 L1356 518 L1436 532 L1516 508 L1600 526 L1600 660 L0 660 Z" fill="#7095bf" opacity="1"/>
+  </g>
+
+  <!-- Siluet atap jauh: biru muda, tipis, dengan rim cahaya matahari -->
+  <g fill="#5d83a9">
+    <path d="M0 628 L58 628 L58 604 L104 604 L104 628 L188 628 L188 598 L246 598 L246 628 L330 628 L330 610 L392 610 L392 628 L470 628 L470 596 L534 596 L534 628 L612 628 L612 608 L676 608 L676 628 Z"/>
+    <path d="M700 628 L782 628 L782 590 L830 590 L830 628 L918 628 L918 606 L986 606 L986 628 L1064 628 L1064 592 L1120 592 L1120 628 L1204 628 L1204 604 L1268 604 L1268 628 L1352 628 L1352 588 L1414 588 L1414 628 L1494 628 L1494 606 L1556 606 L1556 628 L1600 628 L1600 716 L700 716 Z"/>
+  </g>
+  <g stroke="#ffffff" stroke-width="2" fill="none" opacity="0.6">
+    <path d="M104 604 L104 596 M246 598 L246 590 M392 610 L392 602 M534 596 L534 588 M676 608 L676 600"/>
+    <path d="M830 590 L830 582 M986 606 L986 598 M1120 592 L1120 584 M1268 604 L1268 596 M1414 588 L1414 580 M1556 606 L1556 598"/>
+  </g>
+
+  <g stroke="#6f92b5" stroke-width="3" fill="none" stroke-linecap="round">
+    <path d="M262 598 L262 546 M240 566 L284 566 M248 580 L276 580"/>
+    <path d="M1092 592 L1092 536 M1070 556 L1114 556 M1078 572 L1106 572"/>
+    <path d="M1580 606 L1580 562 M1564 574 L1596 574"/>
+  </g>
+
+  <g stroke="#5b7fa3" stroke-width="2.2" fill="none" stroke-linecap="round" opacity="0.5">
+    <path d="M356 246 q9 -8 18 0 q9 -8 18 0"/>
+    <path d="M432 214 q7 -6 14 0 q7 -6 14 0"/>
+    <path d="M496 268 q6 -5 12 0 q6 -5 12 0"/>
+  </g>
+</svg>

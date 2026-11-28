@@ -220,7 +220,7 @@ export default function LandingPage() {
       <section className="ld-hero" id="atas" data-sc-act="flow">
         <img
           className="ld-hero__plane ld-hero__plane--back"
-          src="/sc/hero-back-v3.svg"
+          src="/sc/hero-back-day.svg"
           alt=""
           width="1600"
           height="900"
@@ -230,7 +230,7 @@ export default function LandingPage() {
         />
         <img
           className="ld-hero__plane ld-hero__plane--mid"
-          src="/sc/hero-mid-v5.svg"
+          src="/sc/hero-mid-day.svg"
           alt=""
           width="1600"
           height="900"
@@ -240,7 +240,7 @@ export default function LandingPage() {
         <div className="ld-hero__scrim" aria-hidden="true" />
         <img
           className="ld-hero__plane ld-hero__plane--front"
-          src="/sc/hero-front-v4.svg"
+          src="/sc/hero-front-day.svg"
           alt=""
           width="1600"
           height="900"
