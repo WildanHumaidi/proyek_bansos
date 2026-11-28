@@ -44,6 +44,21 @@ class DataExporter
             'lebar' => $lebar,
         ])->setPaper('a4', 'landscape');
 
+        // Nomor halaman. DomPDF hanya bisa menuliskannya lewat script setelah
+        // canvas dibuat; tanpa ini dokumen lima halaman yang dicetak lalu
+        // tercecer tidak bisa diurutkan kembali.
+        $pdf->render();
+        $dompdf = $pdf->getDomPDF();
+        $canvas = $dompdf->getCanvas();
+        $canvas->page_text(
+            $canvas->get_width() - 90,
+            $canvas->get_height() - 26,
+            'Hal. {PAGE_NUM} dari {PAGE_COUNT}',
+            null,
+            7.5,
+            [0.28, 0.33, 0.41]
+        );
+
         return $pdf->download($namaFile.'.pdf');
     }
 
@@ -89,10 +104,16 @@ class DataExporter
                 $nilai = $isi[$i] ?? '';
 
                 // Angka tetap angka supaya bisa dijumlah/diurutkan di Excel.
+                // Kolom nomor urut dikecualikan: nomor seperti "001" akan
+                // diratakan Excel menjadi 1 dan kehilangan nol depannya, padahal
+                // nomor itu juga dipakai sebagai kode RT di tabel lain.
+                $numerik = (is_int($nilai) || is_float($nilai))
+                    && ! in_array($kolom[$i] ?? '', ['No', 'RT'], true);
+
                 $sheet->setCellValueExplicit(
                     Coordinate::stringFromColumnIndex($i + 1).$r,
                     $nilai,
-                    is_int($nilai) || is_float($nilai)
+                    $numerik
                         ? \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_NUMERIC
                         : \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING
                 );
@@ -128,6 +149,23 @@ class DataExporter
         $sheet->getPageSetup()->setFitToHeight(0);
         $sheet->freezePane('A'.($barisHeader + 1));
 
+        // Autofilter: tanpa ini pengguna harus menyortir manual, padahal 92 baris
+        // pengajuan hampir selalu disaring per RT atau per status.
+        if ($baris !== []) {
+            $sheet->setAutoFilter("A{$barisHeader}:{$hurufAkhir}".($barisHeader + count($baris)));
+        }
+
+        // Baris judul + header diulang di setiap halaman cetak. Tanpa ini, tabel
+        // yang tercetak lebih dari satu halaman kehilangan nama kolomnya di
+        // halaman kedua dan seterusnya.
+        $sheet->getPageSetup()->setRowsToRepeatAtTopByStartAndEnd(1, $barisHeader);
+        $sheet->getPageSetup()->setFitToPage(true);
+        $sheet->getPageSetup()->setHorizontalCentered(true);
+
+        // Nomor halaman di footer cetak.
+        $sheet->getHeaderFooter()
+            ->setOddFooter('&L&BansosHub&CHal. &P dari &N&R&D');
+
         $writer = new Xlsx($spreadsheet);
 
         return response()->streamDownload(function () use ($writer) {
@@ -139,6 +177,16 @@ class DataExporter
 
     /**
      * Perkiraan lebar relatif tiap kolom (persen) dari panjang isi terpanjang.
+     *
+     * Totalnya WAJIB tepat 100. Versi sebelumnya memberi lantai 9% per kolom dan
+     * membiarkan totalnya membengkak: dengan tujuh kolom hasilnya 112%, dan pada
+     * `table-layout: fixed` kelebihan 12% itu memotong kolom paling kanan keluar
+     * halaman (header "TANGGAL KIRIM" terpotong jadi "TANGGAL KIR", status dan
+     * skor hilang). Setelah itu setiap sel dipaksa wrap dan satu baris data
+     * pecah menjadi dua baris fisik di PDF.
+     *
+     * Jadi lebar dihitung dari porsi, lantai diterapkan, lalu dinormalkan kembali
+     * ke 100 dengan pembagian proporsional.
      *
      * @param  array<int, string>  $kolom
      * @param  array<int, array<int, mixed>>  $baris
@@ -157,12 +205,28 @@ class DataExporter
             }
         }
 
-        $total = max(array_sum($panjang), 1);
+        // Akar kuadrat meredam kolom Alamat yang panjangnya menyerap hampir semua
+        // ruang; tanpa itu kolom lain terjepit sampai tidak terbaca.
+        $bobot = array_map(static fn (int $p): float => sqrt(max($p, 1)), $panjang);
+        $total = max(array_sum($bobot), 0.001);
 
         $lebar = [];
-        foreach ($panjang as $i => $p) {
-            // Minimal 9% agar kolom sempit (No, RT) tetap terbaca.
-            $lebar[$i] = max(9, round(($p / $total) * 100, 1));
+        foreach ($bobot as $i => $b) {
+            $lebar[$i] = max(9.0, ($b / $total) * 100);
+        }
+
+        // Normalkan ke tepat 100 supaya tidak ada kolom yang tumpah keluar kertas.
+        $jumlah = array_sum($lebar);
+        foreach ($lebar as $i => $l) {
+            $lebar[$i] = round($l / $jumlah * 100, 1);
+        }
+
+        // Pembulatan bisa menyisakan selisih 0.1; buang ke kolom terlebar supaya
+        // totalnya benar-benar 100.0.
+        $selisih = round(100 - array_sum($lebar), 1);
+        if (abs($selisih) >= 0.1) {
+            $terlebar = array_keys($lebar, max($lebar))[0];
+            $lebar[$terlebar] = round($lebar[$terlebar] + $selisih, 1);
         }
 
         return $lebar;

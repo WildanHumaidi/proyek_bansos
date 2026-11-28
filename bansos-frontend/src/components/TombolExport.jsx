@@ -44,7 +44,9 @@ export default function TombolExport({ jenis, label, onInfo }) {
     justifyContent: 'center',
     gap: 6,
     flex: '0 0 auto',
-    minHeight: 40,
+    /* 44px: lantai tap target. Nilai 40px membuat tombol ini lebih pendek dari
+       jari di HP, padahal ia satu-satunya jalan mengunduh data dari sana. */
+    minHeight: 44,
     padding: '9px 14px',
     borderRadius: 8,
     fontSize: 12.5,

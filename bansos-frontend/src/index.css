@@ -192,6 +192,54 @@ code {
   .mob-table td[data-label="Aksi"] button { font-size: 13px !important; }
 }
 
+/* ── Cetak dari HP: kembalikan tabel jadi tabel ─────────────────────────────
+   Blok `@media (max-width: 900px)` di atas mengubah `table.mob-table` menjadi
+   tumpukan kartu: tabelnya `display: block`, `<thead>` disembunyikan, dan tiap
+   sel diberi label lewat `td::before`. Itu benar untuk layar sentuh, tetapi
+   media query lebar tetap aktif saat mencetak dari HP, sehingga yang tercetak
+   adalah kartu, bukan tabel.
+
+   Kerusakannya bukan sekadar "kurang rapi": lebar sel mengikuti ruang kertas
+   yang tersisa, jadi sel menyusut sampai ~53px dan teks pecah satu karakter per
+   baris. Hasil cetak berisi "R" lalu "T" pada baris berbeda untuk RT, dan
+   "0" "." "8" untuk skor. Header kolom juga hilang sama sekali.
+
+   Aturan di bawah mengembalikan bentuk tabel, mengembalikan header, dan
+   mematikan label `::before`. Ditulis dengan !important karena harus mengalahkan
+   !important milik blok mobile; urutannya juga sengaja setelahnya. */
+@media print {
+  .mob-table { display: table !important; width: 100% !important; table-layout: fixed !important; }
+  .mob-table thead { display: table-header-group !important; }
+  .mob-table tbody { display: table-row-group !important; }
+  .mob-table tr { display: table-row !important; border: none !important; border-radius: 0 !important; margin: 0 !important; padding: 0 !important; background: transparent !important; }
+  .mob-table th,
+  .mob-table td {
+    display: table-cell !important;
+    text-align: left !important;
+    padding: 3pt 4pt !important;
+    border: .5pt solid #94a3b8 !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    max-width: none !important;
+    font-size: 7.5pt !important;
+    vertical-align: top !important;
+  }
+  .mob-table th { background: #dbeafe !important; font-weight: 700 !important; }
+  /* Label kartu tidak relevan saat header kolom kembali terlihat. */
+  .mob-table td::before { content: none !important; display: none !important; }
+  /* Nomor urut tetap disembunyikan di layar HP; saat dicetak ia berguna. */
+  .mob-table td[data-label="No"] { display: table-cell !important; }
+  /* Teks panjang membungkus di dalam selnya, bukan pecah per karakter. */
+  .mob-table td, .mob-table th { word-break: normal !important; overflow-wrap: break-word !important; }
+  .mob-table tr { page-break-inside: avoid; }
+}
+
+@media print {
+  /* Tombol export tidak ikut tercetak: kertas tidak bisa diklik, dan tombol
+     "PDF"/"Excel" di atas tabel hanya memakan baris. */
+  .tombol-export { display: none !important; }
+}
+
 /* ── Konteks di header dashboard ────────────────────────────────────────────
    Mengisi ruang antara judul dan tombol aksi dengan informasi yang benar-benar
    dipakai saat kerja: wilayah dan jumlah data yang sedang dibuka. */

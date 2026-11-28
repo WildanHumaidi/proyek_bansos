@@ -50,7 +50,15 @@
             border-top: .5pt solid #c7d7ee;
             padding-top: 4pt;
         }
-        .nomor { text-align: center; }
+        .nomor {
+            text-align: center;
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+        }
+        /* Kolom tanggal & skor juga tidak boleh pecah: "001" dan "28/11/2026
+           05:58" yang terbelah dua baris membuat tinggi baris tidak seragam dan
+           tabel panjang terbaca sebagai data rusak. */
+        .nowrap { white-space: nowrap; }
     </style>
 </head>
 <body>
@@ -73,7 +81,16 @@
             @forelse ($baris as $isi)
                 <tr>
                     @foreach ($kolom as $i => $label)
-                        <td @class(['nomor' => in_array($label, ['No'], true)])>{{ $isi[$i] ?? '' }}</td>
+                        @php
+                            $kelas = [];
+                            if (in_array($label, ['No'], true)) {
+                                $kelas[] = 'nomor';
+                            }
+                            if (in_array($label, ['RT', 'Tanggal Kirim', 'Skor SAW', 'Nilai V', 'Peringkat'], true)) {
+                                $kelas[] = 'nowrap';
+                            }
+                        @endphp
+                        <td @class($kelas)>{{ $isi[$i] ?? '' }}</td>
                     @endforeach
                 </tr>
             @empty
